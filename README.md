@@ -22,17 +22,13 @@ Open **http://127.0.0.1:3000**. The **Full EdgeBoard workspace** link opens the 
 
 Local loopback mode can run without a password. Hosted mode refuses to start unless `WORKSPACE_PASSWORD` has at least 16 characters. Copy `.env.example` to `.env` for local configuration; `npm start` loads it if present. Keep all provider keys server-side.
 
-## Deploy on Render
+## Deploy on Railway
 
-The repository contains a Dockerfile and Render Blueprint with persistent storage and password-protected access. The production application build and local runtime were checked; the combined Docker image was not rebuilt in this environment, and **this master has not been deployed on Render**.
+Railway is the recommended permanent host for the existing Node/Python Docker app. The repository includes `railway.toml` with the Docker build, `/health` startup check and a single replica. Attach a persistent volume at `/var/data` for both SQLite databases.
 
-1. Open [Render](https://dashboard.render.com/), sign in, and choose **New → Blueprint**.
-2. Connect GitHub and select **danteclaird98/sports-betting-master**. Let Render use `render.yaml`.
-3. Set `WORKSPACE_PASSWORD` to a private password of at least 16 characters. The username defaults to `owner`.
-4. Review Render's service/disk pricing, then deploy. The Blueprint uses a **paid Starter service plus a 1 GB persistent disk**.
-5. Open the URL Render provides and sign in. Add provider keys in Render's **Environment** screen when ready.
+Follow the [Railway deployment guide](docs/RAILWAY_DEPLOYMENT.md) to connect this GitHub repository, configure the private workspace password, HTTPS hostname, secure cookies and persistent storage, then deploy and verify the service. No Railway service or public URL has been provisioned by the configuration change; review Railway's account pricing before launch.
 
-Full setup, backups and migration boundaries: [Render migration guide](docs/RENDER_MIGRATION.md).
+The older [Render migration guide](docs/RENDER_MIGRATION.md) remains as a historical alternative.
 
 ## What's integrated
 
@@ -72,7 +68,7 @@ For normalized imports, [web/example.json](web/example.json) shows the schema. M
 
 ## Persistence and migration
 
-The runtime uses two SQLite databases: EdgeBoard records and EdgeFusion snapshots/journal. Both live under Render's persistent disk in hosted mode. Existing local files are not uploaded to Render automatically. AppDeploy's private database and secrets were not included in the source exports and have **not** been migrated. Existing deployments were not modified.
+The runtime uses two SQLite databases: EdgeBoard records and EdgeFusion snapshots/journal. For Railway hosting, both live on the persistent volume at `/var/data`. Existing local files are not uploaded automatically. AppDeploy's private database and secrets were not included in the source exports and have **not** been migrated. Existing deployments were not modified.
 
 See [current consolidation guide](docs/CONSOLIDATION.md), [current source/file manifest](docs/consolidation-manifest.json) and [master validation](docs/MASTER_VALIDATION.md). The older [EdgeFusion review](docs/REPOSITORY_REVIEW.md), [source revisions](docs/sources.json), [migration hashes](docs/edgeboard-migration.json) and [validation](docs/VALIDATION.md) describe the inherited baseline, not this consolidation.
 

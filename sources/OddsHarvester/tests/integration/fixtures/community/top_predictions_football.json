@@ -1,0 +1,362 @@
+[
+    {
+        "country": "Europe",
+        "league": "UEFA Nations League",
+        "home_team": "Finland",
+        "away_team": "Belarus",
+        "kickoff": "2026-09-29T16:00",
+        "kickoff_text": "29/Sep 16:00 29/Sep, 16:00 1X2",
+        "market": "1X2",
+        "odds": [
+            {
+                "outcome": "1",
+                "odds": 1.56
+            },
+            {
+                "outcome": "X",
+                "odds": 3.9
+            },
+            {
+                "outcome": "2",
+                "odds": 6.2
+            }
+        ],
+        "community_votes_pct": [
+            {
+                "outcome": "1",
+                "pct": 93
+            },
+            {
+                "outcome": "X",
+                "pct": 3
+            },
+            {
+                "outcome": "2",
+                "pct": 3
+            }
+        ],
+        "match_url": "https://www.oddsportal.com/football/h2h/belarus-lhXEH2VT/finland-QuVpPpic/#lbP1YpZq:1X2;2",
+        "sport": "football",
+        "scraped_at": "2026-09-29T07:08:49.876639+00:00"
+    },
+    {
+        "country": "Europe",
+        "league": "UEFA Nations League",
+        "home_team": "Spain",
+        "away_team": "Croatia",
+        "kickoff": "2026-09-29T18:45",
+        "kickoff_text": "29/Sep 18:45 29/Sep, 18:45 1X2",
+        "market": "1X2",
+        "odds": [
+            {
+                "outcome": "1",
+                "odds": 1.23
+            },
+            {
+                "outcome": "X",
+                "odds": 7.7
+            },
+            {
+                "outcome": "2",
+                "odds": 13.0
+            }
+        ],
+        "community_votes_pct": [
+            {
+                "outcome": "1",
+                "pct": 76
+            },
+            {
+                "outcome": "X",
+                "pct": 10
+            },
+            {
+                "outcome": "2",
+                "pct": 14
+            }
+        ],
+        "match_url": "https://www.oddsportal.com/football/h2h/croatia-K8aznggo/spain-bLyo6mco/#2T1rwtCi:1X2;2",
+        "sport": "football",
+        "scraped_at": "2026-09-29T07:08:49.876639+00:00"
+    },
+    {
+        "country": "Europe",
+        "league": "UEFA Nations League",
+        "home_team": "Slovenia",
+        "away_team": "North Macedonia",
+        "kickoff": "2026-09-29T18:45",
+        "kickoff_text": "29/Sep 18:45 29/Sep, 18:45 1X2",
+        "market": "1X2",
+        "odds": [
+            {
+                "outcome": "1",
+                "odds": 1.63
+            },
+            {
+                "outcome": "X",
+                "odds": 3.6
+            },
+            {
+                "outcome": "2",
+                "odds": 6.0
+            }
+        ],
+        "community_votes_pct": [
+            {
+                "outcome": "1",
+                "pct": 83
+            },
+            {
+                "outcome": "X",
+                "pct": 13
+            },
+            {
+                "outcome": "2",
+                "pct": 4
+            }
+        ],
+        "match_url": "https://www.oddsportal.com/football/h2h/north-macedonia-GrTQ3oHB/slovenia-tfMf3PoO/#hOq1JfnT:1X2;2",
+        "sport": "football",
+        "scraped_at": "2026-09-29T07:08:49.876639+00:00"
+    },
+    {
+        "country": "Europe",
+        "league": "UEFA Nations League",
+        "home_team": "Scotland",
+        "away_team": "Switzerland",
+        "kickoff": "2026-09-29T18:45",
+        "kickoff_text": "29/Sep 18:45 29/Sep, 18:45 1X2",
+        "market": "1X2",
+        "odds": [
+            {
+                "outcome": "1",
+                "odds": 4.4
+            },
+            {
+                "outcome": "X",
+                "odds": 3.5
+            },
+            {
+                "outcome": "2",
+                "odds": 1.85
+            }
+        ],
+        "community_votes_pct": [
+            {
+                "outcome": "1",
+                "pct": 18
+            },
+            {
+                "outcome": "X",
+                "pct": 14
+            },
+            {
+                "outcome": "2",
+                "pct": 68
+            }
+        ],
+        "match_url": "https://www.oddsportal.com/football/h2h/scotland-fZRU25WH/switzerland-rHJ2vy1B/#KxQwPbIi:1X2;2",
+        "sport": "football",
+        "scraped_at": "2026-09-29T07:08:49.876639+00:00"
+    },
+    {
+        "country": "Europe",
+        "league": "UEFA Nations League",
+        "home_team": "Czech Republic",
+        "away_team": "England",
+        "kickoff": "2026-09-29T18:45",
+        "kickoff_text": "29/Sep 18:45 29/Sep, 18:45 1X2",
+        "market": "1X2",
+        "odds": [
+            {
+                "outcome": "1",
+                "odds": 11.0
+            },
+            {
+                "outcome": "X",
+                "odds": 5.7
+            },
+            {
+                "outcome": "2",
+                "odds": 1.32
+            }
+        ],
+        "community_votes_pct": [
+            {
+                "outcome": "1",
+                "pct": 0
+            },
+            {
+                "outcome": "X",
+                "pct": 5
+            },
+            {
+                "outcome": "2",
+                "pct": 95
+            }
+        ],
+        "match_url": "https://www.oddsportal.com/football/h2h/czech-republic-6LHwBDGU/england-j9N9ZNFA/#AeCCmlWQ:1X2;2",
+        "sport": "football",
+        "scraped_at": "2026-09-29T07:08:49.876639+00:00"
+    },
+    {
+        "country": "Europe",
+        "league": "UEFA Nations League",
+        "home_team": "Wales",
+        "away_team": "Norway",
+        "kickoff": "2026-10-01T18:45",
+        "kickoff_text": "01/Oct 18:45 01/Oct, 18:45 1X2",
+        "market": "1X2",
+        "odds": [
+            {
+                "outcome": "1",
+                "odds": 5.8
+            },
+            {
+                "outcome": "X",
+                "odds": 4.6
+            },
+            {
+                "outcome": "2",
+                "odds": 1.51
+            }
+        ],
+        "community_votes_pct": [
+            {
+                "outcome": "1",
+                "pct": 0
+            },
+            {
+                "outcome": "X",
+                "pct": 0
+            },
+            {
+                "outcome": "2",
+                "pct": 100
+            }
+        ],
+        "match_url": "https://www.oddsportal.com/football/h2h/norway-8rP6JO0H/wales-YcUP0Nqp/#zasB5MiC:1X2;2",
+        "sport": "football",
+        "scraped_at": "2026-09-29T07:08:49.876639+00:00"
+    },
+    {
+        "country": "Europe",
+        "league": "UEFA Nations League",
+        "home_team": "Bulgaria",
+        "away_team": "Estonia",
+        "kickoff": "2026-09-29T18:45",
+        "kickoff_text": "29/Sep 18:45 29/Sep, 18:45 1X2",
+        "market": "1X2",
+        "odds": [
+            {
+                "outcome": "1",
+                "odds": 1.79
+            },
+            {
+                "outcome": "X",
+                "odds": 3.42
+            },
+            {
+                "outcome": "2",
+                "odds": 5.0
+            }
+        ],
+        "community_votes_pct": [
+            {
+                "outcome": "1",
+                "pct": 73
+            },
+            {
+                "outcome": "X",
+                "pct": 7
+            },
+            {
+                "outcome": "2",
+                "pct": 20
+            }
+        ],
+        "match_url": "https://www.oddsportal.com/football/h2h/bulgaria-WEeqYLaT/estonia-YJwM4R15/#hSJlvG55:1X2;2",
+        "sport": "football",
+        "scraped_at": "2026-09-29T07:08:49.876639+00:00"
+    },
+    {
+        "country": "Scotland",
+        "league": "Challenge Cup",
+        "home_team": "Forfar Athletic",
+        "away_team": "Formartine Utd",
+        "kickoff": "2026-09-29T18:45",
+        "kickoff_text": "29/Sep 18:45 29/Sep, 18:45 1X2",
+        "market": "1X2",
+        "odds": [
+            {
+                "outcome": "1",
+                "odds": 2.28
+            },
+            {
+                "outcome": "X",
+                "odds": 3.65
+            },
+            {
+                "outcome": "2",
+                "odds": 2.46
+            }
+        ],
+        "community_votes_pct": [
+            {
+                "outcome": "1",
+                "pct": 92
+            },
+            {
+                "outcome": "X",
+                "pct": 8
+            },
+            {
+                "outcome": "2",
+                "pct": 0
+            }
+        ],
+        "match_url": "https://www.oddsportal.com/football/h2h/forfar-athletic-QmryvWCK/formartine-utd-vqORPXj2/#2LoZHHgR:1X2;2",
+        "sport": "football",
+        "scraped_at": "2026-09-29T07:08:49.876639+00:00"
+    },
+    {
+        "country": "Europe",
+        "league": "UEFA Nations League",
+        "home_team": "Moldova",
+        "away_team": "Faroe Islands",
+        "kickoff": "2026-09-29T16:00",
+        "kickoff_text": "29/Sep 16:00 29/Sep, 16:00 1X2",
+        "market": "1X2",
+        "odds": [
+            {
+                "outcome": "1",
+                "odds": 2.88
+            },
+            {
+                "outcome": "X",
+                "odds": 2.95
+            },
+            {
+                "outcome": "2",
+                "odds": 2.7
+            }
+        ],
+        "community_votes_pct": [
+            {
+                "outcome": "1",
+                "pct": 27
+            },
+            {
+                "outcome": "X",
+                "pct": 45
+            },
+            {
+                "outcome": "2",
+                "pct": 27
+            }
+        ],
+        "match_url": "https://www.oddsportal.com/football/h2h/faroe-islands-nBmAj3Fc/moldova-zsDPKQGb/#rFy9RxMa:1X2;2",
+        "sport": "football",
+        "scraped_at": "2026-09-29T07:08:49.876639+00:00"
+    }
+]

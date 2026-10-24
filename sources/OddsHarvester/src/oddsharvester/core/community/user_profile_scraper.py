@@ -1,0 +1,128 @@
+"""Scraper for an OddsPortal public user profile (--user)."""
+
+from datetime import UTC, datetime
+import logging
+
+from oddsharvester.core.browser.cookies import CookieDismisser
+from oddsharvester.core.browser.session import browser_session, open_page
+from oddsharvester.core.community.user_profile_parser import parse_profile_feed_predictions, parse_user_profile
+from oddsharvester.core.exceptions import RateLimitError
+from oddsharvester.core.odds_portal_selectors import OddsPortalSelectors
+from oddsharvester.core.playwright_manager import PlaywrightManager
+from oddsharvester.core.retry import OPERATION_RETRY_CONFIG, retry_with_backoff
+from oddsharvester.core.url_builder import rebase_url
+from oddsharvester.utils.constants import (
+    ODDSPORTAL_BASE_URL,
+    RATE_LIMIT_RETRY_DELAY_S,
+    SELECTOR_TIMEOUT_MS,
+)
+
+logger = logging.getLogger(__name__)
+
+# The Feed tab loads its rows from /proxy/ajax-communityFeed/profile/<id>/<timestamp>/.
+_FEED_AJAX_PATH = "/ajax-communityFeed/"
+
+
+class UserProfileScraper:
+    """Navigates to /profile/<username>/ and parses the rendered profile."""
+
+    def __init__(self, playwright_manager: PlaywrightManager, cookie_dismisser: CookieDismisser):
+        self.playwright_manager = playwright_manager
+        self.cookie_dismisser = cookie_dismisser
+
+    async def scrape(self, username: str, base_url: str | None = None) -> dict:
+        page = self.playwright_manager.page
+        url = rebase_url(f"{ODDSPORTAL_BASE_URL}/profile/{username}/", base_url)
+        logger.info("Navigating to user profile: %s", url)
+        await open_page(page, url)
+        await self.cookie_dismisser.dismiss(page)
+
+        try:
+            await page.wait_for_selector(OddsPortalSelectors.COMMUNITY_PROFILE_USERNAME, timeout=SELECTOR_TIMEOUT_MS)
+        except Exception:
+            logger.warning(
+                "Profile header not found for '%s' (missing/404 profile, or anti-bot; gotchas §6).",
+                username,
+            )
+
+        html = await page.content()
+        record = parse_user_profile(html, tz_name=self.playwright_manager.timezone_id)
+        if record["privacy"] != "private" and not record["predictions"]:
+            # 2026-08 redesign: the predictions list moved to the Feed tab.
+            record["predictions"] = await self._scrape_feed_predictions(page)
+        record["scraped_at"] = datetime.now(UTC).isoformat()
+        if record["privacy"] == "private":
+            logger.warning("Profile '%s' is private; only header stats are available.", username)
+        return record
+
+    async def _scrape_feed_predictions(self, page) -> list[dict]:
+        """The Feed tab's predictions; raises RateLimitError when OddsPortal refused the feed's AJAX."""
+        refused: list[str] = []
+
+        def on_response(response) -> None:
+            if response.status == 429 and _FEED_AJAX_PATH in response.url:
+                refused.append(response.url)
+
+        page.on("response", on_response)
+        try:
+            predictions = await self._read_feed_predictions(page)
+        finally:
+            page.remove_listener("response", on_response)
+        if refused:
+            raise RateLimitError(
+                f"rate limited by OddsPortal: HTTP 429 on the profile feed {refused[0]}",
+                url=refused[0],
+                retry_after=RATE_LIMIT_RETRY_DELAY_S,
+            )
+        return predictions
+
+    async def _read_feed_predictions(self, page) -> list[dict]:
+        try:
+            tabs = await page.query_selector_all(OddsPortalSelectors.COMMUNITY_PROFILE_TAB)
+            feed_tab = None
+            for tab in tabs:
+                if ((await tab.text_content()) or "").strip().lower() == "feed":
+                    feed_tab = tab
+                    break
+            if feed_tab is None:
+                logger.warning("Profile Feed tab not found; predictions left empty.")
+                return []
+            await feed_tab.click()
+            await page.wait_for_selector(OddsPortalSelectors.LISTING_ROW_SELECTOR, timeout=SELECTOR_TIMEOUT_MS)
+            feed_html = await page.content()
+            return parse_profile_feed_predictions(feed_html, tz_name=self.playwright_manager.timezone_id)
+        except Exception as e:
+            logger.warning("Profile Feed predictions scrape failed: %s", e)
+            return []
+
+
+async def run_user_profile(
+    username: str,
+    headless: bool = True,
+    proxy_url=None,
+    proxy_user: str | None = None,
+    proxy_pass: str | None = None,
+    browser_user_agent: str | None = None,
+    browser_locale_timezone: str | None = None,
+    browser_timezone_id: str | None = None,
+    base_url: str | None = None,
+) -> dict:
+    """Owns the Playwright lifecycle for one user-profile scrape run.
+
+    Raises the last error when every attempt failed, so a refused or broken page is not stored as an empty profile.
+    """
+    async with browser_session(
+        headless=headless,
+        proxy_url=proxy_url,
+        proxy_user=proxy_user,
+        proxy_pass=proxy_pass,
+        user_agent=browser_user_agent,
+        locale=browser_locale_timezone,
+        timezone_id=browser_timezone_id,
+    ) as playwright_manager:
+        scraper = UserProfileScraper(playwright_manager, CookieDismisser())
+        retry_result = await retry_with_backoff(scraper.scrape, username, base_url, config=OPERATION_RETRY_CONFIG)
+        if retry_result.success:
+            return retry_result.result
+        logger.error("User-profile scrape failed after %d attempts: %s", retry_result.attempts, retry_result.last_error)
+        raise retry_result.exception

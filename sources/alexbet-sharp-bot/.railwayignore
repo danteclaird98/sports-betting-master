@@ -1,0 +1,9 @@
+node_modules
+npm-debug.log
+.env
+.git
+.gitignore
+README.md
+.DS_Store
+*.log
+# Updated Tue Apr 21 09:42:45 AM MST 2026

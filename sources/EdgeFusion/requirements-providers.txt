@@ -1,0 +1,1 @@
+sports-odds-api @ https://github.com/danteclaird98/sports-odds-api-python/archive/e1e244b820f5830530470584c36eab8f8ab575b3.tar.gz

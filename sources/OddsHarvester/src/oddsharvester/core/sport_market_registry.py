@@ -1,0 +1,624 @@
+from dataclasses import dataclass
+from typing import ClassVar
+
+from oddsharvester.utils.sport_market_constants import (
+    AmericanFootballAsianHandicapMarket,
+    AmericanFootballOverUnderMarket,
+    BaseballOverUnderMarket,
+    BasketballAsianHandicapMarket,
+    BasketballOverUnderMarket,
+    FootballAsianHandicapMarket,
+    FootballEuropeanHandicapMarket,
+    FootballOverUnderMarket,
+    HandballAsianHandicapMarket,
+    HandballOverUnderMarket,
+    IceHockeyAsianHandicapMarket,
+    IceHockeyOverUnderMarket,
+    RugbyHandicapMarket,
+    RugbyOverUnderMarket,
+    Sport,
+    TennisAsianHandicapGamesMarket,
+    TennisAsianHandicapSetsMarket,
+    TennisCorrectScoreMarket,
+    TennisOverUnderGamesMarket,
+    TennisOverUnderSetsMarket,
+    VolleyballAsianHandicapPointsMarket,
+    VolleyballAsianHandicapSetsMarket,
+    VolleyballCorrectScoreMarket,
+    VolleyballOverUnderPointsMarket,
+    VolleyballOverUnderSetsMarket,
+)
+
+
+def format_line_number(raw: str) -> str:
+    """The line as the page prints it: '7_0' -> '7', '-1_75' -> '-1.75', '+0_5' -> '+0.5'."""
+    return raw.replace("_", ".").removesuffix(".0")
+
+
+@dataclass(frozen=True)
+class MarketSpec:
+    """One market token: its tab, its line row, its outcome labels, and the axis (sets, games, points) of its line."""
+
+    main_market: str
+    specific_market: str | None = None
+    odds_labels: tuple[str, ...] | None = None
+    line_axis: str | None = None
+
+
+class SportMarketRegistry:
+    """Registry to dynamically store market mappings for each sport."""
+
+    _registry: ClassVar[dict[str, dict[str, MarketSpec]]] = {}
+
+    @classmethod
+    def register(cls, sport: Sport, market_mapping: dict[str, MarketSpec]):
+        """Register a market mapping for a sport."""
+        if sport.value not in cls._registry:
+            cls._registry[sport.value] = {}
+        cls._registry[sport.value].update(market_mapping)
+
+    @classmethod
+    def get_market_mapping(cls, sport: str) -> dict[str, MarketSpec]:
+        """Retrieve market mappings for a given sport."""
+        return cls._registry.get(sport, {})
+
+    @classmethod
+    def ambiguous_markets(cls, sport: str) -> dict[str, tuple[str, ...]]:
+        """Each market whose line value falls in another axis's range, mapped to those axes.
+
+        The page prints no Sets/Games/Points word, and an axis's ladder can show a value its own
+        enum never lists (tennis 'asian_handicap_+0_5_sets' may be a games row), so a market is
+        ambiguous when its value lies within [min, max] of another axis of the same main market.
+        """
+        entries: list[tuple[str, str, str, float]] = []
+        for market, spec in cls.get_market_mapping(sport).items():
+            if spec.line_axis is None or spec.specific_market is None:
+                continue
+            value = float(spec.specific_market.rsplit(" ", 1)[-1])
+            entries.append((market, spec.main_market, spec.line_axis, value))
+
+        ranges: dict[tuple[str, str], tuple[float, float]] = {}
+        for _, main_market, line_axis, value in entries:
+            key = (main_market, line_axis)
+            lo, hi = ranges.get(key, (value, value))
+            ranges[key] = (min(lo, value), max(hi, value))
+
+        result: dict[str, tuple[str, ...]] = {}
+        for market, main_market, line_axis, value in entries:
+            other_axes = tuple(
+                sorted(
+                    axis
+                    for (other_main_market, axis), (lo, hi) in ranges.items()
+                    if other_main_market == main_market and axis != line_axis and lo <= value <= hi
+                )
+            )
+            if other_axes:
+                result[market] = other_axes
+        return result
+
+
+class SportMarketRegistrar:
+    """Handles the registration of betting markets for different sports."""
+
+    @classmethod
+    def register_football_markets(cls):
+        """Registers all football betting markets."""
+        SportMarketRegistry.register(
+            Sport.FOOTBALL,
+            {
+                "1x2": MarketSpec("1X2", odds_labels=("1", "X", "2")),
+                "btts": MarketSpec("Both Teams to Score", odds_labels=("btts_yes", "btts_no")),
+                "double_chance": MarketSpec("Double Chance", odds_labels=("1X", "12", "X2")),
+                "dnb": MarketSpec("Draw No Bet", odds_labels=("dnb_team1", "dnb_team2")),
+            },
+        )
+
+        # Register Over/Under Markets
+        for over_under in FootballOverUnderMarket:
+            numeric_part = format_line_number(over_under.value.replace("over_under_", ""))
+            SportMarketRegistry.register(
+                Sport.FOOTBALL,
+                {
+                    over_under.value: MarketSpec(
+                        main_market="Over/Under",
+                        specific_market=f"Over/Under +{numeric_part}",
+                        odds_labels=("odds_over", "odds_under"),
+                    )
+                },
+            )
+
+        # Register European Handicap Markets
+        for handicap in FootballEuropeanHandicapMarket:
+            SportMarketRegistry.register(
+                Sport.FOOTBALL,
+                {
+                    handicap.value: MarketSpec(
+                        main_market="European Handicap",
+                        specific_market=f"European Handicap {format_line_number(handicap.value.split('_')[-1])}",
+                        odds_labels=("team1_handicap", "draw_handicap", "team2_handicap"),
+                    )
+                },
+            )
+
+        # Register Asian Handicap Markets
+        for handicap in FootballAsianHandicapMarket:
+            formatted_handicap = format_line_number(handicap.value.replace("asian_handicap_", ""))
+            SportMarketRegistry.register(
+                Sport.FOOTBALL,
+                {
+                    handicap.value: MarketSpec(
+                        main_market="Asian Handicap",
+                        specific_market=f"Asian Handicap {formatted_handicap}",
+                        odds_labels=("team1_handicap", "team2_handicap"),
+                    )
+                },
+            )
+
+    @classmethod
+    def register_tennis_markets(cls):
+        """Registers all tennis betting markets."""
+        SportMarketRegistry.register(
+            Sport.TENNIS,
+            {
+                "match_winner": MarketSpec("Home/Away", odds_labels=("player_1", "player_2")),
+            },
+        )
+
+        # Register Over/Under Sets Markets
+        for over_under in TennisOverUnderSetsMarket:
+            numeric_part = format_line_number(over_under.value.replace("over_under_sets_", ""))
+            SportMarketRegistry.register(
+                Sport.TENNIS,
+                {
+                    over_under.value: MarketSpec(
+                        main_market="Over/Under",
+                        specific_market=f"Over/Under +{numeric_part}",
+                        odds_labels=("odds_over", "odds_under"),
+                        line_axis="sets",
+                    )
+                },
+            )
+
+        # Register Over/Under Games Markets
+        for over_under in TennisOverUnderGamesMarket:
+            numeric_part = format_line_number(over_under.value.replace("over_under_games_", ""))
+            SportMarketRegistry.register(
+                Sport.TENNIS,
+                {
+                    over_under.value: MarketSpec(
+                        main_market="Over/Under",
+                        specific_market=f"Over/Under +{numeric_part}",
+                        odds_labels=("odds_over", "odds_under"),
+                        line_axis="games",
+                    )
+                },
+            )
+
+        # Register Asian Handicap Games Markets
+        for handicap in TennisAsianHandicapGamesMarket:
+            numeric_part = format_line_number(handicap.value.replace("asian_handicap_", "").replace("_games", ""))
+            specific_market = f"Asian Handicap {numeric_part}"
+            SportMarketRegistry.register(
+                Sport.TENNIS,
+                {
+                    handicap.value: MarketSpec(
+                        main_market="Asian Handicap",
+                        specific_market=specific_market,
+                        odds_labels=("games_handicap_player_1", "games_handicap_player_2"),
+                        line_axis="games",
+                    )
+                },
+            )
+
+        # Register Asian Handicap Sets Markets
+        for handicap in TennisAsianHandicapSetsMarket:
+            numeric_part = format_line_number(handicap.value.replace("asian_handicap_", "").replace("_sets", ""))
+            specific_market = f"Asian Handicap {numeric_part}"
+            SportMarketRegistry.register(
+                Sport.TENNIS,
+                {
+                    handicap.value: MarketSpec(
+                        main_market="Asian Handicap",
+                        specific_market=specific_market,
+                        odds_labels=("sets_handicap_player_1", "sets_handicap_player_2"),
+                        line_axis="sets",
+                    )
+                },
+            )
+
+        # Register Correct Score Markets
+        for correct_score in TennisCorrectScoreMarket:
+            numeric_part = correct_score.value.replace("correct_score_", "").replace("_", ":")
+            specific_market = f"{numeric_part}"
+            SportMarketRegistry.register(
+                Sport.TENNIS,
+                {
+                    correct_score.value: MarketSpec(
+                        main_market="Correct Score", specific_market=specific_market, odds_labels=("correct_score",)
+                    )
+                },
+            )
+
+    @classmethod
+    def register_basketball_markets(cls):
+        """Registers all basketball betting markets."""
+        SportMarketRegistry.register(
+            Sport.BASKETBALL,
+            {
+                "1x2": MarketSpec("1X2", odds_labels=("1", "X", "2")),
+                "home_away": MarketSpec("Home/Away", odds_labels=("1", "2")),
+            },
+        )
+
+        # Register Over/Under Games Markets
+        for over_under in BasketballOverUnderMarket:
+            numeric_part = format_line_number(over_under.value.replace("over_under_games_", ""))
+            SportMarketRegistry.register(
+                Sport.BASKETBALL,
+                {
+                    over_under.value: MarketSpec(
+                        main_market="Over/Under",
+                        specific_market=f"Over/Under +{numeric_part}",
+                        odds_labels=("odds_over", "odds_under"),
+                    )
+                },
+            )
+
+        # Register Asian Handicap Markets
+        for handicap in BasketballAsianHandicapMarket:
+            numeric_part = format_line_number(handicap.value.replace("asian_handicap_games_", "").replace("_games", ""))
+            specific_market = f"Asian Handicap {numeric_part}"
+            SportMarketRegistry.register(
+                Sport.BASKETBALL,
+                {
+                    handicap.value: MarketSpec(
+                        main_market="Asian Handicap",
+                        specific_market=specific_market,
+                        odds_labels=("handicap_team_1", "handicap_team_2"),
+                    )
+                },
+            )
+
+    @classmethod
+    def register_rugby_league_markets(cls):
+        """Registers all rugby league betting markets."""
+        SportMarketRegistry.register(
+            Sport.RUGBY_LEAGUE,
+            {
+                "1x2": MarketSpec("1X2", odds_labels=("1", "X", "2")),
+                "home_away": MarketSpec("Home/Away", odds_labels=("1", "2")),
+                "dnb": MarketSpec("Draw No Bet", odds_labels=("dnb_team1", "dnb_team2")),
+                "double_chance": MarketSpec("Double Chance", odds_labels=("1X", "12", "X2")),
+            },
+        )
+
+        # Over/Under Markets
+        for over_under in RugbyOverUnderMarket:
+            numeric_part = format_line_number(over_under.value.replace("over_under_", ""))
+            SportMarketRegistry.register(
+                Sport.RUGBY_LEAGUE,
+                {
+                    over_under.value: MarketSpec(
+                        main_market="Over/Under",
+                        specific_market=f"Over/Under +{numeric_part}",
+                        odds_labels=("odds_over", "odds_under"),
+                    )
+                },
+            )
+
+        # Handicap Markets
+        for handicap in RugbyHandicapMarket:
+            numeric_part = format_line_number(handicap.value.replace("handicap_", ""))
+            SportMarketRegistry.register(
+                Sport.RUGBY_LEAGUE,
+                {
+                    handicap.value: MarketSpec(
+                        main_market="Handicap",
+                        specific_market=f"Handicap {numeric_part}",
+                        odds_labels=("handicap_team_1", "handicap_team_2"),
+                    )
+                },
+            )
+
+    @classmethod
+    def register_rugby_union_markets(cls):
+        """Registers all rugby union betting markets."""
+        SportMarketRegistry.register(
+            Sport.RUGBY_UNION,
+            {
+                "1x2": MarketSpec("1X2", odds_labels=("1", "X", "2")),
+                "home_away": MarketSpec("Home/Away", odds_labels=("1", "2")),
+                "dnb": MarketSpec("Draw No Bet", odds_labels=("dnb_team1", "dnb_team2")),
+                "double_chance": MarketSpec("Double Chance", odds_labels=("1X", "12", "X2")),
+            },
+        )
+
+        # Over/Under Markets
+        for over_under in RugbyOverUnderMarket:
+            numeric_part = format_line_number(over_under.value.replace("over_under_", ""))
+            SportMarketRegistry.register(
+                Sport.RUGBY_UNION,
+                {
+                    over_under.value: MarketSpec(
+                        main_market="Over/Under",
+                        specific_market=f"Over/Under +{numeric_part}",
+                        odds_labels=("odds_over", "odds_under"),
+                    )
+                },
+            )
+
+        # Handicap Markets
+        for handicap in RugbyHandicapMarket:
+            numeric_part = format_line_number(handicap.value.replace("handicap_", ""))
+            SportMarketRegistry.register(
+                Sport.RUGBY_UNION,
+                {
+                    handicap.value: MarketSpec(
+                        main_market="Handicap",
+                        specific_market=f"Handicap {numeric_part}",
+                        odds_labels=("handicap_team_1", "handicap_team_2"),
+                    )
+                },
+            )
+
+    @classmethod
+    def register_ice_hockey_markets(cls):
+        """Registers all ice hockey betting markets."""
+        SportMarketRegistry.register(
+            Sport.ICE_HOCKEY,
+            {
+                "1x2": MarketSpec("1X2", odds_labels=("1", "X", "2")),
+                "home_away": MarketSpec("Home/Away", odds_labels=("1", "2")),
+                "dnb": MarketSpec("Draw No Bet", odds_labels=("dnb_team1", "dnb_team2")),
+                "btts": MarketSpec("Both Teams to Score", odds_labels=("btts_yes", "btts_no")),
+                "double_chance": MarketSpec("Double Chance", odds_labels=("1X", "12", "X2")),
+            },
+        )
+
+        # Over/Under Markets
+        for over_under in IceHockeyOverUnderMarket:
+            numeric_part = format_line_number(over_under.value.replace("over_under_", ""))
+            SportMarketRegistry.register(
+                Sport.ICE_HOCKEY,
+                {
+                    over_under.value: MarketSpec(
+                        main_market="Over/Under",
+                        specific_market=f"Over/Under +{numeric_part}",
+                        odds_labels=("odds_over", "odds_under"),
+                    )
+                },
+            )
+
+        # Asian Handicap Markets
+        for handicap in IceHockeyAsianHandicapMarket:
+            numeric_part = format_line_number(handicap.value.replace("asian_handicap_", ""))
+            SportMarketRegistry.register(
+                Sport.ICE_HOCKEY,
+                {
+                    handicap.value: MarketSpec(
+                        main_market="Asian Handicap",
+                        specific_market=f"Asian Handicap {numeric_part}",
+                        odds_labels=("handicap_team_1", "handicap_team_2"),
+                    )
+                },
+            )
+
+    @classmethod
+    def register_baseball_markets(cls):
+        """Registers all baseball betting markets."""
+        SportMarketRegistry.register(
+            Sport.BASEBALL,
+            {
+                "1x2": MarketSpec("1X2", odds_labels=("1", "X", "2")),
+                "home_away": MarketSpec("Home/Away", odds_labels=("1", "2")),
+            },
+        )
+
+        # Over/Under Markets
+        for over_under in BaseballOverUnderMarket:
+            numeric_part = format_line_number(over_under.value.replace("over_under_", ""))
+            SportMarketRegistry.register(
+                Sport.BASEBALL,
+                {
+                    over_under.value: MarketSpec(
+                        main_market="Over/Under",
+                        specific_market=f"Over/Under +{numeric_part}",
+                        odds_labels=("odds_over", "odds_under"),
+                    )
+                },
+            )
+
+    @classmethod
+    def register_american_football_markets(cls):
+        """Registers all American Football betting markets."""
+        SportMarketRegistry.register(
+            Sport.AMERICAN_FOOTBALL,
+            {
+                "1x2": MarketSpec("1X2", odds_labels=("1", "X", "2")),
+                "home_away": MarketSpec("Home/Away", odds_labels=("1", "2")),
+            },
+        )
+
+        # Register Over/Under Markets
+        for over_under in AmericanFootballOverUnderMarket:
+            numeric_part = format_line_number(over_under.value.replace("over_under_", ""))
+            SportMarketRegistry.register(
+                Sport.AMERICAN_FOOTBALL,
+                {
+                    over_under.value: MarketSpec(
+                        main_market="Over/Under",
+                        specific_market=f"Over/Under +{numeric_part}",
+                        odds_labels=("odds_over", "odds_under"),
+                    )
+                },
+            )
+
+        # Register Asian Handicap Markets
+        for handicap in AmericanFootballAsianHandicapMarket:
+            numeric_part = format_line_number(handicap.value.replace("asian_handicap_", ""))
+            SportMarketRegistry.register(
+                Sport.AMERICAN_FOOTBALL,
+                {
+                    handicap.value: MarketSpec(
+                        main_market="Asian Handicap",
+                        specific_market=f"Asian Handicap {numeric_part}",
+                        odds_labels=("1", "2"),
+                    )
+                },
+            )
+
+    @classmethod
+    def register_handball_markets(cls):
+        """Registers all handball betting markets."""
+        SportMarketRegistry.register(
+            Sport.HANDBALL,
+            {
+                "1x2": MarketSpec("1X2", odds_labels=("1", "X", "2")),
+                "home_away": MarketSpec("Home/Away", odds_labels=("1", "2")),
+                "dnb": MarketSpec("Draw No Bet", odds_labels=("dnb_team1", "dnb_team2")),
+                "double_chance": MarketSpec("Double Chance", odds_labels=("1X", "12", "X2")),
+            },
+        )
+
+        # Over/Under Markets
+        for over_under in HandballOverUnderMarket:
+            numeric_part = format_line_number(over_under.value.replace("over_under_", ""))
+            SportMarketRegistry.register(
+                Sport.HANDBALL,
+                {
+                    over_under.value: MarketSpec(
+                        main_market="Over/Under",
+                        specific_market=f"Over/Under +{numeric_part}",
+                        odds_labels=("odds_over", "odds_under"),
+                    )
+                },
+            )
+
+        # Asian Handicap Markets
+        for asian_handicap in HandballAsianHandicapMarket:
+            numeric_part = format_line_number(asian_handicap.value.replace("handicap_", ""))
+            SportMarketRegistry.register(
+                Sport.HANDBALL,
+                {
+                    asian_handicap.value: MarketSpec(
+                        main_market="Asian Handicap",
+                        specific_market=f"Asian Handicap {numeric_part}",
+                        odds_labels=("handicap_team_1", "handicap_team_2"),
+                    )
+                },
+            )
+
+    @classmethod
+    def register_volleyball_markets(cls):
+        """Registers all volleyball betting markets.
+
+        Modelled on register_tennis_markets: Home/Away winner, Over/Under and
+        Asian Handicap each on a Sets axis and a Points axis, plus Correct Score.
+        The page shows no Sets / Points word on a line (verified 2026-09-29), so
+        a sets line and a points line of the same value share one label.
+        """
+        SportMarketRegistry.register(
+            Sport.VOLLEYBALL,
+            {
+                "home_away": MarketSpec("Home/Away", odds_labels=("1", "2")),
+            },
+        )
+
+        # Over/Under Sets
+        for over_under in VolleyballOverUnderSetsMarket:
+            numeric_part = format_line_number(over_under.value.replace("over_under_sets_", ""))
+            SportMarketRegistry.register(
+                Sport.VOLLEYBALL,
+                {
+                    over_under.value: MarketSpec(
+                        main_market="Over/Under",
+                        specific_market=f"Over/Under +{numeric_part}",
+                        odds_labels=("odds_over", "odds_under"),
+                        line_axis="sets",
+                    )
+                },
+            )
+
+        # Over/Under Points
+        for over_under in VolleyballOverUnderPointsMarket:
+            numeric_part = format_line_number(over_under.value.replace("over_under_points_", ""))
+            SportMarketRegistry.register(
+                Sport.VOLLEYBALL,
+                {
+                    over_under.value: MarketSpec(
+                        main_market="Over/Under",
+                        specific_market=f"Over/Under +{numeric_part}",
+                        odds_labels=("odds_over", "odds_under"),
+                        line_axis="points",
+                    )
+                },
+            )
+
+        # Asian Handicap Sets
+        for handicap in VolleyballAsianHandicapSetsMarket:
+            numeric_part = format_line_number(handicap.value.replace("asian_handicap_", "").replace("_sets", ""))
+            SportMarketRegistry.register(
+                Sport.VOLLEYBALL,
+                {
+                    handicap.value: MarketSpec(
+                        main_market="Asian Handicap",
+                        specific_market=f"Asian Handicap {numeric_part}",
+                        odds_labels=("sets_handicap_team_1", "sets_handicap_team_2"),
+                        line_axis="sets",
+                    )
+                },
+            )
+
+        # Asian Handicap Points
+        for handicap in VolleyballAsianHandicapPointsMarket:
+            numeric_part = format_line_number(handicap.value.replace("asian_handicap_", "").replace("_points", ""))
+            SportMarketRegistry.register(
+                Sport.VOLLEYBALL,
+                {
+                    handicap.value: MarketSpec(
+                        main_market="Asian Handicap",
+                        specific_market=f"Asian Handicap {numeric_part}",
+                        odds_labels=("points_handicap_team_1", "points_handicap_team_2"),
+                        line_axis="points",
+                    )
+                },
+            )
+
+        # Correct Score
+        for correct_score in VolleyballCorrectScoreMarket:
+            numeric_part = correct_score.value.replace("correct_score_", "").replace("_", ":")
+            SportMarketRegistry.register(
+                Sport.VOLLEYBALL,
+                {
+                    correct_score.value: MarketSpec(
+                        main_market="Correct Score",
+                        specific_market=f"{numeric_part}",
+                        odds_labels=("correct_score",),
+                    )
+                },
+            )
+
+    @classmethod
+    def register_cricket_markets(cls):
+        """Registers all cricket betting markets (limited-overs match winner)."""
+        SportMarketRegistry.register(
+            Sport.CRICKET,
+            {
+                "home_away": MarketSpec("Home/Away", odds_labels=("1", "2")),
+            },
+        )
+
+    @classmethod
+    def register_all_markets(cls):
+        """Registers all sports markets."""
+        cls.register_football_markets()
+        cls.register_tennis_markets()
+        cls.register_basketball_markets()
+        cls.register_rugby_league_markets()
+        cls.register_rugby_union_markets()
+        cls.register_ice_hockey_markets()
+        cls.register_baseball_markets()
+        cls.register_american_football_markets()
+        cls.register_handball_markets()
+        cls.register_volleyball_markets()
+        cls.register_cricket_markets()

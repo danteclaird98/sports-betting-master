@@ -1,0 +1,593 @@
+import asyncio
+from dataclasses import dataclass, field
+from datetime import datetime
+from enum import Enum
+import random
+from urllib.parse import urlparse
+
+from playwright.async_api import Page
+
+from oddsharvester.core.base_scraper import BaseScraper
+from oddsharvester.core.browser.pagination import WalkVerdict
+from oddsharvester.core.browser.session import raise_if_rate_limited
+from oddsharvester.core.exceptions import PageNotFoundError, RateLimitError, SeasonNotFoundError
+from oddsharvester.core.odds_portal_selectors import OddsPortalSelectors
+from oddsharvester.core.scrape_result import ScrapeResult
+from oddsharvester.core.url_builder import URLBuilder, is_league_path, normalize_inplay_match_url, rebase_url
+from oddsharvester.utils.bookies_filter_enum import BookiesFilter
+from oddsharvester.utils.constants import (
+    DEFAULT_REQUEST_DELAY_S,
+    GOTO_TIMEOUT_LONG_MS,
+    GOTO_TIMEOUT_MS,
+    LISTING_PAGE_RETRY_ATTEMPTS,
+    LISTING_PAGE_RETRY_DELAY_S,
+    MAX_PAGINATION_PAGES,
+    PAGE_COLLECTION_DELAY_MAX_MS,
+    PAGE_COLLECTION_DELAY_MIN_MS,
+    RESULTS_PAGE_SIZE,
+)
+
+
+@dataclass
+class LinkCollectionResult:
+    """Result of collecting match links from pages."""
+
+    links: list[str] = field(default_factory=list)
+    successful_pages: int = 0
+    failed_pages: list[int] = field(default_factory=list)
+    days: dict[str, str | None] = field(default_factory=dict)
+
+    @property
+    def total_pages(self) -> int:
+        return self.successful_pages + len(self.failed_pages)
+
+
+@dataclass
+class ListingResult:
+    """Match rows collected from a listing, before any odds are scraped."""
+
+    rows: list[dict] = field(default_factory=list)
+    failed_page_urls: list[str] = field(default_factory=list)
+
+
+class OddsPortalScraper(BaseScraper):
+    """
+    Main class that manages the scraping workflow from OddsPortal.
+    """
+
+    async def start_playwright(
+        self,
+        headless: bool = True,
+        browser_user_agent: str | None = None,
+        browser_locale_timezone: str | None = None,
+        browser_timezone_id: str | None = None,
+        proxy_manager=None,
+    ):
+        """Initializes Playwright using PlaywrightManager."""
+        await self.playwright_manager.initialize(
+            headless=headless,
+            user_agent=browser_user_agent,
+            locale=browser_locale_timezone,
+            timezone_id=browser_timezone_id,
+            proxy_manager=proxy_manager,
+        )
+
+    async def stop_playwright(self):
+        """Stops Playwright and cleans up resources."""
+        await self.playwright_manager.cleanup()
+
+    async def collect_historic_links(
+        self,
+        sport: str,
+        league: str,
+        season: str | None,
+        max_pages: int | None = None,
+    ) -> ListingResult:
+        """
+        Collects match rows from every listing page of a season, on tabs of its own.
+
+        The season page, its pagination widget and page 1 are read on a dedicated tab;
+        the walk then opens one tab per listing page from page 2 on.
+
+        Args:
+            sport (str): The sport to scrape.
+            league (str): The league to scrape.
+            season (Optional[str]): The season to scrape; None for the current one.
+            max_pages (Optional[int]): Maximum number of pages to walk (None for all pages).
+
+        Returns:
+            ListingResult: The collected rows, each carrying `match_link` and `match_day` (the day of the date
+            header the page groups it under, in the browser zone, ISO; None without one), and the URLs of
+            listing pages that failed.
+        """
+        context = self.playwright_manager.context
+        if not context:
+            raise RuntimeError("Playwright has not been initialized. Call `start_playwright()` first.")
+
+        base_url = URLBuilder.get_historic_matches_url(
+            sport=sport, league=league, season=season, base_url=self.base_url
+        )
+        self.logger.info(f"Starting historic scraping for {sport} - {league} - {season}")
+        self.logger.info(f"Base URL: {base_url}")
+        self.logger.info(f"Max pages parameter: {max_pages}")
+
+        tab = await context.new_page()
+        try:
+            self.logger.info("Navigating to base URL...")
+            response = await tab.goto(base_url, timeout=GOTO_TIMEOUT_MS, wait_until="domcontentloaded")
+            raise_if_rate_limited(response, base_url, "listing")
+            self._assert_season_page_reached(requested_url=base_url, landed_url=tab.url)
+            if is_league_path(league):
+                await self._assert_league_page_exists(tab, base_url)
+            await self._warm_up_page(tab)
+
+            self.logger.info("Step 1: Analyzing pagination information...")
+            floor = await self._get_pagination_info(page=tab)
+        except BaseException:
+            await tab.close()
+            raise
+
+        self.logger.info("Step 2: Collecting match links from all pages...")
+        link_result = await self._collect_match_links(
+            season_tab=tab,
+            base_url=base_url,
+            floor=floor,
+            page_limit=self._effective_page_limit(max_pages),
+            max_pages=max_pages,
+            sport=sport,
+        )
+
+        if link_result.failed_pages:
+            self.logger.warning(f"Failed to collect links from pages: {link_result.failed_pages}")
+
+        return ListingResult(
+            rows=[{"match_link": link, "match_day": link_result.days.get(link)} for link in link_result.links],
+            failed_page_urls=[f"{base_url}{OddsPortalSelectors.page_fragment(p)}" for p in link_result.failed_pages],
+        )
+
+    async def collect_upcoming_links(
+        self,
+        sport: str,
+        date: str,
+        league: str | None = None,
+        include_started: bool = False,
+        kickoff_within_hours: float | None = None,
+        collect_kickoff: bool = False,
+    ) -> ListingResult:
+        """
+        Collects upcoming match rows from one listing page, on a tab of its own.
+
+        Opening and closing a dedicated tab is what lets several listings run at once.
+
+        Args:
+            sport (str): The sport to scrape.
+            date (str): The date to scrape.
+            league (Optional[str]): The league to scrape; None for the all-leagues page of the date.
+            include_started (bool): If True, keep matches that have already started or finished.
+            kickoff_within_hours (Optional[float]): If set, keep only matches kicking off within this many hours.
+            collect_kickoff (bool): If True, emit `kickoff_utc` on each row.
+
+        Returns:
+            ListingResult: The collected rows, each carrying `match_link`.
+        """
+        context = self.playwright_manager.context
+        if not context:
+            raise RuntimeError("Playwright has not been initialized. Call `start_playwright()` first.")
+
+        url = URLBuilder.get_upcoming_matches_url(sport=sport, date=date, league=league, base_url=self.base_url)
+        self.logger.info(f"Fetching upcoming odds from {url}")
+
+        # League page shows all upcoming dates; when a specific date is requested,
+        # post-filter links by the date-header rendered above each row group.
+        date_filter = None
+        if league and date:
+            try:
+                date_filter = datetime.strptime(date, "%Y%m%d").date()
+                self.logger.info(f"Applying date filter for league page: {date_filter.isoformat()}")
+            except ValueError:
+                self.logger.warning(f"Could not parse date '{date}' for filtering; returning all league matches.")
+
+        tab = await context.new_page()
+        try:
+            response = await tab.goto(url, timeout=GOTO_TIMEOUT_MS, wait_until="domcontentloaded")
+            raise_if_rate_limited(response, url, "listing")
+            if league and is_league_path(league):
+                await self._assert_league_page_exists(tab, url)
+            await self._warm_up_page(tab)
+
+            # Scroll to load all matches due to lazy loading
+            self.logger.info("Scrolling page to load all upcoming matches...")
+            scroll_success = await self.scroller.scroll_until_loaded(
+                page=tab,
+                timeout=30,
+                content_check_selector=OddsPortalSelectors.LISTING_ROW_SELECTOR,
+            )
+            if not scroll_success:
+                self.logger.warning(f"Scrolling may not have completed for {url}")
+
+            rows = await self.extract_match_rows(
+                page=tab,
+                date_filter=date_filter,
+                skip_started=not include_started,
+                kickoff_within_hours=kickoff_within_hours,
+                collect_kickoff=collect_kickoff,
+                sport=sport,
+            )
+        finally:
+            await tab.close()
+
+        if not rows:
+            self.logger.warning("No match links found for upcoming matches.")
+
+        return ListingResult(rows=rows)
+
+    async def scrape_live(
+        self,
+        sport: str,
+        league: str | None = None,
+        markets: list[str] | None = None,
+        match_links: list[str] | None = None,
+        target_bookmaker: str | None = None,
+        bookies_filter: BookiesFilter = BookiesFilter.ALL,
+        period: Enum | None = None,
+        request_delay: float = DEFAULT_REQUEST_DELAY_S,
+        concurrent_scraping_task: int = 3,
+        links_only: bool = False,
+    ) -> ScrapeResult:
+        """
+        Scrapes a one-shot snapshot of in-play odds for currently live matches.
+
+        Listing source is /inplay-odds/live-now/<sport>/; each match is scraped
+        on its in-play view (per-bookmaker live odds plus live score/period).
+        When `match_links` is given the listing is skipped and those URLs are
+        normalized to their in-play form, which is the building block for
+        external re-sampling of a known match.
+
+        Args:
+            sport (str): The sport to scrape.
+            league (Optional[str]): Single league slug filter, applied after listing.
+            markets (Optional[List[str]]): List of markets.
+            match_links (Optional[List[str]]): Scrape these matches directly.
+            target_bookmaker (str): If set, only scrape odds for this bookmaker.
+            period (Optional[Enum]): The period selected on each in-play view; None keeps the full match it opens on.
+            links_only (bool): If True, return collected live links without odds.
+
+        Returns:
+            ScrapeResult: Contains successful results, failed URLs, and statistics.
+        """
+        current_page = self.playwright_manager.page
+        if not current_page:
+            raise RuntimeError("Playwright has not been initialized. Call `start_playwright()` first.")
+
+        if match_links:
+            links = [rebase_url(normalize_inplay_match_url(link), self.base_url) for link in match_links]
+            await self._warm_up_page(current_page, home_timeout_ms=GOTO_TIMEOUT_LONG_MS)
+        else:
+            url = URLBuilder.get_live_matches_url(sport=sport, base_url=self.base_url)
+            self.logger.info(f"Fetching live matches from {url}")
+
+            response = await current_page.goto(url, timeout=GOTO_TIMEOUT_MS, wait_until="domcontentloaded")
+            raise_if_rate_limited(response, url, "listing")
+            await self._warm_up_page(current_page)
+            await self.scroller.scroll_until_loaded(
+                page=current_page,
+                timeout=30,
+                content_check_selector=OddsPortalSelectors.LISTING_ROW_SELECTOR,
+            )
+
+            rows = await self.extract_live_match_links(page=current_page, sport=sport, league=league)
+            if not rows:
+                self.logger.info("No live matches found on the live-now listing.")
+                return ScrapeResult()
+            links = [row["match_link"] for row in rows]
+
+        if links_only:
+            self.logger.info(f"Links-only mode: returning {len(links)} live match links without odds.")
+            return ScrapeResult.from_links(
+                rows=[{"match_link": link} for link in links],
+                context={"sport": sport, "league": league},
+            )
+
+        return await self.extract_match_odds(
+            sport=sport,
+            match_links=links,
+            markets=markets,
+            scrape_odds_history=False,
+            target_bookmaker=target_bookmaker,
+            concurrent_scraping_task=concurrent_scraping_task,
+            preview_submarkets_only=self.preview_submarkets_only,
+            bookies_filter=bookies_filter,
+            period=period,
+            request_delay=request_delay,
+            live_mode=True,
+        )
+
+    async def scrape_matches(
+        self,
+        match_links: list[str],
+        sport: str,
+        markets: list[str] | None = None,
+        scrape_odds_history: bool = False,
+        target_bookmaker: str | None = None,
+        bookies_filter: BookiesFilter = BookiesFilter.ALL,
+        period: Enum | None = None,
+        request_delay: float = DEFAULT_REQUEST_DELAY_S,
+        concurrent_scraping_task: int = 3,
+    ) -> ScrapeResult:
+        """
+        Scrapes match odds from a list of specific match URLs.
+
+        Args:
+            match_links (List[str]): List of URLs of matches to scrape.
+            sport (str): The sport to scrape.
+            markets (List[str] | None): List of betting markets to scrape. Defaults to None.
+            scrape_odds_history (bool): Whether to scrape and attach odds history.
+            target_bookmaker (str): If set, only scrape odds for this bookmaker.
+
+        Returns:
+            ScrapeResult: Contains successful results, failed URLs, and statistics.
+        """
+        current_page = self.playwright_manager.page
+        if not current_page:
+            raise RuntimeError("Playwright has not been initialized. Call `start_playwright()` first.")
+
+        match_links = [rebase_url(link, self.base_url) for link in match_links]
+        await self._warm_up_page(current_page, home_timeout_ms=GOTO_TIMEOUT_LONG_MS)
+        return await self.extract_match_odds(
+            sport=sport,
+            match_links=match_links,
+            markets=markets,
+            scrape_odds_history=scrape_odds_history,
+            target_bookmaker=target_bookmaker,
+            concurrent_scraping_task=concurrent_scraping_task,
+            preview_submarkets_only=self.preview_submarkets_only,
+            bookies_filter=bookies_filter,
+            period=period,
+            request_delay=request_delay,
+        )
+
+    @staticmethod
+    def _effective_page_limit(max_pages: int | None) -> int:
+        """Explicit --max-pages overrides the default safety cap."""
+        return max_pages if max_pages else MAX_PAGINATION_PAGES
+
+    async def _get_pagination_info(self, page: Page) -> int:
+        """
+        Reads the walk's floor from the pagination widget.
+
+        Args:
+            page: Playwright page instance.
+
+        Returns:
+            int: The highest page the widget shows, 1 when it shows none. Not capped by --max-pages: the page
+            limit bounds the walk itself.
+        """
+        self.logger.info("Analyzing pagination information...")
+
+        widget_pages = await self.pagination_walker.read_widget(page=page)
+
+        if not widget_pages:
+            self.logger.info(
+                "No pagination widget on this page: either a single-page league or a degraded response. "
+                "The walk will determine the page count."
+            )
+            return 1
+
+        self.logger.info(f"Raw pagination pages found: {widget_pages}")
+        return max(widget_pages)
+
+    @staticmethod
+    def _assert_season_page_reached(requested_url: str, landed_url: str) -> None:
+        """
+        Fail a season whose URL was redirected away instead of scraping what it landed on.
+
+        A season that does not exist under the requested slug does not always answer with a
+        not-found page: OddsPortal redirects some of them to the league's current fixtures,
+        which would otherwise be collected and labelled with the requested season (gotcha 4).
+        """
+        if urlparse(requested_url).path.rstrip("/") == urlparse(landed_url).path.rstrip("/"):
+            return
+
+        raise SeasonNotFoundError(
+            f"Season page redirected to {landed_url}; the season does not exist under this league slug.",
+            url=requested_url,
+        )
+
+    @staticmethod
+    async def _assert_league_page_exists(page, league_url: str) -> None:
+        """
+        Fail a league path OddsPortal does not know instead of reading its empty listing.
+
+        An unknown league answers 200 at the requested URL with a not-found body, which reads like a
+        league without fixtures. Every real league page links to its country page (gotcha 24).
+        """
+        sport, country = urlparse(league_url).path.strip("/").split("/")[:2]
+        if await page.locator(f"a[href='/{sport}/{country}/']").count():
+            return
+
+        raise PageNotFoundError(
+            f"League page {league_url} does not exist on OddsPortal (no link to its country page).",
+            url=league_url,
+        )
+
+    async def _collect_match_links(
+        self,
+        season_tab: Page | None,
+        base_url: str,
+        floor: int,
+        page_limit: int = MAX_PAGINATION_PAGES,
+        max_pages: int | None = None,
+        sport: str | None = None,
+    ) -> LinkCollectionResult:
+        """
+        Walks listing pages, collecting match links.
+
+        `floor` is the page count the widget showed, not a plan: the walk always visits
+        1, 2, 3... contiguously, continuing past it while pages come back full (issue #79).
+        See gotchas 2 and 17.
+
+        Args:
+            season_tab (Page | None): The season page's tab, already on page 1: the walk reads page 1 there,
+                then closes it.
+            base_url (str): The base URL of the historic matches.
+            floor (int): The highest page the season page's widget showed, 1 without one.
+            page_limit (int): Hard bound on how many pages the walk may visit.
+            max_pages (Optional[int]): The user-supplied --max-pages, if any; distinguishes
+                an intentional limit from the default safety cap in the truncation warning.
+            sport (Optional[str]): The requested sport; rows of another sport are dropped.
+
+        Returns:
+            LinkCollectionResult: Contains links found and tracking of successful/failed pages.
+        """
+        self.logger.info(f"Starting collection of match links from a floor of {floor} page(s)")
+
+        result = LinkCollectionResult()
+        all_links = []
+        frontier = floor
+        observed_max: int | None = None
+        page_number = 1
+        attempt = 1
+
+        while page_number <= page_limit:
+            self.logger.info(f"Processing page {page_number} (frontier: {frontier}, limit: {page_limit})")
+            tab = None
+            past_frontier = page_number >= frontier
+
+            try:
+                if season_tab is not None:
+                    tab, season_tab = season_tab, None
+                else:
+                    tab = await self.playwright_manager.context.new_page()
+                    page_url = f"{base_url}{OddsPortalSelectors.page_fragment(page_number)}"
+                    self.logger.info(f"Navigating to: {page_url}")
+                    response = await tab.goto(page_url, timeout=GOTO_TIMEOUT_MS, wait_until="domcontentloaded")
+                    raise_if_rate_limited(response, page_url, "listing")
+                delay = random.randint(PAGE_COLLECTION_DELAY_MIN_MS, PAGE_COLLECTION_DELAY_MAX_MS)  # noqa: S311
+                await tab.wait_for_timeout(delay)
+
+                self.logger.info(f"Scrolling page {page_number} to load all matches...")
+                scroll_success = await self.scroller.scroll_until_loaded(
+                    page=tab,
+                    timeout=30,
+                    content_check_selector=OddsPortalSelectors.LISTING_ROW_SELECTOR,
+                )
+                if not scroll_success:
+                    self.logger.warning(f"Scrolling may not have completed for page {page_number}")
+
+                links = await self.extract_match_links(page=tab, sport=sport)
+                # extract_match_links returns links only, and resolve_events_b.py replaces it: the day comes aside.
+                for link in links:
+                    result.days.setdefault(link, self._row_days.get(link))
+
+                # Read on every page, not just empty ones: the tab is already loaded, so
+                # this costs no request, and a widget missing from page 1 is often present
+                # on page 2. That is how the true count is recovered (issue #79).
+                widget_pages = await self.pagination_walker.read_widget(page=tab)
+                if widget_pages:
+                    observed_max = max(observed_max or 0, max(widget_pages))
+                    frontier = max(frontier, observed_max)
+                past_frontier = page_number >= frontier
+
+                verdict = self.pagination_walker.decide(
+                    requested_page=page_number,
+                    link_count=len(links),
+                    frontier=frontier,
+                    observed_max=observed_max,
+                    scroll_ok=scroll_success,
+                )
+
+                if verdict is WalkVerdict.PAGE_FAILED:
+                    # The truncation is transient, so fetch the page again before writing it
+                    # off: losing it costs a full re-run of the season to recover one page.
+                    if attempt <= LISTING_PAGE_RETRY_ATTEMPTS:
+                        self.logger.warning(
+                            f"Page {page_number} returned {len(links)} of {RESULTS_PAGE_SIZE} links; re-fetching it."
+                        )
+                        attempt += 1
+                        await asyncio.sleep(LISTING_PAGE_RETRY_DELAY_S)
+                        continue
+
+                    result.failed_pages.append(page_number)
+                    self.logger.warning(
+                        f"Page {page_number} returned {len(links)} of {RESULTS_PAGE_SIZE} links after "
+                        f"{attempt} attempts; treating it as failed."
+                    )
+                    # Keep what it did render: the page is already reported and the exit code
+                    # already non-zero, so dropping real rows only costs a re-scrape of links
+                    # the user is holding. They dedupe on match_link, which is unique.
+                    all_links.extend(links)
+                    if past_frontier:
+                        break
+                    attempt = 1
+                    page_number += 1
+                    continue
+
+                all_links.extend(links)
+                # A zero-link STOP_COMPLETE past the planned floor is the widget-corroboration
+                # page confirming the season already ended; it rendered nothing, so it was not
+                # collected and must not inflate successful_pages (that count feeds the
+                # widget-mismatch warning below).
+                phantom_page = verdict is WalkVerdict.STOP_COMPLETE and not links and page_number > floor
+                if not phantom_page:
+                    result.successful_pages += 1
+                self.logger.info(f"Extracted {len(links)} links from page {page_number}")
+
+                if verdict is WalkVerdict.STOP_COMPLETE:
+                    break
+
+            except RateLimitError:
+                # Re-fetched seconds later the page would be refused again: the run retries the listing instead.
+                raise
+            except Exception as e:
+                # A crash is as transient as a truncation, so it gets the same single re-fetch.
+                if attempt <= LISTING_PAGE_RETRY_ATTEMPTS:
+                    self.logger.warning(f"Error processing page {page_number}: {e}; re-fetching it.")
+                    attempt += 1
+                    await asyncio.sleep(LISTING_PAGE_RETRY_DELAY_S)
+                    continue
+
+                result.failed_pages.append(page_number)
+                self.logger.error(f"Error processing page {page_number} after {attempt} attempts: {e}")
+                # Deliberate: a timeout past the frontier stops the walk same as PAGE_FAILED,
+                # even though a timeout doesn't prove the page is absent. Loud failure, not silent.
+                if past_frontier:
+                    break
+
+            finally:
+                if tab:
+                    await tab.close()
+
+            attempt = 1
+            page_number += 1
+
+        pages_walked = result.total_pages
+        if pages_walked > floor:
+            self.logger.warning(
+                f"Pagination widget reported {floor} page(s) but the walk collected {pages_walked} page(s). "
+                "The widget read was incomplete; walked past it to avoid truncation."
+            )
+        if page_number > page_limit:
+            if max_pages:
+                self.logger.warning(
+                    f"Walk stopped at the {page_limit}-page limit set by --max-pages. Result is intentionally "
+                    "truncated."
+                )
+            else:
+                self.logger.warning(
+                    f"Walk stopped at the {page_limit}-page safety cap. The season may be incomplete; "
+                    "raise --max-pages to collect the rest."
+                )
+
+        result.links = list(dict.fromkeys(all_links))
+        self.logger.info("Collection Summary:")
+        self.logger.info(f"   - Pages planned from widget: {floor}")
+        self.logger.info(f"   - Pages actually walked: {pages_walked}")
+        self.logger.info(f"   - Successful pages: {result.successful_pages}")
+        self.logger.info(f"   - Failed pages: {len(result.failed_pages)}")
+        self.logger.info(f"   - Total links found: {len(all_links)}")
+        self.logger.info(f"   - Unique links: {len(result.links)}")
+
+        if result.failed_pages:
+            self.logger.warning(f"Failed to collect links from pages: {result.failed_pages}")
+
+        return result

@@ -1,0 +1,11 @@
+{
+  "artifactAvailableAt": "2026-10-23T22:13:13.352Z",
+  "sourceArtifactSha256": "9ef7dee9e2df9a75be1d7faeece0132e101d5d5acb876c5a3e6352141964b0c1",
+  "sourceReportSha256": "c8802905e0c29d2416d692b5b4d523540604e0b273cf2e8d30272f0a970a5b43",
+  "canonicalArtifactSha256": "7852516f02ee5eaf6337feedaadaf41b930af5931ca6181614ff92794c0f54f8",
+  "canonicalReportSha256": "5d91edfd21277c87c6c5dd482b815f33dbac66cae912204e0f9a2d3d355c1b13",
+  "status": "HOLD",
+  "appId": "edgeboard-kshzox",
+  "sourceSnapshot": "f4c288a2e55ba49318d291f10614b9450fe3b35f",
+  "scope": "Retrospective recorded-player receiving60 candidate; no prospective validation"
+}

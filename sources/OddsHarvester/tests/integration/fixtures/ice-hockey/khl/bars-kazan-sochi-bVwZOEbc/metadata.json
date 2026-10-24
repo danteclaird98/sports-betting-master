@@ -1,0 +1,20 @@
+{
+    "match_id": "bVwZOEbc",
+    "match_url": "https://www.oddsportal.com/hockey/h2h/bars-kazan-v320kOMr/sochi-zu1IGfCr/#bVwZOEbc",
+    "sport": "ice-hockey",
+    "league": "khl",
+    "home_team": "Bars Kazan",
+    "away_team": "Sochi",
+    "final_score": {
+        "home": "2",
+        "away": "3"
+    },
+    "match_date": "2026-10-12 16:00:00 UTC",
+    "notes": "",
+    "captured_at": "2026-10-14T12:39:24.851451+00:00",
+    "oddsharvester_version": "0.20.0",
+    "available_fixtures": [
+        "asian_handicap_full_time_all.json",
+        "over_under_full_time_all.json"
+    ]
+}

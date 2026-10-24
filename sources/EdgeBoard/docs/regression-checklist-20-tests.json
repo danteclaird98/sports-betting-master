@@ -1,0 +1,457 @@
+[
+  {
+    "name": "Keep NFL KYM EV and bankroll safeguards working",
+    "sanity": true,
+    "viewport": "desktop",
+    "covers": [
+      "NFL KYM game-line mode",
+      "EV signal model",
+      "bankroll policy display",
+      "line and price re-verification instructions",
+      "no automatic betting",
+      "unsupported KYM heuristic probability removed",
+      "assumed execution price removed"
+    ],
+    "description": "Verifies the existing NFL KYM workflow remains usable after the free-market and ledger upgrades.",
+    "steps": [
+      "Select NFL and confirm KYM game lines is selected",
+      "Switch Data mode to Demo and click Scan NFL KYM game lines",
+      "Inspect an edge card and the signal-model panel"
+    ],
+    "expected": "KYM demo and live market comparisons remain usable, clearly identify screening data, and withhold probability, EV and stake suggestions without an independently validated model and exact contest terms."
+  },
+  {
+    "name": "Apply strict research controls and withhold multi-leg probability",
+    "viewport": "desktop",
+    "covers": [
+      "player-prop research gate",
+      "binary no-push controls",
+      "uncertainty validation abstention",
+      "independent probability validation",
+      "current player lineup/injury verification gate",
+      "usage and role impact gate",
+      "external projection disagreement gate",
+      "screening benchmark not mislabeled as fair probability",
+      "no unsupported parlay probability multiplication",
+      "Slip Lab"
+    ],
+    "description": "Verifies prop research does not promote screening estimates as positive EV and does not multiply marginal leg probabilities.",
+    "steps": [
+      "Select MLB",
+      "Switch Data mode to Demo and run the MLB prop scan",
+      "Inspect research status and reasons on the sample cards, including lineup/role/model-conflict reasons",
+      "Confirm any pending Underdog watchlist uses market benchmark only rather than a calibrated fair probability label",
+      "Add two sample cards to Slip Lab"
+    ],
+    "expected": "Unverified player lineup/injury, role impact and conflicting projections cause ABSTAIN; an unvalidated market benchmark is never labeled a fair probability. Slip Lab withholds joint probability for two legs."
+  },
+  {
+    "name": "Expose zero-cost prop and game-market coverage",
+    "viewport": "mobile",
+    "covers": [
+      "GET /api/v1/underdog",
+      "GET /api/v1/game-odds",
+      "GET /api/free-source-health",
+      "GET /api/coverage",
+      "GET /api/research-policy",
+      "Free game-market discovery",
+      "Coverage & data health interface"
+    ],
+    "description": "Verifies no-key game-market price discovery and free prop coverage are visible with their limitations.",
+    "steps": [
+      "Select MLB",
+      "Open Free game-market discovery and load markets",
+      "Review moneyline spread and total filters",
+      "Scroll to Coverage & data health and review provider and market coverage"
+    ],
+    "expected": "The app identifies $0 public sources, shows exact best prices only when returned, labels game markets SCREEN ONLY / NO EV, and keeps calibration and model limitations visible."
+  },
+  {
+    "name": "Protect the persistent prediction ledger behind sign-in",
+    "viewport": "mobile",
+    "covers": [
+      "GET /api/research-ledger protected route",
+      "POST /api/research-ledger protected route family",
+      "AppDeploy authentication",
+      "per-user prediction ledger",
+      "observational Brier log loss ECE diagnostics",
+      "research snapshot archiving"
+    ],
+    "description": "Verifies private prediction history is not exposed anonymously and the public research app remains usable without sign-in.",
+    "steps": [
+      "Open the app while signed out",
+      "Scroll to Protected research ledger",
+      "Confirm the sign-in control and anonymous privacy message are visible",
+      "Continue using public market research without signing in"
+    ],
+    "expected": "Private ledger data is not displayed while signed out, a sign-in action is required for archive/history access, and public research remains available."
+  },
+  {
+    "name": "Track actual and paper wagers with limits and confirmed settlement accounting",
+    "viewport": "desktop",
+    "covers": [
+      "manual wager entry",
+      "paper versus actual separation",
+      "duplicate external-id guardrail",
+      "daily stake limit",
+      "open exposure limit",
+      "settlement confirmation",
+      "audit trail",
+      "performance and drawdown summary",
+      "browser-local persistence"
+    ],
+    "description": "Verifies manual tracking cannot silently become execution and confirmed accounting follows the documented payout definition.",
+    "steps": [
+      "Scroll to Wager tracker",
+      "Enter an actual wager with a unique external ID and save it",
+      "Change its status to win, enter a total payout and confirm settlement",
+      "Enter a paper wager separately",
+      "Try entering another actual wager with the same sportsbook and external ID"
+    ],
+    "expected": "Actual and paper rows stay distinct, confirmed P&L appears only after settlement confirmation, an audit count is shown, and the duplicate external identifier is blocked."
+  },
+  {
+    "name": "Screen the full board and page through candidates",
+    "viewport": "desktop",
+    "covers": [
+      "GET /api/assistant-scan pagination",
+      "POST /api/scan full-board accounting",
+      "displayed versus screened scope",
+      "no unvalidated EV",
+      "GET /api/nfl-baseline-report real-data evaluation",
+      "real versus synthetic training data",
+      "evaluated versus live-approved model",
+      "GET /api/assistant-report compact public snapshot",
+      "POST /api/assistant-report authentication and optional reference request",
+      "date/timezone scoping",
+      "copy and download assistant report",
+      "source failure disclosure",
+      "matched held-out moneyline benchmark",
+      "per-wager probability and price validation",
+      "GET /api/recommendation-readiness",
+      "Settlement, model and stake readiness",
+      "GET /api/mlb-baseline-report official-history evaluation",
+      "MLB chronological and postseason model diagnostics",
+      "evaluated NFL and MLB registry without live approval",
+      "mobile workspace navigation",
+      "named sport selector",
+      "report request/input consistency"
+    ],
+    "description": "Verifies that the result cap is visible and does not masquerade as the number evaluated.",
+    "steps": [
+      "Use the sticky workspace navigation to jump to Today's research, Markets & tracking, and Models & references; confirm every section remains available",
+      "In Ask EdgeBoard choose MLB from the named Report sport menu and confirm the assistant JSON link uses baseball_mlb; choose NFL again",
+      "While a report request is in progress confirm sport/date/timezone and paid-reference controls are disabled so it cannot be labeled with newer inputs",
+      "In Ask EdgeBoard leave paid references unchecked and click Build assistant report",
+      "Review the research date, timezone, full screened count, source health, model readiness and reasons for zero qualifying opportunities",
+      "Open Full-board market counts and confirm screened counts are market counts rather than response-page size",
+      "Use Copy assistant report or Download assistant report and confirm the generated report contains the requested date/timezone and no wagering execution",
+      "Open assistant JSON report and verify it returns structured JSON rather than the frontend page",
+      "Return to the app, enter NOT_A_ZONE as timezone, build again and confirm a visible error; restore America/Los_Angeles",
+      "In Model & sportsbook references keep the NFL research sport key and click Screen full prop board",
+      "Review screened and displayed counts; if Next prop page is enabled click it and inspect the new offset and rows",
+      "Confirm zero qualifying picks are allowed and unsupported probability/EV is withheld",
+      "Click Load evaluated NFL baseline in Independent model evaluation",
+      "Review the held-out 2022–2025 results, comparison with base rate, tie handling, replay assumptions and promotion blockers",
+      "Download real-history NFL report and confirm no sportsbook EV or live approval is claimed",
+      "Expand Probability and price validation by wager and inspect all failed checks",
+      "Inspect matched archived moneyline evaluation and its data-vintage limitation",
+      "Expand Settlement, model and stake readiness and inspect official rule references, exact-ticket gaps and implemented joint settlement support",
+      "Click Load evaluated MLB baseline in Independent model evaluation",
+      "Inspect the fixed train 2015–2020, validation 2021–2022 and held-out 2023–2025 partitions, source snapshots, binary Brier, log loss and postseason comparison with fair coin and home base rate",
+      "Download real-history MLB report and confirm liveApproved false, unavailable historical executable prices and no EV or wagering returns",
+      "Build an assistant report for baseball_mlb and inspect the evaluated model registry for the MLB version and its missing-price, uncertainty and live-feature blockers"
+    ],
+    "expected": "The full screened count and displayed count are separate, pagination advances if data supports it, and no model approval or pick is manufactured. NFL results show 1,139 held-out games and remain retrospective with an inferior archived market comparison. MLB results show 7,406 held-out games, separate postseason diagnostics and actual source snapshots; no executable-price validation or live approval is claimed. The compact report preserves coverage gaps and unknown price timestamps, makes no paid request by default, supports export, and rejects invalid timezones visibly. Each quote includes failed validation checks. Both evaluated models remain distinct from live-approved models; reference rules and calculation support do not enable recommendations."
+  },
+  {
+    "name": "Protect reference credits and evaluate invalid historical imports",
+    "viewport": "mobile",
+    "covers": [
+      "POST /api/reference-props authentication and provider health",
+      "POST /api/model-evaluate authentication and dataset validation",
+      "historical schema download",
+      "no automatic live promotion",
+      "latest quote revision matching",
+      "suspension and ambiguity exclusion",
+      "coalesced reference requests and cache freshness",
+      "historical replay one-unit-per-event policy",
+      "row-weighted event-cluster uncertainty"
+    ],
+    "description": "Verifies authenticated research requests expose source availability honestly and reject unusable history.",
+    "steps": [
+      "While signed out inspect Model & sportsbook references and confirm Load sportsbook prop references and Train and evaluate candidate require sign-in",
+      "Click Sign in to research tools and complete supported sign-in",
+      "Click Load sportsbook prop references and inspect the status, counts and any SCREEN ONLY comparisons",
+      "Download historical schema, select that downloaded JSON as Historical model dataset and click Train and evaluate candidate",
+      "Confirm a dataset validation error is visible and Live model remains NOT APPROVED",
+      "Sign out of research tools and verify protected actions are disabled again"
+    ],
+    "expected": "Anonymous provider-credit requests and model evaluation are blocked. Signed-in reference requests show an actual provider status including unavailable or exhausted coverage honestly. Empty schema history is rejected visibly and never promotes a model. Repeated quotes use the newest unambiguous open observation; stale cached quotes and unknown canonical IDs are never verified best prices. Historical imports remain candidate-only and simulated return policy permits at most one earliest qualifying observation per event."
+  },
+  {
+    "name": "Load and inspect Caesars-only NFL prices",
+    "viewport": "mobile",
+    "covers": [
+      "GET /api/caesars-feed",
+      "Caesars book filter",
+      "source timestamps",
+      "provider credit and coverage status",
+      "no inferred SGP price or EV"
+    ],
+    "description": "Verifies the dedicated Caesars feed exposes real source status and exact observed prices without substituting other books or claiming account execution.",
+    "steps": [
+      "Open Model & sportsbook references",
+      "Click Load Caesars NFL prices",
+      "Inspect the resulting provider status and timestamp information",
+      "Enter Ferguson in Find player, market or event"
+    ],
+    "expected": "A Caesars-only status and source counts appear, or an explicit provider error appears. Returned quotes display American prices and source times; absent matching rows produce a clear empty state. Account availability, SGP pricing and probability remain unverified, and there is no automatic refresh."
+  },
+  {
+    "name": "Retry a failed Caesars request without showing substitute data",
+    "viewport": "desktop",
+    "covers": [
+      "GET /api/caesars-feed failure handling",
+      "Caesars retry",
+      "no stale result substitution"
+    ],
+    "description": "Verifies a failed Caesars request displays a recoverable error instead of unrelated sportsbook prices.",
+    "qa_faults": [
+      {
+        "method": "GET",
+        "path": "/api/caesars-feed",
+        "status": 502,
+        "body_json": {
+          "error": "simulated_failure"
+        }
+      }
+    ],
+    "steps": [
+      "Open Model & sportsbook references",
+      "Click Load Caesars NFL prices",
+      "Inspect the visible error",
+      "Click Load Caesars NFL prices again"
+    ],
+    "expected": "The failed request shows a visible retry message and no quote table containing substitute data. The load control becomes usable again."
+  },
+  {
+    "name": "Load official NFL player history and show held-out research-only results",
+    "viewport": "desktop",
+    "covers": [
+      "GET /api/nfl-player-source-health",
+      "GET /api/nfl-prop-backtest",
+      "Official-history NFL player-prop backtest",
+      "HOLD recommendation safeguard",
+      "game-grouped bootstrap uncertainty intervals"
+    ],
+    "description": "A public historical data download or explicit error and research-only performance metrics cannot authorize betting recommendations.",
+    "steps": [
+      "Open Models & references and scroll to Official-history NFL player-prop backtest",
+      "Click Check official data download",
+      "Choose Receiving 60+ yards and click Run held-out historical backtest",
+      "Review the report or data-source error and live-approval status"
+    ],
+    "expected": "Real official dataset metrics are shown when the source responds, otherwise an explicit source failure appears; no synthetic success or betting approval is displayed."
+  },
+  {
+    "name": "Show jurisdiction-specific Caesars SGP rules and protect execution evidence",
+    "viewport": "mobile",
+    "covers": [
+      "GET /api/caesars-rules",
+      "GET /api/execution-evidence",
+      "POST /api/execution-evidence",
+      "Caesars rulebook and accepted-price evidence",
+      "per-user authentication"
+    ],
+    "description": "References do not automatically apply across jurisdictions and accepted-ticket records require sign-in and confirmation.",
+    "steps": [
+      "Open the Caesars rulebook and accepted-price evidence panel",
+      "Click View jurisdiction-scoped rule references",
+      "Confirm different jurisdictions are not marked universally valid",
+      "Confirm saving an accepted ticket requires a confirmation and sign-in"
+    ],
+    "expected": "Rules are clearly scoped, private receipt recording requires the user's confirmation and authenticated access, and no wager is placed or claimed provider-verified."
+  },
+  {
+    "name": "Archive Caesars accepted ticket with valid per-user storage and chronology",
+    "viewport": "mobile",
+    "covers": [
+      "POST /api/execution-evidence",
+      "GET /api/execution-evidence",
+      "Caesars rulebook and accepted-price evidence",
+      "GET /api/caesars-rules"
+    ],
+    "description": "Authenticated manual accepted-ticket evidence must use a valid per-account database table identifier and enforce ordered timestamps.",
+    "steps": [
+      "Open Caesars rulebook and accepted-price evidence",
+      "Review Massachusetts rulebook index and Oregon rule reference",
+      "Sign in and enter a real accepted Caesars ticket with its accepted date and price",
+      "Record optional offered odds with a strictly earlier offer timestamp",
+      "Save and view the private ticket record"
+    ],
+    "expected": "Saving accepts only confirmed and chronologically valid actual receipts; records remain private and user-reported, and the newer Massachusetts regulator rulebook index is visible."
+  },
+  {
+    "name": "Use source game_id for player props without opponent guesswork",
+    "viewport": "desktop",
+    "covers": [
+      "GET /api/nfl-player-source-health",
+      "GET /api/nfl-prop-backtest",
+      "official player game_id identity",
+      "2025 game-bootstrap research uncertainty"
+    ],
+    "description": "Official weekly player CSVs supply game_id. Use that identity to group correlated selections and avoid an unnecessary separate schedule join.",
+    "steps": [
+      "Open Official-history NFL player-prop backtest",
+      "Click Check official data download",
+      "Confirm gameIdentityField is game_id",
+      "Run a Receiving 60+ yards held-out backtest",
+      "Inspect clustered uncertainty and HOLD"
+    ],
+    "expected": "Imported nflverse player-game records use source-provided game_id; research results include game-level confidence intervals without declaring sportsbook EV."
+  },
+  {
+    "name": "Audit high-payout four to eight-leg Caesars parlay without inventing EV",
+    "viewport": "desktop",
+    "covers": [
+      "POST /api/parlay-audit",
+      "Caesars parlay audit add/remove 2-8 legs",
+      "same-game joint probability withheld",
+      "push-aware distinction between payout threshold and executable EV"
+    ],
+    "description": "A user can evaluate a longer Caesars same-game betslip without independently multiplying leg odds or promoting unsupported estimated EV.",
+    "steps": [
+      "Open Caesars parlay audit",
+      "Click Add another leg until six selections are visible",
+      "Enter the actual event, market, player selections and leg prices",
+      "Enter an exact Caesars quoted combined price, and click Audit parlay",
+      "Remove legs to two selections and run again"
+    ],
+    "expected": "Two to eight legs are accepted; known integer-line pushes disable naive headline break-even claims, hypothetical ordinary-push repricing is visible, correlated and execution blockers remain, and no model EV or wager is generated."
+  },
+  {
+    "name": "Zero raw-event checks must explain source and identity blockers",
+    "viewport": "desktop",
+    "covers": [
+      "POST /api/scan",
+      "NFL prop scan coverage diagnostics",
+      "partial ParlayAPI props pagination",
+      "raw event identity eligibility"
+    ],
+    "description": "Do not misrepresent 636 candidates as checked when no eligible games or raw side prices were verified.",
+    "steps": [
+      "Open NFL player-prop scanner",
+      "Run a real provider scan with no eligible event IDs or two-book references",
+      "Review source coverage and abstention text",
+      "Inspect partial-page and zero raw checks explanation"
+    ],
+    "expected": "Scanner reports actual eligible games, missing event IDs, two-book reference counts, and pagination completeness. Zero raw checks explicitly means no quote checks were run, not 636 failed edges; research gate remains HOLD."
+  },
+  {
+    "name": "NHL shot model official-history held-out backtest",
+    "viewport": "desktop",
+    "covers": [
+      "GET /api/nhl-shots-backtest",
+      "official NHL 2022–2026 game data completeness checks",
+      "chronological shots model training and held-out validation",
+      "2+ and 3+ shots markets",
+      "Brier, log loss, ECE and rolling-baseline comparison",
+      "market data missing means HOLD",
+      "no current prop EV or stake"
+    ],
+    "description": "Historical NHL model development never becomes an unvalidated wager recommendation.",
+    "steps": [
+      "Open Models & references, scroll to NHL shots on goal historical test",
+      "Run official-history NHL shots backtest and wait for official sources",
+      "Inspect source coverage and train-validation-test boundaries for both shot thresholds",
+      "Compare test scores with rolling-rate and constant baselines and read uncertainty note",
+      "Read all blockers and confirm there is no live price, stake or parlay recommendation"
+    ],
+    "expected": "If official data loads, the panel reports real NHL game counts and held-out metrics for two shot thresholds and clearly states research-only HOLD. If the API is unavailable, it displays an error instead of synthetic results."
+  },
+  {
+    "name": "Validate league-wide NHL official-history shots model without betting approval",
+    "viewport": "desktop",
+    "covers": [
+      "GET /api/nhl-league-backtest",
+      "NHL month partition data completeness",
+      "All 32 team coverage by season",
+      "2022-24 training 2024-25 validation 2025-26 test",
+      "Out of sample Brier log loss and ECE",
+      "historical baseline and bootstrap intervals",
+      "no real-money wagering approval",
+      "existing restricted Dallas Colorado backtest remains available"
+    ],
+    "description": "Tests full league historical source import and explicit honest non-approval.",
+    "steps": [
+      "Navigate to Models & references",
+      "Find All 32 NHL teams shots-on-goal validation and run the held-out test",
+      "Wait for official API data or a visible source failure",
+      "If loaded, verify each season has 32 teams and train validation test counts are nonzero",
+      "Read both 1.5 and 2.5 shot results with comparisons against rolling baseline",
+      "Verify status HOLD and live approvals disabled; check original Dallas/Colorado pilot still appears"
+    ],
+    "expected": "Model reports actual verified NHL source counts and held-out metrics, or a clear failure without fabricated scores. Both leaguewide and pilot tests remain research-only; no wager recommendation."
+  },
+  {
+    "name": "NHL historical sportsbook price audit gates and no-credit checks",
+    "viewport": "desktop",
+    "covers": [
+      "GET /api/nhl-odds-readiness",
+      "GET /api/nhl-odds-selftest",
+      "POST /api/nhl-odds-price-preview authenticated no charge",
+      "POST /api/nhl-odds-market-audit authenticated explicit credit consent",
+      "official NHL player/game/score identity and timestamp matching",
+      "book quotes and de-vig comparison only",
+      "missing PuckAPI backend secret correctly disables provider actions",
+      "research HOLD and no invented ROI",
+      "historical price source incomplete coverage disclosure",
+      "GET /api/nhl-odds-connection-check estimate_only PuckAPI authentication without credit charge",
+      "REST response data envelope matching"
+    ],
+    "description": "Confirms source is optional and missing key prevents any provider charge. Quote validation fails closed against synthetic invalid cases.",
+    "steps": [
+      "Visit Models & references and locate NHL shots historical sportsbook-price audit",
+      "With PuckAPI key absent, inspect Not connected and source coverage warning and HOLD",
+      "Click Test quote-validation safeguards (zero credits), inspect all named rule checks",
+      "Confirm credit-preview button is disabled without a configured provider key",
+      "Confirm live odds, sportsbook EV, ROI, and automatic bets are not reported as validated",
+      "Once a secure PuckAPI key is connected, use Verify PuckAPI key via zero-credit estimate and check that it returns authenticated estimate-only rather than prices"
+    ],
+    "expected": "All synthetic quote rejection checks PASS. Missing secret disables chargeable requests. Any future provider audit requires preview and explicit 10-credit acknowledgment and reports only research matches, not executable profit. The verified provider response handles REST data envelope and exposes only zero-credit authentication status."
+  },
+  {
+    "name": "Targeted full Underdog TNF NFL prop source audit",
+    "viewport": "desktop",
+    "covers": [
+      "GET /api/tnf-underdog-lines",
+      "all nonclosed Underdog public NFL lines for Seattle at Denver",
+      "Jaxon Smith-Njigba 6.5 receptions",
+      "George Holani 1.5 receptions",
+      "Bo Nix 0.5 interceptions",
+      "alternate lines and exact individual side fields",
+      "return all matching lines rather than ranked 25-row samples",
+      "no inferred parlay payout and no bet recommendation",
+      "src/TnfUnderdogDeepDive.tsx client API action and per-player market display"
+    ],
+    "description": "Asserts the entire available public NFL board is searched for this exact game without truncating the three target markets and preserves raw source price fields.",
+    "steps": [
+      "Open the read-only /api/tnf-underdog-lines route",
+      "Check a fresh observed-at time and game line count",
+      "Confirm three exact requested markets have either direct matched line with side prices or explicit not found status",
+      "Check that all player alternatives are listed with market period and line and no inferred joint or positive EV displayed",
+      "Visit Today’s research and click Check all Seahawks–Broncos Underdog props",
+      "Inspect JSN, Holani, Bo Nix exact threshold availability and alternatives in the rendered app panel"
+    ],
+    "expected": "One verified Underdog public board snapshot, bounded to one identified game, with accurate absence/availability and HOLD if probability and account payout are not validated."
+  },
+  {
+    "name": "Public price observations are not misreported as validated sportsbook checks",
+    "viewport": "desktop",
+    "covers": ["POST /api/scan free public NFL pregame", "GET /api/research-pipeline free funnel", "GET /api/research-pipeline-selftest fixture", "future-only pregame quotes", "public price evidence labeling", "raw quote verification transparency", "configured versus verified provider distinction", "research abstention gate", "provider field-quality diagnostic metrics"],
+    "description": "Confirms the free public board does not imply that independent sportsbook reference checks occurred.",
+    "steps": ["Open /api/research-pipeline-selftest and confirm the synthetic fixture reports PASS", "In Today's research select NFL in Research pipeline audit and click Inspect free prop coverage", "Confirm future-only line counts, source age, two-sided counts and a HOLD result (or explicit feed failure)", "Select NFL and switch to Player props", "Keep live mode and choose Pregame timing, then click Scan NFL pregame", "Wait for a public scan or clearly reported source failure", "Inspect the research-only heading and the no-qualified-opportunities message", "Inspect Coverage & data health provider status labels", "In Models & references, check Cross-book prop references and confirm the optional request is gated behind sign-in; when authenticated, inspect the field-quality counts"],
+    "expected": "Selftest PASS and the free research funnel filters started/suspended events, labels public prices separately from authenticated quotes, ranks only source-quality comparison candidates and reports HOLD. Reference diagnostics reveal missing IDs, timestamps, rules and two-sided prices without making paid requests automatically. Provider credentials remain configured rather than falsely verified. Source failure never produces fabricated candidates."
+  }
+]

@@ -1,0 +1,48 @@
+[
+    {
+        "scraped_date": "2026-09-02 13:06:08 UTC",
+        "match_date": "2025-05-03 18:30:00 UTC",
+        "season": null,
+        "match_link": "https://www.oddsportal.com/volleyball/h2h/perugia-EJS1lfOD/piacenza-IXfYN7pB/#I9QUfUfB",
+        "home_team": "Piacenza",
+        "away_team": "Perugia",
+        "league_name": "SuperLega",
+        "home_score": "2",
+        "away_score": "3",
+        "partial_results": "(25:21, 21:25, 25:21, 17:25, 18:20)",
+        "venue": null,
+        "venue_town": null,
+        "venue_country": null,
+        "match_info": null,
+        "home_away_market": [
+            {
+                "1": "1.96",
+                "2": "1.56",
+                "bookmaker_name": "Betclic.fr",
+                "period": "FullTime",
+                "submarket_name": "Home/Away"
+            },
+            {
+                "1": "1.95",
+                "2": "1.57",
+                "bookmaker_name": "bwin.fr",
+                "period": "FullTime",
+                "submarket_name": "Home/Away"
+            },
+            {
+                "1": "1.98",
+                "2": "1.57",
+                "bookmaker_name": "Unibet.fr",
+                "period": "FullTime",
+                "submarket_name": "Home/Away"
+            },
+            {
+                "1": "2.00",
+                "2": "1.58",
+                "bookmaker_name": "Winamax",
+                "period": "FullTime",
+                "submarket_name": "Home/Away"
+            }
+        ]
+    }
+]

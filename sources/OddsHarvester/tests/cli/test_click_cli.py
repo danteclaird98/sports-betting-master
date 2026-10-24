@@ -1,0 +1,966 @@
+"""Tests for the Click-based CLI."""
+
+import json
+import logging
+import os
+from pathlib import Path
+import subprocess
+import sys
+from typing import ClassVar
+from unittest.mock import AsyncMock, patch
+
+from click.testing import CliRunner
+import pytest
+
+from oddsharvester import __version__
+from oddsharvester.cli.cli import cli
+from oddsharvester.cli.commands._output import format_combo_summary
+from oddsharvester.core.odds_portal_scraper import ListingResult
+from oddsharvester.core.scrape_options import ScrapeOptions
+from oddsharvester.core.scrape_result import ScrapeResult, ScrapeStats
+
+# Use a far future date to avoid date validation issues
+FUTURE_DATE = "20991231"
+MATCH_URL = "https://www.oddsportal.com/football/h2h/arsenal-hA1Zm19f/leeds-tUxUbLR2/#xtmHKGT0"
+
+
+@pytest.fixture
+def runner():
+    """Create a Click CLI test runner."""
+    return CliRunner()
+
+
+@pytest.fixture
+def mock_run_scrape():
+    """Mock the run with a one-match result and the output write, so no browser starts and no file lands."""
+    result = ScrapeResult(success=[{"match_link": "https://x/a"}], stats=ScrapeStats(total_urls=1, successful=1))
+    with (
+        patch("oddsharvester.cli.commands._scrape.run_scrape", new_callable=AsyncMock, return_value=result) as run,
+        patch("oddsharvester.cli.commands._output.store_data", return_value=True),
+    ):
+        yield run
+
+
+def _options(run_mock) -> ScrapeOptions:
+    """The ScrapeOptions the command ran with."""
+    [options] = run_mock.call_args.args
+    return options
+
+
+class TestCLIBasics:
+    """Test basic CLI functionality."""
+
+    def test_cli_help(self, runner):
+        """Test that --help works."""
+        result = runner.invoke(cli, ["--help"])
+        assert result.exit_code == 0
+        assert "OddsHarvester" in result.output
+        assert "upcoming" in result.output
+        assert "historic" in result.output
+
+    def test_cli_version(self, runner):
+        """Test that --version works."""
+        result = runner.invoke(cli, ["--version"])
+        assert result.exit_code == 0
+        assert __version__ in result.output
+
+    def test_upcoming_help(self, runner):
+        """Test upcoming command help."""
+        result = runner.invoke(cli, ["upcoming", "--help"])
+        assert result.exit_code == 0
+        assert "--sport" in result.output
+        assert "--date" in result.output
+        assert "--league" in result.output
+        assert "--request-delay" in result.output
+
+    def test_cli_import_leaves_boto3_unloaded(self):
+        """boto3 comes with the s3 extra, so the CLI must start without it."""
+        src = Path(__file__).resolve().parents[2] / "src"
+        code = "import sys, oddsharvester.cli.cli; print(sorted({'boto3', 'botocore'} & set(sys.modules)))"
+        completed = subprocess.run(  # noqa: S603
+            [sys.executable, "-c", code],
+            capture_output=True,
+            text=True,
+            check=True,
+            env={**os.environ, "PYTHONPATH": str(src)},
+        )
+        assert completed.stdout.strip() == "[]"
+
+    def test_historic_help(self, runner):
+        """Test historic command help."""
+        result = runner.invoke(cli, ["historic", "--help"])
+        assert result.exit_code == 0
+        assert "--sport" in result.output
+        assert "--season" in result.output
+        assert "--max-pages" in result.output
+
+
+class TestUpcomingCommand:
+    """Test the upcoming command."""
+
+    def test_upcoming_requires_sport(self, runner):
+        """Test that sport is required."""
+        result = runner.invoke(cli, ["upcoming", "--date", FUTURE_DATE])
+        assert result.exit_code != 0
+        assert "Missing option" in result.output or "required" in result.output.lower()
+
+    def test_upcoming_requires_date_or_league(self, runner):
+        """Test that date or league is required."""
+        result = runner.invoke(cli, ["upcoming", "-s", "football"])
+        assert result.exit_code != 0
+        assert "must provide" in result.output.lower() or "error" in result.output.lower()
+
+    def test_upcoming_invalid_date_format(self, runner):
+        """Test invalid date format."""
+        result = runner.invoke(cli, ["upcoming", "-s", "football", "-d", "2026-02-01"])
+        assert result.exit_code != 0
+        assert "Invalid date format" in result.output
+
+    def test_upcoming_past_date(self, runner):
+        """Test past date validation."""
+        result = runner.invoke(cli, ["upcoming", "-s", "football", "-d", "20200101"])
+        assert result.exit_code != 0
+        assert "already past in every timezone" in result.output
+
+
+class TestHistoricCommand:
+    """Test the historic command."""
+
+    def test_historic_requires_sport(self, runner):
+        """Test that sport is required."""
+        result = runner.invoke(cli, ["historic", "--season", "2024-2025"])
+        assert result.exit_code != 0
+        assert "Missing option" in result.output or "required" in result.output.lower()
+
+    def test_historic_requires_season_with_a_league(self, runner):
+        result = runner.invoke(cli, ["historic", "-s", "football", "-l", "england-premier-league"])
+        assert result.exit_code == 2
+        assert "Missing option '--season' (required with --league)." in result.output
+
+    def test_historic_without_league_or_match_link_is_refused_before_the_browser(self, runner):
+        """The conftest guard fails this test if the browser starts."""
+        result = runner.invoke(cli, ["historic", "-s", "football", "--season", "2024-2025"])
+        assert result.exit_code == 2
+        assert "You must provide --league or --match-link for historic matches." in result.output
+
+    def test_historic_match_link_runs_without_a_season(self, runner, mock_run_scrape):
+        result = runner.invoke(cli, ["historic", "-s", "football", "--match-link", MATCH_URL])
+        assert result.exit_code == 0, result.output
+        assert _options(mock_run_scrape).seasons is None
+
+    def test_historic_match_link_passes_its_season_on(self, runner, mock_run_scrape):
+        result = runner.invoke(cli, ["historic", "-s", "football", "--season", "2025-2026", "--match-link", MATCH_URL])
+        assert result.exit_code == 0, result.output
+        assert _options(mock_run_scrape).seasons == ["2025-2026"]
+
+    def test_historic_match_link_takes_one_season_at_most(self, runner):
+        result = runner.invoke(
+            cli, ["historic", "-s", "football", "--season", "2024-2025,2025-2026", "--match-link", MATCH_URL]
+        )
+        assert result.exit_code == 2
+        assert "--match-link takes one --season at most" in result.output
+
+    def test_historic_invalid_season_format(self, runner):
+        """Test invalid season format."""
+        result = runner.invoke(cli, ["historic", "-s", "football", "--season", "invalid"])
+        assert result.exit_code != 0
+        assert "Invalid season format" in result.output
+
+    def test_historic_invalid_season_range(self, runner):
+        """Test invalid season range (years not consecutive)."""
+        result = runner.invoke(cli, ["historic", "-s", "football", "--season", "2020-2025"])
+        assert result.exit_code != 0
+        assert "Second year must be exactly one year after" in result.output
+
+    def test_historic_empty_season_rejected(self, runner, mock_run_scrape):
+        """--season "" must fail validation, not silently fall back to the current season (issue #78 regression)."""
+        result = runner.invoke(cli, ["historic", "-s", "football", "--season", ""])
+        assert result.exit_code != 0
+        assert not mock_run_scrape.called
+
+    def test_historic_valid_season_formats(self, runner, mock_run_scrape):
+        """Test valid season formats are accepted (parsing only)."""
+        # Single year format
+        result = runner.invoke(cli, ["historic", "-s", "football", "-l", "england-premier-league", "--season", "2024"])
+        assert result.exit_code == 0, result.output
+        assert "Invalid season format" not in result.output
+        assert mock_run_scrape.called
+
+        mock_run_scrape.reset_mock()
+
+        # Range format
+        result = runner.invoke(
+            cli, ["historic", "-s", "football", "-l", "england-premier-league", "--season", "2024-2025"]
+        )
+        assert result.exit_code == 0, result.output
+        assert "Invalid season format" not in result.output
+        assert mock_run_scrape.called
+
+        mock_run_scrape.reset_mock()
+
+        # Current format
+        result = runner.invoke(
+            cli, ["historic", "-s", "football", "-l", "england-premier-league", "--season", "current"]
+        )
+        assert result.exit_code == 0, result.output
+        assert "Invalid season format" not in result.output
+        assert mock_run_scrape.called
+
+
+class TestSportIsReadFirst:
+    """--sport is read before the options whose validators need it, whatever the argument order."""
+
+    @pytest.mark.parametrize(
+        ("args", "message"),
+        [
+            (
+                ["upcoming", "--period", "1st_quarter", "-s", "football", "-d", FUTURE_DATE],
+                "Invalid period '1st_quarter' for sport 'football'",
+            ),
+            (["upcoming", "-m", "home_away", "-s", "football", "-d", FUTURE_DATE], "Invalid market(s) for football"),
+            (["historic", "-l", "nba", "-s", "football", "--season", "2024-2025"], "Invalid league(s) for football"),
+        ],
+        ids=["period", "market", "league"],
+    )
+    def test_an_option_typed_before_sport_is_still_validated(self, runner, mock_run_scrape, args, message):
+        result = runner.invoke(cli, args)
+
+        assert result.exit_code == 2, result.output
+        assert message in result.output
+        mock_run_scrape.assert_not_awaited()
+
+    def test_a_sport_from_its_variable_still_validates_the_period(self, runner, mock_run_scrape):
+        result = runner.invoke(
+            cli, ["upcoming", "--period", "1st_quarter", "-d", FUTURE_DATE], env={"OH_SPORT": "football"}
+        )
+
+        assert result.exit_code == 2, result.output
+        assert "Invalid period '1st_quarter' for sport 'football'" in result.output
+
+    def test_help_needs_no_sport(self, runner):
+        result = runner.invoke(cli, ["live", "--period", "full_time", "--help"])
+
+        assert result.exit_code == 0, result.output
+        assert "--sport" in result.output
+
+
+class TestCommonOptions:
+    """Test common options across commands."""
+
+    def test_invalid_sport(self, runner):
+        """Test invalid sport value."""
+        result = runner.invoke(cli, ["upcoming", "-s", "invalid_sport", "-d", FUTURE_DATE])
+        assert result.exit_code != 0
+        assert "Invalid sport" in result.output
+
+    def test_invalid_storage_type(self, runner, mock_run_scrape):
+        """Test invalid storage type."""
+        result = runner.invoke(cli, ["upcoming", "-s", "football", "-d", FUTURE_DATE, "--storage", "invalid"])
+        assert result.exit_code != 0
+        assert "Invalid storage type" in result.output
+
+    def test_invalid_storage_format(self, runner, mock_run_scrape):
+        """Test invalid storage format."""
+        result = runner.invoke(cli, ["upcoming", "-s", "football", "-d", FUTURE_DATE, "-f", "xml"])
+        assert result.exit_code != 0
+        assert "Invalid storage format" in result.output
+
+    def test_invalid_concurrency(self, runner, mock_run_scrape):
+        """Test invalid concurrency value."""
+        result = runner.invoke(cli, ["upcoming", "-s", "football", "-d", FUTURE_DATE, "-c", "0"])
+        assert result.exit_code != 0
+        assert "positive integer" in result.output.lower()
+
+    def test_upcoming_concurrency_flag_forwarded_to_run_scraper(self, runner, mock_run_scrape):
+        """`--concurrency N` on `upcoming` must reach run_scraper as concurrency_tasks=N (issue #64)."""
+        result = runner.invoke(cli, ["upcoming", "-s", "football", "-d", FUTURE_DATE, "-c", "10"])
+        assert result.exit_code == 0, result.output
+        assert mock_run_scrape.called
+        assert _options(mock_run_scrape).concurrency_tasks == 10
+
+    def test_upcoming_kickoff_within_hours_forwarded_to_run_scraper(self, runner, mock_run_scrape):
+        """`--kickoff-within-hours N` on `upcoming` must reach run_scraper (issue #77)."""
+        result = runner.invoke(cli, ["upcoming", "-s", "football", "-d", FUTURE_DATE, "--kickoff-within-hours", "6"])
+        assert result.exit_code == 0, result.output
+        assert mock_run_scrape.called
+        assert _options(mock_run_scrape).kickoff_within_hours == 6.0
+
+    def test_upcoming_kickoff_within_hours_rejects_non_positive(self, runner, mock_run_scrape):
+        """A zero or negative window is meaningless and must be rejected (issue #77)."""
+        result = runner.invoke(cli, ["upcoming", "-s", "football", "-d", FUTURE_DATE, "--kickoff-within-hours", "0"])
+        assert result.exit_code != 0
+        assert not mock_run_scrape.called
+
+    def test_historic_concurrency_flag_forwarded_to_run_scraper(self, runner, mock_run_scrape):
+        """`--concurrency N` on `historic` must reach run_scraper as concurrency_tasks=N (issue #64)."""
+        result = runner.invoke(
+            cli, ["historic", "-s", "football", "-l", "england-premier-league", "--season", "2024", "-c", "7"]
+        )
+        assert result.exit_code == 0, result.output
+        assert mock_run_scrape.called
+        assert _options(mock_run_scrape).concurrency_tasks == 7
+
+    def test_historic_single_season_forwarded_as_list(self, runner, mock_run_scrape):
+        """Backward compatibility: a single --season value still works, now as a one-element list."""
+        result = runner.invoke(cli, ["historic", "-s", "football", "-l", "england-premier-league", "--season", "2024"])
+        assert result.exit_code == 0, result.output
+        assert _options(mock_run_scrape).seasons == ["2024"]
+
+    def test_historic_season_list_forwarded(self, runner, mock_run_scrape):
+        """--season accepts a comma-separated list (issue #78)."""
+        result = runner.invoke(
+            cli,
+            ["historic", "-s", "football", "-l", "england-premier-league", "--season", "2021-2022,2022-2023"],
+        )
+        assert result.exit_code == 0, result.output
+        assert _options(mock_run_scrape).seasons == ["2021-2022", "2022-2023"]
+
+    def test_historic_season_list_deduplicated(self, runner, mock_run_scrape):
+        """--season with repeated values is deduplicated, order preserved (issue #78)."""
+        result = runner.invoke(
+            cli, ["historic", "-s", "football", "-l", "england-premier-league", "--season", "2024,2024,2023"]
+        )
+        assert result.exit_code == 0, result.output
+        assert _options(mock_run_scrape).seasons == ["2024", "2023"]
+
+    def test_historic_season_list_rejects_invalid_element(self, runner, mock_run_scrape):
+        result = runner.invoke(cli, ["historic", "-s", "football", "--season", "2024,invalid"])
+        assert result.exit_code != 0
+        assert "Invalid season format" in result.output
+
+    def test_local_kickoff_flag_forwarded_historic(self, runner, mock_run_scrape):
+        result = runner.invoke(
+            cli, ["historic", "-s", "football", "-l", "england-premier-league", "--season", "2024", "--local-kickoff"]
+        )
+        assert result.exit_code == 0, result.output
+        assert _options(mock_run_scrape).local_kickoff is True
+
+    def test_local_kickoff_defaults_false(self, runner, mock_run_scrape):
+        result = runner.invoke(cli, ["historic", "-s", "football", "-l", "england-premier-league", "--season", "2024"])
+        assert result.exit_code == 0, result.output
+        assert _options(mock_run_scrape).local_kickoff is False
+
+    def test_local_kickoff_conflicts_with_links_only(self, runner, mock_run_scrape):
+        result = runner.invoke(
+            cli,
+            [
+                "historic",
+                "-s",
+                "football",
+                "-l",
+                "england-premier-league",
+                "--season",
+                "2024",
+                "--links-only",
+                "--local-kickoff",
+            ],
+        )
+        assert result.exit_code != 0
+        assert "local-kickoff" in result.output
+        assert "links-only" in result.output
+
+    def test_invalid_proxy_url_format(self, runner, mock_run_scrape):
+        """Test invalid proxy URL format."""
+        result = runner.invoke(cli, ["upcoming", "-s", "football", "-d", FUTURE_DATE, "--proxy-url", "invalid"])
+        assert result.exit_code != 0
+        assert "Invalid proxy URL" in result.output
+
+    def test_valid_proxy_url(self, runner, mock_run_scrape):
+        """Test valid proxy URL format is accepted."""
+        result = runner.invoke(
+            cli,
+            ["upcoming", "-s", "football", "-d", FUTURE_DATE, "--proxy-url", "http://proxy:8080"],
+        )
+        assert result.exit_code == 0, result.output
+        # Validation should pass, scraper should be called
+        assert "Invalid proxy URL" not in result.output
+        assert mock_run_scrape.called
+
+    def test_invalid_match_link(self, runner):
+        """Test invalid match link format."""
+        result = runner.invoke(cli, ["upcoming", "-s", "football", "--match-link", "https://example.com/match"])
+        assert result.exit_code != 0
+        assert "Invalid match link" in result.output
+
+
+class TestShortOptions:
+    """Test short option aliases."""
+
+    def test_short_sport_option(self, runner):
+        """Test -s for sport."""
+        result = runner.invoke(cli, ["upcoming", "-s", "football", "-d", FUTURE_DATE, "--help"])
+        assert result.exit_code == 0
+
+    def test_short_league_option(self, runner, mock_run_scrape):
+        """Test -l for league."""
+        result = runner.invoke(cli, ["historic", "-s", "football", "--season", "2024", "-l", "england-premier-league"])
+        assert result.exit_code == 0, result.output
+        # Validation should pass
+        assert "Invalid value" not in result.output or "league" in result.output.lower()
+        assert mock_run_scrape.called
+
+    def test_short_market_option(self, runner, mock_run_scrape):
+        """Test -m for market."""
+        result = runner.invoke(
+            cli, ["historic", "-s", "football", "-l", "england-premier-league", "--season", "2024", "-m", "1x2"]
+        )
+        assert result.exit_code == 0, result.output
+        assert "Invalid value" not in result.output or "market" in result.output.lower()
+        assert mock_run_scrape.called
+
+    def test_short_format_option(self, runner, mock_run_scrape):
+        """Test -f for format."""
+        result = runner.invoke(
+            cli, ["historic", "-s", "football", "-l", "england-premier-league", "--season", "2024", "-f", "csv"]
+        )
+        assert result.exit_code == 0, result.output
+        assert "Invalid storage format" not in result.output
+        assert mock_run_scrape.called
+
+    def test_short_concurrency_option(self, runner, mock_run_scrape):
+        """Test -c for concurrency."""
+        result = runner.invoke(
+            cli, ["historic", "-s", "football", "-l", "england-premier-league", "--season", "2024", "-c", "5"]
+        )
+        assert result.exit_code == 0, result.output
+        assert "positive integer" not in result.output
+        assert mock_run_scrape.called
+
+
+class TestOutputPathValidation:
+    """Test --output path validation."""
+
+    @pytest.mark.parametrize("path", ["../out.json", "exports/../out.json"])
+    def test_accepts_parent_segments_like_any_other_path(self, runner, mock_run_scrape, tmp_path, monkeypatch, path):
+        """G8: an absolute path could always point anywhere, so a '..' segment is no reason to refuse -o."""
+        (tmp_path / "run").mkdir()
+        monkeypatch.chdir(tmp_path / "run")
+        result = runner.invoke(
+            cli, ["historic", "-s", "football", "-l", "england-premier-league", "--season", "2024", "-o", path]
+        )
+        assert result.exit_code == 0, result.output
+        assert "must not contain" not in result.output
+        assert mock_run_scrape.called
+
+    def test_rejects_the_parent_directory_itself(self, runner, tmp_path, monkeypatch):
+        (tmp_path / "run").mkdir()
+        monkeypatch.chdir(tmp_path / "run")
+        result = runner.invoke(cli, ["historic", "-s", "football", "--season", "2024", "-o", ".."])
+        assert result.exit_code != 0
+        assert "must not be an existing directory" in result.output
+
+    def test_accepts_valid_relative_path(self, runner, mock_run_scrape):
+        """Test that a valid relative path is accepted."""
+        result = runner.invoke(
+            cli,
+            [
+                "historic",
+                "-s",
+                "football",
+                "-l",
+                "england-premier-league",
+                "--season",
+                "2024",
+                "-o",
+                "output/data.json",
+            ],
+        )
+        assert result.exit_code == 0, result.output
+        assert "must not contain" not in result.output
+        assert mock_run_scrape.called
+
+    def test_accepts_absolute_path(self, runner, mock_run_scrape):
+        """Test that a valid absolute path is accepted."""
+        result = runner.invoke(
+            cli,
+            [
+                "historic",
+                "-s",
+                "football",
+                "-l",
+                "england-premier-league",
+                "--season",
+                "2024",
+                "-o",
+                "/tmp/output.json",
+            ],
+        )
+        assert result.exit_code == 0, result.output
+        assert "must not contain" not in result.output
+        assert mock_run_scrape.called
+
+    def test_rejects_existing_directory(self, runner, tmp_path):
+        """Test that paths pointing to existing directories are rejected."""
+        existing_dir = tmp_path / "existing_dir"
+        existing_dir.mkdir()
+        result = runner.invoke(cli, ["historic", "-s", "football", "--season", "2024", "-o", str(existing_dir)])
+        assert result.exit_code != 0
+        assert "must not be an existing directory" in result.output
+
+
+class TestLinksOnly:
+    """Tests for the --links-only flag (issue #75)."""
+
+    MATCH_URL = "https://www.oddsportal.com/football/england/premier-league/arsenal-chelsea-abc123/"
+
+    def test_help_shows_links_only(self, runner):
+        for command in ["historic", "upcoming"]:
+            result = runner.invoke(cli, [command, "--help"])
+            assert result.exit_code == 0
+            assert "--links-only" in result.output
+
+    def test_links_only_conflicts_with_match_link_historic(self, runner):
+        result = runner.invoke(
+            cli,
+            ["historic", "-s", "football", "--season", "2024-2025", "--links-only", "--match-link", self.MATCH_URL],
+        )
+        assert result.exit_code != 0
+        assert "--links-only cannot be combined with --match-link" in result.output
+
+    def test_links_only_conflicts_with_match_link_upcoming(self, runner):
+        result = runner.invoke(
+            cli,
+            ["upcoming", "-s", "football", "--links-only", "--match-link", self.MATCH_URL],
+        )
+        assert result.exit_code != 0
+        assert "--links-only cannot be combined with --match-link" in result.output
+
+    def _links_result(self):
+        from oddsharvester.core.scrape_result import ScrapeResult, ScrapeStats
+
+        return ScrapeResult(
+            success=[
+                {
+                    "match_link": self.MATCH_URL,
+                    "sport": "football",
+                    "league": "england-premier-league",
+                    "season": "2022-2023",
+                }
+            ],
+            stats=ScrapeStats(total_urls=1, successful=1, failed=0),
+        )
+
+    def test_links_only_forwarded_and_message_historic(self, runner):
+        with (
+            patch(
+                "oddsharvester.cli.commands._scrape.run_scrape",
+                new_callable=AsyncMock,
+                return_value=self._links_result(),
+            ) as scraper_mock,
+            patch("oddsharvester.cli.commands._output.store_data") as store_mock,
+        ):
+            result = runner.invoke(
+                cli,
+                ["historic", "-s", "football", "-l", "england-premier-league", "--season", "2022-2023", "--links-only"],
+            )
+        assert result.exit_code == 0
+        assert _options(scraper_mock).links_only is True
+        assert "Collected 1 match links (0 listing pages failed)." in result.output
+        store_mock.assert_called_once()
+
+    def test_links_only_forwarded_and_message_upcoming(self, runner):
+        with (
+            patch(
+                "oddsharvester.cli.commands._scrape.run_scrape",
+                new_callable=AsyncMock,
+                return_value=self._links_result(),
+            ) as scraper_mock,
+            patch("oddsharvester.cli.commands._output.store_data") as store_mock,
+        ):
+            result = runner.invoke(cli, ["upcoming", "-s", "football", "-d", FUTURE_DATE, "--links-only"])
+        assert result.exit_code == 0
+        assert _options(scraper_mock).links_only is True
+        assert "Collected 1 match links (0 listing pages failed)." in result.output
+        store_mock.assert_called_once()
+
+
+class TestMatchLinkBatching:
+    """Tests for comma-separated --match-link and --match-links-file (issue #83)."""
+
+    URL_1 = "https://www.oddsportal.com/football/england/premier-league/arsenal-chelsea-abc123/"
+    URL_2 = "https://www.oddsportal.com/football/england/premier-league/liverpool-everton-def456/"
+    URL_3 = "https://www.oddsportal.com/football/england/premier-league/spurs-west-ham-ghi789/"
+
+    def test_match_link_splits_on_commas(self, runner, mock_run_scrape):
+        result = runner.invoke(
+            cli,
+            ["upcoming", "-s", "football", "--match-link", f"{self.URL_1},{self.URL_2}"],
+        )
+        assert result.exit_code == 0, result.output
+        assert "Invalid match link" not in result.output
+        assert _options(mock_run_scrape).match_links == [self.URL_1, self.URL_2]
+
+    def test_match_link_comma_and_repeated_forms_combine(self, runner, mock_run_scrape):
+        result = runner.invoke(
+            cli,
+            ["upcoming", "-s", "football", "--match-link", f"{self.URL_1},{self.URL_2}", "--match-link", self.URL_3],
+        )
+        assert result.exit_code == 0, result.output
+        assert "Invalid match link" not in result.output
+        assert _options(mock_run_scrape).match_links == [self.URL_1, self.URL_2, self.URL_3]
+
+    def test_match_link_invalid_url_in_comma_list_rejected(self, runner):
+        result = runner.invoke(
+            cli,
+            ["upcoming", "-s", "football", "--match-link", f"{self.URL_1},https://example.com/nope"],
+        )
+        assert result.exit_code != 0
+        assert "Invalid match link" in result.output
+
+    def test_match_links_file_read_and_forwarded(self, runner, mock_run_scrape, tmp_path):
+        links_file = tmp_path / "links.txt"
+        links_file.write_text(f"{self.URL_1}\n\n  {self.URL_2}  \n")
+
+        result = runner.invoke(cli, ["upcoming", "-s", "football", "--match-links-file", str(links_file)])
+        assert result.exit_code == 0, result.output
+        assert "Invalid match link" not in result.output
+        assert _options(mock_run_scrape).match_links == [self.URL_1, self.URL_2]
+
+    def test_match_links_file_merges_with_flags_and_dedupes(self, runner, mock_run_scrape, tmp_path):
+        links_file = tmp_path / "links.txt"
+        links_file.write_text(f"{self.URL_2}\n{self.URL_3}\n")
+
+        result = runner.invoke(
+            cli,
+            [
+                "upcoming",
+                "-s",
+                "football",
+                "--match-link",
+                f"{self.URL_1},{self.URL_2}",
+                "--match-links-file",
+                str(links_file),
+            ],
+        )
+        assert result.exit_code == 0, result.output
+        assert "Invalid match link" not in result.output
+        assert _options(mock_run_scrape).match_links == [self.URL_1, self.URL_2, self.URL_3]
+
+    def test_match_links_file_invalid_url_rejected(self, runner, tmp_path):
+        links_file = tmp_path / "links.txt"
+        links_file.write_text(f"{self.URL_1}\nhttps://example.com/nope\n")
+
+        result = runner.invoke(cli, ["upcoming", "-s", "football", "--match-links-file", str(links_file)])
+        assert result.exit_code != 0
+        assert "Invalid match link" in result.output
+
+    def test_match_links_file_missing_rejected(self, runner, tmp_path):
+        result = runner.invoke(cli, ["upcoming", "-s", "football", "--match-links-file", str(tmp_path / "missing.txt")])
+        assert result.exit_code != 0
+
+    def test_links_only_conflicts_with_match_links_file(self, runner, tmp_path):
+        links_file = tmp_path / "links.txt"
+        links_file.write_text(f"{self.URL_1}\n")
+
+        for command, extra in [
+            ("historic", ["--season", "2024-2025"]),
+            ("upcoming", []),
+            ("live", []),
+        ]:
+            result = runner.invoke(
+                cli,
+                [command, "-s", "football", *extra, "--links-only", "--match-links-file", str(links_file)],
+            )
+            assert result.exit_code != 0
+            assert "--links-only cannot be combined with --match-link" in result.output
+
+
+class TestComboSummaryRendering:
+    """Tests for the per-combo summary table gate in `historic` (findings 2 and 4)."""
+
+    def _combo_result(self, combo_stats, success=None):
+        from oddsharvester.core.scrape_result import ScrapeResult, ScrapeStats
+
+        success = success if success is not None else []
+        return ScrapeResult(
+            success=success,
+            stats=ScrapeStats(total_urls=len(success), successful=len(success), failed=0),
+            combo_stats=combo_stats,
+        )
+
+    def test_all_combos_empty_still_prints_summary_and_exits_1(self, runner):
+        """A run where every combo returns zero rows must still show the breakdown, and still exit 1 (finding 2)."""
+        combo_stats = [
+            {"league": "england-premier-league", "season": "2020", "successful": 0, "failed": 0, "errored": False},
+            {"league": "england-premier-league", "season": "2021", "successful": 0, "failed": 0, "errored": False},
+        ]
+        with patch(
+            "oddsharvester.cli.commands._scrape.run_scrape",
+            new_callable=AsyncMock,
+            return_value=self._combo_result(combo_stats),
+        ) as scraper_mock:
+            result = runner.invoke(
+                cli,
+                ["historic", "-s", "football", "-l", "england-premier-league", "--season", "2020,2021"],
+            )
+        assert scraper_mock.called
+        assert result.exit_code == 1
+        assert "Collected matches across 2 combos" in result.output
+        assert "2 combo(s) returned nothing." in result.output
+
+    @pytest.mark.parametrize("combo_count", [0, 1, 2])
+    def test_summary_table_only_shown_for_more_than_one_combo(self, runner, combo_count):
+        """The table must appear only when there is more than one combo (finding 4)."""
+        combo_stats = [
+            {
+                "league": "england-premier-league",
+                "season": str(2020 + i),
+                "successful": 1,
+                "failed": 0,
+                "errored": False,
+            }
+            for i in range(combo_count)
+        ]
+        success = [{"match": "data"}] * max(combo_count, 1)
+        with (
+            patch(
+                "oddsharvester.cli.commands._scrape.run_scrape",
+                new_callable=AsyncMock,
+                return_value=self._combo_result(combo_stats, success=success),
+            ),
+            patch("oddsharvester.cli.commands._output.store_data"),
+        ):
+            result = runner.invoke(
+                cli,
+                ["historic", "-s", "football", "-l", "england-premier-league", "--season", "2020"],
+            )
+        if combo_count > 1:
+            assert "combos:" in result.output
+        else:
+            assert "combos:" not in result.output
+
+
+def test_all_registered_sport_periods_are_cli_selectable():
+    """Every period of every registered sport must be a valid --period CLI choice.
+
+    Regression guard: handball and volleyball periods (e.g. 3rd_set..5th_set)
+    were missing from the CLI choice list because _get_all_periods() used a
+    hardcoded enum list that omitted those sports. This test fails if a new
+    sport's periods are added to the registry but not exposed via the CLI.
+    """
+    from oddsharvester.cli.options import _get_all_periods
+    from oddsharvester.core.sport_period_registry import SportPeriodRegistry
+
+    cli_periods = set(_get_all_periods())
+    for sport, config in SportPeriodRegistry._registry.items():
+        for period in config["enum"]:
+            assert period.value in cli_periods, f"{sport} period {period.value!r} not selectable via --period CLI"
+
+
+def test_combo_summary_lists_every_combo_with_counts():
+    out = format_combo_summary(
+        [
+            {"league": "russia-premier-league", "season": "2010", "successful": 380, "failed": 0, "errored": False},
+            {"league": "russia-premier-league", "season": "2011", "successful": 0, "failed": 0, "errored": False},
+        ],
+        links_only=True,
+    )
+    assert "russia-premier-league 2010" in out
+    assert "380" in out
+    assert "1 combo(s) returned nothing." in out
+
+
+def test_combo_summary_marks_errored_combos_separately():
+    out = format_combo_summary(
+        [
+            {"league": "epl", "season": "2020", "successful": 0, "failed": 0, "errored": False},
+            {"league": "epl", "season": "2021", "successful": 0, "failed": 0, "errored": True},
+        ],
+        links_only=False,
+    )
+    assert "error" in out
+    assert "1 combo(s) errored." in out
+    assert "1 combo(s) returned nothing." in out
+
+
+class TestStreamNdjson:
+    """Tests for --stream-ndjson (issue #88)."""
+
+    COMMANDS: ClassVar[dict[str, list[str]]] = {
+        "upcoming": ["upcoming", "-s", "football", "-d", FUTURE_DATE],
+        "historic": ["historic", "-s", "football", "-l", "england-premier-league", "--season", "2022-2023"],
+        "live": ["live", "-s", "football"],
+    }
+
+    @staticmethod
+    def _result():
+        from oddsharvester.core.scrape_result import ScrapeResult, ScrapeStats
+
+        return ScrapeResult(
+            success=[{"match_link": "https://x/a", "home_team": "A"}],
+            stats=ScrapeStats(total_urls=1, successful=1, failed=0),
+        )
+
+    def _patches(self, command):
+        return (
+            patch(
+                "oddsharvester.cli.commands._scrape.run_scrape",
+                new_callable=AsyncMock,
+                return_value=self._result(),
+            ),
+            patch("oddsharvester.cli.commands._output.store_data"),
+        )
+
+    @pytest.mark.parametrize("command", list(COMMANDS))
+    def test_flag_passes_a_stream_callback_to_the_scraper(self, runner, command):
+        scraper_patch, store_patch = self._patches(command)
+        with scraper_patch as scraper_mock, store_patch:
+            result = runner.invoke(cli, [*self.COMMANDS[command], "--stream-ndjson"])
+
+        assert result.exit_code == 0
+        assert callable(_options(scraper_mock).on_match)
+
+    @pytest.mark.parametrize("command", list(COMMANDS))
+    def test_no_callback_without_the_flag(self, runner, command):
+        scraper_patch, store_patch = self._patches(command)
+        with scraper_patch as scraper_mock, store_patch:
+            result = runner.invoke(cli, self.COMMANDS[command])
+
+        assert result.exit_code == 0
+        assert _options(scraper_mock).on_match is None
+
+    @pytest.mark.parametrize("command", list(COMMANDS))
+    def test_streaming_without_output_writes_no_file(self, runner, command):
+        """Without -o the batch write would drop a stray scraped_data.json next to the consumer."""
+        scraper_patch, store_patch = self._patches(command)
+        with scraper_patch, store_patch as store_mock:
+            result = runner.invoke(cli, [*self.COMMANDS[command], "--stream-ndjson"])
+
+        assert result.exit_code == 0
+        store_mock.assert_not_called()
+
+    @pytest.mark.parametrize("command", list(COMMANDS))
+    def test_streaming_with_output_still_writes_the_file(self, runner, command):
+        scraper_patch, store_patch = self._patches(command)
+        with scraper_patch, store_patch as store_mock:
+            result = runner.invoke(cli, [*self.COMMANDS[command], "--stream-ndjson", "-o", "out.json"])
+
+        assert result.exit_code == 0
+        store_mock.assert_called_once()
+
+    @pytest.mark.parametrize(
+        "args",
+        [
+            ["historic", "-s", "football", "-l", "england-premier-league", "--season", "2022-2023"],
+            ["historic", "-s", "football", "--season", "2022-2023", "--match-link", MATCH_URL],
+        ],
+        ids=["listing", "match link"],
+    )
+    def test_a_streamed_record_carries_the_season_the_file_gets(self, runner, fake_scraper, tmp_path, args):
+        def scrape(match_links, **_):
+            records = [{"match_link": link, "season": None} for link in match_links]
+            for record in records:
+                fake_scraper.built_with["on_match"](record)
+            return ScrapeResult(success=records, stats=ScrapeStats(total_urls=1, successful=1))
+
+        fake_scraper.answers["collect_historic_links"] = ListingResult(rows=[{"match_link": MATCH_URL}])
+        fake_scraper.answers["extract_match_odds"] = scrape
+        fake_scraper.answers["scrape_matches"] = scrape
+        out = tmp_path / "out.json"
+
+        result = runner.invoke(cli, [*args, "--headless", "--stream-ndjson", "-o", str(out)])
+
+        assert result.exit_code == 0, result.output
+        [streamed] = [json.loads(line) for line in result.stdout.splitlines()]
+        assert streamed == json.loads(out.read_text())[0]
+        assert streamed["season"] == "2022-2023"
+
+    @pytest.mark.parametrize("command", list(COMMANDS))
+    def test_streaming_keeps_stdout_free_of_summary_text(self, runner, command):
+        """stdout carries NDJSON only; anything else corrupts the consumer's parse."""
+        scraper_patch, store_patch = self._patches(command)
+        with scraper_patch, store_patch:
+            result = runner.invoke(cli, [*self.COMMANDS[command], "--stream-ndjson"])
+
+        assert result.exit_code == 0
+        assert result.stdout == ""
+        assert "Successfully scraped" in result.stderr
+
+    @pytest.mark.parametrize("command", list(COMMANDS))
+    def test_summary_stays_on_stdout_without_the_flag(self, runner, command):
+        scraper_patch, store_patch = self._patches(command)
+        with scraper_patch, store_patch:
+            result = runner.invoke(cli, self.COMMANDS[command])
+
+        assert result.exit_code == 0
+        assert "Successfully scraped" in result.stdout
+
+    @pytest.mark.parametrize("command", ["upcoming", "historic", "live"])
+    def test_streaming_rejects_links_only(self, runner, command):
+        """Links are collected outside the per-match path, so the stream would be silently empty."""
+        result = runner.invoke(cli, [*self.COMMANDS[command], "--links-only", "--stream-ndjson"])
+
+        assert result.exit_code == 2
+        assert "--links-only" in result.output
+
+
+class TestOddsFormatDeprecation:
+    ARGS: ClassVar[list[str]] = ["historic", "-s", "football", "-l", "england-premier-league", "--season", "2022-2023"]
+
+    @staticmethod
+    def _run(runner, args):
+        from oddsharvester.core.scrape_result import ScrapeResult, ScrapeStats
+
+        result = ScrapeResult(success=[{"match_link": "https://x/a"}], stats=ScrapeStats(total_urls=1, successful=1))
+        with (
+            patch("oddsharvester.cli.commands._scrape.run_scrape", new_callable=AsyncMock, return_value=result),
+            patch("oddsharvester.cli.commands._output.store_data", return_value=True),
+        ):
+            return runner.invoke(cli, args)
+
+    def test_option_is_hidden_from_help(self, runner):
+        result = runner.invoke(cli, ["historic", "--help"])
+        assert result.exit_code == 0
+        assert "--odds-format" not in result.output
+
+    def test_non_decimal_odds_format_warns(self, runner):
+        result = self._run(runner, [*self.ARGS, "--odds-format", "Fractional Odds"])
+        assert result.exit_code == 0, result.output
+        assert "--odds-format has no effect" in result.stderr
+
+    def test_default_odds_format_does_not_warn(self, runner):
+        result = self._run(runner, self.ARGS)
+        assert result.exit_code == 0, result.output
+        assert "--odds-format" not in result.stderr
+
+    def test_explicit_decimal_odds_format_does_not_warn(self, runner):
+        result = self._run(runner, [*self.ARGS, "--odds-format", "Decimal Odds"])
+        assert result.exit_code == 0, result.output
+        assert "--odds-format" not in result.stderr
+
+    def test_warning_keeps_the_ndjson_stream_clean(self, runner):
+        args = ["upcoming", "-s", "football", "-d", FUTURE_DATE, "--stream-ndjson", "--odds-format", "Fractional Odds"]
+        result = self._run(runner, args)
+        assert result.exit_code == 0, result.output
+        assert result.stdout == ""
+        assert "--odds-format has no effect" in result.stderr
+
+
+@pytest.mark.parametrize(
+    ("flags", "level"),
+    [(["-q"], logging.ERROR), (["-v"], logging.DEBUG), ([], logging.INFO)],
+    ids=["quiet", "verbose", "no_flag"],
+)
+def test_quiet_and_verbose_flags_still_set_the_log_level(runner, flags, level):
+    with patch("oddsharvester.cli.cli.setup_logger") as setup_mock:
+        result = runner.invoke(cli, [*flags, "historic", "--help"])
+
+    assert result.exit_code == 0, result.output
+    assert setup_mock.call_args.kwargs["log_level"] == level
+
+
+@pytest.mark.parametrize("command", [["upcoming"], ["historic", "--season", "2025-2026"], ["live"]])
+def test_league_with_match_link_is_ignored_with_a_warning(runner, mock_run_scrape, caplog, command):
+    args = [*command, "-s", "football", "-l", "england-premier-league", "--match-link", MATCH_URL]
+
+    result = runner.invoke(cli, args)
+
+    assert result.exit_code == 0, result.output
+    assert "--league is ignored with --match-link" in caplog.text
+    assert _options(mock_run_scrape).match_links == [MATCH_URL]
+
+
+@pytest.mark.parametrize("command", ["upcoming", "historic", "live", "team"])
+def test_request_delay_help_says_what_it_paces(command):
+    [option] = [param for param in cli.commands[command].params if param.name == "request_delay"]
+    assert all(unit in option.help for unit in ("match pages", "league/season listings", "team pages"))

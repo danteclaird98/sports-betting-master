@@ -1,0 +1,25 @@
+services:
+  - type: web
+    name: edgefusion
+    runtime: docker
+    plan: starter
+    region: oregon
+    healthCheckPath: /health
+    autoDeployTrigger: off
+    disk:
+      name: edgefusion-data
+      mountPath: /var/data
+      sizeGB: 1
+    envVars:
+      - key: HOST
+        value: 0.0.0.0
+      - key: WORKSPACE_USER
+        value: owner
+      - key: WORKSPACE_PASSWORD
+        sync: false
+      - key: WORKSPACE_SESSION_SECRET
+        generateValue: true
+      - key: EDGEBOARD_DB
+        value: /var/data/edgeboard.sqlite3
+      - key: EDGEFUSION_DB
+        value: /var/data/edgefusion.sqlite3

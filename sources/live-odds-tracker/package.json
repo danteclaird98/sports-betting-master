@@ -1,0 +1,21 @@
+{
+  "name": "live-odds-tracker",
+  "version": "1.0.0",
+  "description": "Live sports betting odds tracker — detects line movement across bookmakers using the SportsGameOdds API",
+  "main": "tracker.js",
+  "scripts": {
+    "start": "node tracker.js"
+  },
+  "keywords": [
+    "sports-betting",
+    "odds-api",
+    "line-movement",
+    "sportsbook",
+    "sportsgameodds"
+  ],
+  "license": "MIT",
+  "dependencies": {
+    "dotenv": "^16.0.0",
+    "node-fetch": "^2.7.0"
+  }
+}

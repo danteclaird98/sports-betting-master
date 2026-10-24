@@ -1,0 +1,30 @@
+{
+  "agent": "source-scout",
+  "task_id": "source-scout-001",
+  "base_sha": "8a7f7137d427bfc7fb6e487129c640259ff0ff26",
+  "head_sha": "431ee03a5aa655f9dd367a1ce29cfdb2bea67278",
+  "changed_paths": [
+    "docs/providers/PROVIDER_EVIDENCE_MATRIX.md"
+  ],
+  "changed_contracts": [],
+  "tests_run": [],
+  "live_data_used": false,
+  "claims": [
+    {
+      "claim": "Sportradar v2 supports separate Prematch, Player Props, Futures, and Live Odds packages with server-side API-key auth and explicit pagination guidance",
+      "evidence": "Sportradar API Basics and Odds Comparison v2 Overview reviewed 2026-10-23"
+    },
+    {
+      "claim": "The Odds API v4 exposes market-level last_update and deprecates bookmaker-level last_update",
+      "evidence": "The Odds API v4 official guide reviewed 2026-10-23"
+    },
+    {
+      "claim": "SportsDataIO Discovery Lab is next-day delayed and not suitable for live applications",
+      "evidence": "SportsDataIO Developers page reviewed 2026-10-23"
+    }
+  ],
+  "blockers": [
+    "No authorized live provider credential was available for response-level validation.",
+    "Pinnacle public access page does not expose enough schema/timestamp detail to build a verified connector."
+  ]
+}

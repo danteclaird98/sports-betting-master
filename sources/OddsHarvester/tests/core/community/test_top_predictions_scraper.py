@@ -1,0 +1,223 @@
+"""Unit tests for TopPredictionsScraper (mocked Playwright page)."""
+
+from datetime import datetime, timedelta
+import logging
+from unittest.mock import AsyncMock, MagicMock, patch
+
+import pytest
+from tests.dom_builders import community_column, community_row, community_section
+
+from oddsharvester.core.community.top_predictions_scraper import TopPredictionsScraper, run_top_predictions
+from oddsharvester.core.exceptions import RateLimitError
+from oddsharvester.core.retry import RetryResult
+
+
+def _game_row(href: str, market: str = "1X2") -> str:
+    columns = (
+        community_column("1", "1.69", "89%") + community_column("X", "3.68", "9%") + community_column("2", "4.70", "2%")
+    )
+    return community_row(
+        href,
+        columns,
+        date="Today,",
+        time="17:00",
+        market=market,
+        home="Yelimay Semey",
+        away="Alashkert",
+    )
+
+
+MINIMAL_PAGE_HTML = community_section(_game_row("/football/h2h/alashkert-aaa/yelimay-bbb/#ccc"))
+# One football row + one row whose match_url belongs to another sport.
+MIXED_SPORT_PAGE_HTML = community_section(
+    _game_row("/football/h2h/alashkert-aaa/yelimay-bbb/#ccc") + _game_row("/tennis/h2h/player-a/player-b/#ddd")
+)
+# Two football rows (for scraped_at batch-sameness assertions).
+TWO_FOOTBALL_ROWS_HTML = community_section(
+    _game_row("/football/h2h/alashkert-aaa/yelimay-bbb/#ccc") + _game_row("/football/h2h/team-c/team-d/#eee")
+)
+
+_RUNNER = "oddsharvester.core.community.top_predictions_scraper"
+_SESSION = "oddsharvester.core.browser.session"
+
+
+def _make_scraper(page_html: str):
+    page = AsyncMock()
+    page.url = "about:blank"
+    page.content.return_value = page_html
+    manager = MagicMock()
+    manager.page = page
+    manager.timezone_id = "UTC"
+    dismisser = AsyncMock()
+    return TopPredictionsScraper(playwright_manager=manager, cookie_dismisser=dismisser), page, dismisser
+
+
+async def test_scrape_navigates_and_parses():
+    scraper, page, dismisser = _make_scraper(MINIMAL_PAGE_HTML)
+    records = await scraper.scrape(sport="football")
+
+    page.goto.assert_awaited_once()
+    assert "/predictions/#sport/football/" in page.goto.await_args.args[0]
+    dismisser.dismiss.assert_awaited_once()
+    page.wait_for_selector.assert_awaited()
+    assert len(records) == 1
+    assert records[0]["sport"] == "football"
+    assert records[0]["market"] == "1X2"
+    assert records[0]["community_votes_pct"] == [
+        {"outcome": "1", "pct": 89},
+        {"outcome": "X", "pct": 9},
+        {"outcome": "2", "pct": 2},
+    ]
+    parsed = datetime.fromisoformat(records[0]["scraped_at"])
+    assert parsed.utcoffset() == timedelta(0)
+
+
+async def test_scrape_drops_only_wrong_sport_row_in_mixed_batch():
+    # Literal "rows are dropped" contract: a football + tennis batch requested as
+    # football keeps only the football row, unmodified in sport labelling.
+    scraper, _, _ = _make_scraper(MIXED_SPORT_PAGE_HTML)
+    records = await scraper.scrape(sport="football")
+    assert len(records) == 1
+    assert records[0]["sport"] == "football"
+    assert "/football/" in records[0]["match_url"]
+
+
+async def test_scrape_tags_batch_with_same_scraped_at():
+    scraper, _, _ = _make_scraper(TWO_FOOTBALL_ROWS_HTML)
+    records = await scraper.scrape(sport="football")
+    assert len(records) == 2
+    stamps = {r["scraped_at"] for r in records}
+    assert len(stamps) == 1
+    assert datetime.fromisoformat(stamps.pop()).utcoffset() == timedelta(0)
+
+
+async def test_scrape_uses_base_url_override():
+    scraper, page, _ = _make_scraper(MINIMAL_PAGE_HTML)
+    await scraper.scrape(sport="football", base_url="https://www.centroquote.it")
+    assert page.goto.await_args.args[0].startswith("https://www.centroquote.it/community/predictions/")
+
+
+async def test_scrape_returns_empty_on_no_rows():
+    scraper, page, _ = _make_scraper("<html><body></body></html>")
+    page.wait_for_selector.side_effect = Exception("Timeout 10000ms exceeded")
+    records = await scraper.scrape(sport="football")
+    assert records == []
+
+
+async def test_scrape_drops_rows_of_wrong_sport():
+    # Fragment routing is not guaranteed to honor non-default sports (gotchas §1; see §13):
+    # rows whose match_url belongs to another sport must be dropped, not mislabeled.
+    scraper, _, _ = _make_scraper(MINIMAL_PAGE_HTML)
+    records = await scraper.scrape(sport="tennis")
+    assert records == []
+
+
+async def test_scrape_maps_ice_hockey_to_site_slug():
+    scraper, page, _ = _make_scraper("<html><body></body></html>")
+    page.wait_for_selector.side_effect = Exception("Timeout 10000ms exceeded")
+    await scraper.scrape(sport="ice-hockey")
+    assert "/predictions/#sport/hockey/" in page.goto.await_args.args[0]
+
+
+# --- run_top_predictions runner (Playwright lifecycle) ---
+
+
+@patch(f"{_RUNNER}.CookieDismisser")
+@patch(f"{_SESSION}.ProxyManager")
+@patch(f"{_RUNNER}.TopPredictionsScraper")
+@patch(f"{_SESSION}.PlaywrightManager")
+async def test_run_top_predictions_success(pm_cls, scraper_cls, proxy_cls, cookie_cls):
+    pm = MagicMock()
+    pm.initialize = AsyncMock()
+    pm.cleanup = AsyncMock()
+    pm_cls.return_value = pm
+
+    records = [{"sport": "football", "scraped_at": "2026-07-16T00:00:00+00:00"}]
+    scraper = MagicMock()
+    scraper.scrape = AsyncMock(return_value=records)
+    scraper_cls.return_value = scraper
+
+    proxy_instance = MagicMock()
+    proxy_cls.return_value = proxy_instance
+
+    result = await run_top_predictions(
+        sport="football",
+        headless=False,
+        proxy_url="http://proxy:1",
+        proxy_user="u",
+        proxy_pass="pw",
+        browser_user_agent="ua",
+        browser_locale_timezone="Europe/Paris",
+        browser_timezone_id="Europe/Paris",
+        base_url="https://mirror.example",
+    )
+
+    proxy_cls.assert_called_once_with(proxy_url="http://proxy:1", proxy_user="u", proxy_pass="pw")
+    pm.initialize.assert_awaited_once_with(
+        headless=False,
+        user_agent="ua",
+        locale="Europe/Paris",
+        timezone_id="Europe/Paris",
+        proxy_manager=proxy_instance,
+    )
+    scraper.scrape.assert_awaited_once_with("football", "https://mirror.example")
+    pm.cleanup.assert_awaited_once()
+    assert result == records
+
+
+@patch(f"{_RUNNER}.retry_with_backoff")
+@patch(f"{_RUNNER}.CookieDismisser")
+@patch(f"{_SESSION}.ProxyManager")
+@patch(f"{_RUNNER}.TopPredictionsScraper")
+@patch(f"{_SESSION}.PlaywrightManager")
+async def test_run_top_predictions_retry_exhausted(pm_cls, scraper_cls, proxy_cls, cookie_cls, retry_mock, caplog):
+    pm = MagicMock()
+    pm.initialize = AsyncMock()
+    pm.cleanup = AsyncMock()
+    pm_cls.return_value = pm
+    scraper_cls.return_value = MagicMock()
+
+    retry_mock.return_value = RetryResult(success=False, result=None, attempts=3, last_error="boom", error_type=None)
+
+    with caplog.at_level(logging.ERROR):
+        result = await run_top_predictions(sport="football")
+
+    assert result == []
+    pm.cleanup.assert_awaited_once()
+    assert any("Top predictions scrape failed" in r.message for r in caplog.records)
+
+
+async def test_a_refused_predictions_page_raises_rate_limit_error():
+    scraper, page, _ = _make_scraper(MINIMAL_PAGE_HTML)
+    page.goto.return_value = MagicMock(status=429)
+
+    with pytest.raises(RateLimitError, match="rate limited by OddsPortal: HTTP 429 on page"):
+        await scraper.scrape(sport="football")
+
+    page.wait_for_selector.assert_not_awaited()
+
+
+@patch("oddsharvester.core.retry.asyncio.sleep", new_callable=AsyncMock)
+@patch(f"{_SESSION}.PlaywrightManager")
+async def test_a_rate_limit_that_outlasts_the_retries_is_logged_as_one(pm_cls, sleep, caplog):
+    scraper, page, _ = _make_scraper(MINIMAL_PAGE_HTML)
+
+    def refuse(url, **kwargs):
+        page.url = url
+        return MagicMock(status=429)
+
+    page.goto.side_effect = refuse
+    pm = scraper.playwright_manager
+    pm.initialize = AsyncMock()
+    pm.cleanup = AsyncMock()
+    pm_cls.return_value = pm
+
+    with caplog.at_level(logging.ERROR):
+        result = await run_top_predictions(sport="football")
+
+    assert result == []
+    # Each retry reloads: a goto that only changed the fragment would keep the refused page.
+    assert [c.args[0] for c in page.goto.await_args_list].count("about:blank") == 2
+    assert sleep.await_count == 2
+    assert "Top predictions scrape failed after 3 attempts: rate limited by OddsPortal: HTTP 429" in caplog.text
+    pm.cleanup.assert_awaited_once()

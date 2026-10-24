@@ -1,0 +1,52 @@
+{
+  "name": "alexbet-sharp-bot",
+  "version": "2.0.0",
+  "description": "AlexBET Sharp Betting Telegram Bot with Claude AI Token Optimization",
+  "main": "telegram-bot.js",
+  "files": [
+    "telegram-bot.js",
+    "claude-optimizer.js",
+    "package.json",
+    ".env.example"
+  ],
+  "scripts": {
+    "start": "node telegram-bot.js",
+    "dev": "nodemon telegram-bot.js",
+    "test-optimizer": "node test-optimizer.js"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.16.1",
+    "@supabase/supabase-js": "^2.38.0",
+    "node-cron": "^4.2.1",
+    "node-fetch": "^2.6.7",
+    "node-telegram-bot-api": "^0.67.0",
+    "postgres": "^3.4.9",
+    "winston": "^3.19.0"
+  },
+  "optionalDependencies": {
+    "dotenv": "^16.0.3"
+  },
+  "overrides": {
+    "form-data": ">=2.5.4",
+    "qs": ">=6.14.1",
+    "tough-cookie": ">=4.1.3",
+    "uuid": "^8.3.2"
+  },
+  "engines": {
+    "node": "18.x"
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/oddsifylabs/alexbet-sharp-bot"
+  },
+  "keywords": [
+    "telegram",
+    "bot",
+    "sports",
+    "betting",
+    "claude",
+    "ai",
+    "edge-detection"
+  ]
+}

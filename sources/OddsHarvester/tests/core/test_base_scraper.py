@@ -1,0 +1,3101 @@
+from contextlib import nullcontext
+from datetime import UTC, date, datetime
+import inspect
+import logging
+from unittest.mock import AsyncMock, MagicMock, patch
+from zoneinfo import ZoneInfo
+
+from playwright.async_api import Page, TimeoutError
+import pytest
+from tests.clock import SUMMER_NOW, frozen_clock, page_clock
+from tests.dom_builders import date_header, listing_row, live_block, live_section, match_header, page, trap_row
+
+from oddsharvester.core.base_scraper import BaseScraper
+from oddsharvester.core.browser.waits import SIGNAL_POLL_MS
+from oddsharvester.core.browser.warm_up import _ODDS_FORMAT_SHOWN_JS
+from oddsharvester.core.odds_portal_market_extractor import OddsPortalMarketExtractor
+from oddsharvester.core.odds_portal_scraper import OddsPortalScraper
+from oddsharvester.core.odds_portal_selectors import OddsPortalSelectors
+from oddsharvester.core.playwright_manager import PlaywrightManager
+from oddsharvester.utils.bookies_filter_enum import BookiesFilter
+from oddsharvester.utils.constants import (
+    DYNAMIC_CONTENT_WAIT_MS,
+    GOTO_TIMEOUT_LONG_MS,
+    LOGIN_MODAL_CLOSE_WAIT_MS,
+    NAVIGATION_TIMEOUT_MS,
+    ODDS_FORMAT_WAIT_MS,
+    ODDSPORTAL_BASE_URL,
+)
+from oddsharvester.utils.odds_format_enum import OddsFormat
+
+
+@pytest.fixture
+def setup_base_scraper_mocks():
+    """Setup common mocks for BaseScraper tests."""
+    # Create mocks for dependencies
+    playwright_manager_mock = MagicMock(spec=PlaywrightManager)
+    market_extractor_mock = MagicMock(spec=OddsPortalMarketExtractor)
+
+    # Setup page mock
+    page_mock = AsyncMock(spec=Page)
+    page_mock.goto = AsyncMock()
+    page_mock.wait_for_selector = AsyncMock()
+    page_mock.query_selector = AsyncMock()
+    page_mock.query_selector_all = AsyncMock()
+    page_mock.content = AsyncMock(return_value="<html><body>Test HTML</body></html>")
+    page_mock.wait_for_timeout = AsyncMock()
+
+    # Configure the context mock
+    context_mock = AsyncMock()
+    context_mock.new_page = AsyncMock(return_value=page_mock)
+
+    # Configure playwright manager mock
+    playwright_manager_mock.context = context_mock
+    playwright_manager_mock.new_rotated_page = AsyncMock(return_value=(page_mock, "direct"))
+    playwright_manager_mock.new_page_on_key = AsyncMock(return_value=page_mock)
+    playwright_manager_mock.non_default_context_keys = MagicMock(return_value=[])
+    playwright_manager_mock.report_page_result = MagicMock()
+    playwright_manager_mock.blacklist_proxy = MagicMock()
+
+    selection_manager_mock = AsyncMock()
+
+    # Create scraper instance with mocks
+    scraper = BaseScraper(
+        playwright_manager=playwright_manager_mock,
+        market_extractor=market_extractor_mock,
+        scroller=AsyncMock(),
+        cookie_dismisser=AsyncMock(),
+        selection_manager=selection_manager_mock,
+    )
+
+    return {
+        "scraper": scraper,
+        "playwright_manager_mock": playwright_manager_mock,
+        "market_extractor_mock": market_extractor_mock,
+        "selection_manager_mock": selection_manager_mock,
+        "page_mock": page_mock,
+        "context_mock": context_mock,
+    }
+
+
+async def test_set_odds_format(setup_base_scraper_mocks):
+    """Test setting odds format on the page."""
+    mocks = setup_base_scraper_mocks
+    scraper = mocks["scraper"]
+    page_mock = mocks["page_mock"]
+
+    # Mock the dropdown button
+    dropdown_button_mock = AsyncMock()
+    dropdown_button_mock.inner_text = AsyncMock(return_value="Decimal Odds")
+    page_mock.query_selector.return_value = dropdown_button_mock
+
+    # Test when odds format is already set
+    await scraper.set_odds_format(page=page_mock, odds_format=OddsFormat.DECIMAL_ODDS)
+
+    page_mock.wait_for_selector.assert_called_once()
+    page_mock.query_selector.assert_called_once()
+    dropdown_button_mock.inner_text.assert_called_once()
+    dropdown_button_mock.click.assert_not_called()
+
+    # Reset mocks
+    page_mock.wait_for_selector.reset_mock()
+    page_mock.query_selector.reset_mock()
+    dropdown_button_mock.inner_text.reset_mock()
+
+    # Mock dropdown button with different format and options
+    dropdown_button_mock.inner_text = AsyncMock(return_value="American")
+
+    # Mock format options
+    format_option1 = AsyncMock()
+    format_option1.inner_text = AsyncMock(return_value="Decimal Odds")
+    format_option2 = AsyncMock()
+    format_option2.inner_text = AsyncMock(return_value="Fractional Odds")
+
+    page_mock.query_selector_all.return_value = [format_option1, format_option2]
+
+    # Test selecting a different format
+    await scraper.set_odds_format(page=page_mock, odds_format=OddsFormat.DECIMAL_ODDS)
+
+    dropdown_button_mock.click.assert_called_once()
+    page_mock.query_selector_all.assert_called_once()
+    format_option1.inner_text.assert_called_once()
+    format_option1.click.assert_called_once()
+
+
+async def test_set_odds_format_forwards_the_format_asked_for(setup_base_scraper_mocks):
+    """The scraper's set_odds_format passes its odds_format on: the Fractional option is the one clicked."""
+    mocks = setup_base_scraper_mocks
+    page_mock = mocks["page_mock"]
+    _odds_dropdown(page_mock, "Decimal Odds", ["Decimal Odds", "Fractional Odds"])
+
+    await mocks["scraper"].set_odds_format(page=page_mock, odds_format=OddsFormat.FRACTIONAL_ODDS)
+
+    assert [option.click.await_count for option in page_mock.query_selector_all.return_value] == [0, 1]
+
+
+async def test_set_odds_format_uses_text_based_button_selector(setup_base_scraper_mocks):
+    """Regression for issue #68.
+
+    OddsPortal's React build dropped the `div.group > button.gap-2` class combo
+    (it became `button.flex gap-3`), silently breaking `set_odds_format`. The
+    selector must be text-based so it survives Tailwind class refactors. This
+    test pins the exact selector string passed to `wait_for_selector`.
+    """
+    mocks = setup_base_scraper_mocks
+    scraper = mocks["scraper"]
+    page_mock = mocks["page_mock"]
+
+    dropdown_button_mock = AsyncMock()
+    dropdown_button_mock.inner_text = AsyncMock(return_value="Decimal Odds")
+    page_mock.query_selector.return_value = dropdown_button_mock
+
+    await scraper.set_odds_format(page=page_mock, odds_format=OddsFormat.DECIMAL_ODDS)
+
+    selector_arg = page_mock.wait_for_selector.call_args[0][0]
+    assert selector_arg == "button:has-text('Odds')"
+    assert "gap-2" not in selector_arg
+
+
+async def test_set_odds_format_timeout(setup_base_scraper_mocks):
+    """Test handling timeout when setting odds format."""
+    mocks = setup_base_scraper_mocks
+    scraper = mocks["scraper"]
+    page_mock = mocks["page_mock"]
+
+    # Mock a timeout error
+    page_mock.wait_for_selector.side_effect = TimeoutError("Timeout")
+
+    # Test handling the timeout
+    await scraper.set_odds_format(page=page_mock)
+
+    page_mock.wait_for_selector.assert_called_once()
+    page_mock.query_selector.assert_not_called()
+
+
+_FORMAT_OPTIONS = "div.group > div.dropdown-content > ul > li > a"
+
+
+def _format_page(page_mock, shown: str):
+    """The page shows `shown` on the odds format button and offers a Decimal Odds option."""
+    button = AsyncMock()
+    button.inner_text = AsyncMock(return_value=shown)
+    page_mock.query_selector.return_value = button
+    decimal = AsyncMock()
+    decimal.inner_text = AsyncMock(return_value="Decimal Odds")
+    page_mock.query_selector_all.return_value = [decimal]
+    return decimal
+
+
+async def test_set_odds_format_waits_for_its_options_then_for_the_chosen_label(setup_base_scraper_mocks):
+    """R3 and R4: each step waits for what it changes on the page, at most ODDS_FORMAT_WAIT_MS."""
+    mocks = setup_base_scraper_mocks
+    page_mock = mocks["page_mock"]
+    decimal = _format_page(page_mock, "Fractional Odds")
+
+    await mocks["scraper"].set_odds_format(page=page_mock, odds_format=OddsFormat.DECIMAL_ODDS)
+
+    page_mock.wait_for_selector.assert_awaited_with(_FORMAT_OPTIONS, state="visible", timeout=ODDS_FORMAT_WAIT_MS)
+    decimal.click.assert_awaited_once()
+    page_mock.wait_for_function.assert_awaited_once_with(
+        _ODDS_FORMAT_SHOWN_JS, arg="Decimal Odds", timeout=ODDS_FORMAT_WAIT_MS, polling=SIGNAL_POLL_MS
+    )
+    page_mock.wait_for_timeout.assert_not_awaited()
+
+
+async def test_set_odds_format_reads_the_options_shown_when_they_never_appear(setup_base_scraper_mocks, caplog):
+    mocks = setup_base_scraper_mocks
+    page_mock = mocks["page_mock"]
+    decimal = _format_page(page_mock, "Fractional Odds")
+    page_mock.wait_for_selector = AsyncMock(side_effect=[None, TimeoutError("Timeout 10000ms exceeded.")])
+
+    with caplog.at_level("WARNING"):
+        await mocks["scraper"].set_odds_format(page=page_mock, odds_format=OddsFormat.DECIMAL_ODDS)
+
+    assert "No odds format options within 10000 ms; carrying on with the page as it is." in caplog.text
+    decimal.click.assert_awaited_once()
+
+
+async def test_set_odds_format_carries_on_when_the_label_never_changes(setup_base_scraper_mocks, caplog):
+    mocks = setup_base_scraper_mocks
+    page_mock = mocks["page_mock"]
+    _format_page(page_mock, "Fractional Odds")
+    page_mock.wait_for_function = AsyncMock(side_effect=TimeoutError("Timeout 10000ms exceeded."))
+
+    with caplog.at_level("INFO"):
+        await mocks["scraper"].set_odds_format(page=page_mock, odds_format=OddsFormat.DECIMAL_ODDS)
+
+    assert "No 'Decimal Odds' on the odds format button within 10000 ms" in caplog.text
+    assert "Odds format changed to 'Decimal Odds'." in caplog.text
+
+
+async def _row_links(scraper, **kwargs) -> list[str]:
+    """The links of extract_match_rows, for the filters extract_match_links does not take."""
+    return [row["match_link"] for row in await scraper.extract_match_rows(**kwargs)]
+
+
+async def test_extract_match_links(setup_base_scraper_mocks):
+    """Rows are the match <a> elements; an <a> that is no h2h link is not a row."""
+    mocks = setup_base_scraper_mocks
+    scraper = mocks["scraper"]
+    page_mock = mocks["page_mock"]
+    page_mock.content = AsyncMock(
+        return_value=page(
+            listing_row("/football/h2h/h-beer-sheva-EXAD1YZP/sabah-baku-fNGcxbyr/#0KccwcGq")
+            + '<a href="/">short - filtered</a>'
+            + listing_row("/football/h2h/celtic-QFKRRD8M/lask-linz-MipWYeKQ/#OOklm0j3")
+        )
+    )
+
+    result = await scraper.extract_match_links(page=page_mock)
+
+    page_mock.content.assert_called_once()
+    assert result == [
+        f"{ODDSPORTAL_BASE_URL}/football/h2h/h-beer-sheva-EXAD1YZP/sabah-baku-fNGcxbyr/#0KccwcGq",
+        f"{ODDSPORTAL_BASE_URL}/football/h2h/celtic-QFKRRD8M/lask-linz-MipWYeKQ/#OOklm0j3",
+    ]
+
+
+@patch("oddsharvester.core.listing.BeautifulSoup")
+async def test_extract_match_links_reraises_a_parsing_error(bs4_mock, setup_base_scraper_mocks):
+    """A listing that cannot be read is a failed page for the caller, never an empty one."""
+    mocks = setup_base_scraper_mocks
+    bs4_mock.side_effect = ValueError("Parsing error")
+
+    with pytest.raises(ValueError, match="Parsing error"):
+        await mocks["scraper"].extract_match_links(page=mocks["page_mock"])
+
+
+def test_extract_match_links_takes_only_the_page_and_the_sport():
+    """The historic walk calls it with these two keywords; resolve_events_b.py replaces it with that call in mind."""
+    assert list(inspect.signature(BaseScraper.extract_match_links).parameters) == ["self", "page", "sport"]
+
+
+async def test_extract_match_rows_counts_the_short_links_it_drops(setup_base_scraper_mocks, caplog):
+    """An h2h href of 3 segments or fewer is no match: it is dropped and counted in the log line."""
+    mocks = setup_base_scraper_mocks
+    mocks["page_mock"].content = AsyncMock(
+        return_value=page(listing_row("/football/h2h/arsenal-hA1Zm19f/") + listing_row(_FOOTBALL_ROW))
+    )
+
+    with caplog.at_level(logging.INFO):
+        rows = await mocks["scraper"].extract_match_rows(page=mocks["page_mock"], sport="football")
+
+    assert [row["match_link"] for row in rows] == [f"{ODDSPORTAL_BASE_URL}{_FOOTBALL_ROW}"]
+    assert (
+        "Extracted 1 unique match links (0 offscreen rows skipped, 1 short links dropped, "
+        "0 rows of another sport dropped)." in caplog.messages
+    )
+
+
+# -- sport guard ---------------------------------------------------------------
+
+_HOCKEY_ROW = "/hockey/h2h/carolina-hurricanes-Sx0gl0tm/florida-panthers-fc1eq8Pp/#087ku8PE"
+_FOOTBALL_ROW = "/football/h2h/arsenal-hA1Zm19f/leeds-tUxUbLR2/#xtmHKGT0"
+_AMERICAN_FOOTBALL_ROW = "/american-football/h2h/chicago-bears-2clovUM8/philadelphia-eagles-dGgVhRLK/#YaYpGyaC"
+
+
+async def test_extract_match_rows_keeps_only_the_requested_sport(setup_base_scraper_mocks, caplog):
+    """A listing mixing sports keeps the rows under the sport's site path and counts the others."""
+    mocks = setup_base_scraper_mocks
+    mocks["page_mock"].content = AsyncMock(
+        return_value=page(listing_row(_HOCKEY_ROW) + listing_row(_FOOTBALL_ROW) + listing_row(_HOCKEY_ROW[:-1] + "Z"))
+    )
+
+    with caplog.at_level(logging.INFO):
+        rows = await mocks["scraper"].extract_match_rows(page=mocks["page_mock"], sport="ice-hockey")
+
+    assert [row["match_link"] for row in rows] == [
+        f"{ODDSPORTAL_BASE_URL}{_HOCKEY_ROW}",
+        f"{ODDSPORTAL_BASE_URL}{_HOCKEY_ROW[:-1]}Z",
+    ]
+    assert "1 rows of another sport dropped" in caplog.text
+    assert "lists no" not in caplog.text
+
+
+async def test_extract_match_rows_warns_when_every_row_is_another_sport(setup_base_scraper_mocks, caplog):
+    """The ice-hockey date listing bug: the site served its football page, every row football."""
+    mocks = setup_base_scraper_mocks
+    mocks["page_mock"].content = AsyncMock(
+        return_value=page(listing_row(_FOOTBALL_ROW) + listing_row(_FOOTBALL_ROW[:-1] + "Z"))
+    )
+
+    with caplog.at_level(logging.WARNING):
+        rows = await mocks["scraper"].extract_match_rows(page=mocks["page_mock"], sport="ice-hockey")
+
+    assert rows == []
+    assert "None of the 2 rows of this listing links under /hockey/: it lists no 'ice-hockey' match." in caplog.text
+
+
+async def test_extract_match_rows_tells_football_from_american_football(setup_base_scraper_mocks):
+    """/american-football/ rows are not football rows, nor the reverse: the prefix carries both slashes."""
+    mocks = setup_base_scraper_mocks
+    mocks["page_mock"].content = AsyncMock(
+        return_value=page(listing_row(_AMERICAN_FOOTBALL_ROW) + listing_row(_FOOTBALL_ROW))
+    )
+
+    football = await mocks["scraper"].extract_match_rows(page=mocks["page_mock"], sport="football")
+    american = await mocks["scraper"].extract_match_rows(page=mocks["page_mock"], sport="american-football")
+
+    assert [row["match_link"] for row in football] == [f"{ODDSPORTAL_BASE_URL}{_FOOTBALL_ROW}"]
+    assert [row["match_link"] for row in american] == [f"{ODDSPORTAL_BASE_URL}{_AMERICAN_FOOTBALL_ROW}"]
+
+
+async def test_extract_match_rows_without_a_sport_keeps_every_row(setup_base_scraper_mocks):
+    """No sport, no guard: scripts/validate_league.py reads listings this way."""
+    mocks = setup_base_scraper_mocks
+    mocks["page_mock"].content = AsyncMock(return_value=page(listing_row(_HOCKEY_ROW) + listing_row(_FOOTBALL_ROW)))
+
+    rows = await mocks["scraper"].extract_match_rows(page=mocks["page_mock"])
+
+    assert len(rows) == 2
+
+
+# -- skip_started filter (GitHub issue #58) ---------------------------------
+
+# Minimal listing HTML mirroring the live DOM:
+# - Upcoming row: the first column shows "HH:MM"
+# - Live row: it shows a period marker instead ("1S", "4S", "HT", "1H")
+# - Finished row: it shows the terminal status ("Finished")
+# - Edge: row with an empty status column (DOM drift fail-safe -> keep)
+_LISTING_HTML = page(
+    listing_row("/football/h2h/upcoming-match/aaaa1111/#u1", status="21:00")
+    + listing_row("/football/h2h/finished-match/bbbb2222/#f1", status="Finished FIN")
+    + listing_row("/football/h2h/no-status-box/cccc3333/#n1", status="")
+    + listing_row("/volleyball/h2h/live-match/dddd4444/#l1", status="1S")
+)
+
+
+async def test_extract_match_links_skips_started_rows_when_requested(setup_base_scraper_mocks):
+    """With skip_started=True, finished AND live rows are dropped; upcoming
+    and the no-status-box fail-safe row are kept."""
+    mocks = setup_base_scraper_mocks
+    scraper = mocks["scraper"]
+    page_mock = mocks["page_mock"]
+    page_mock.content = AsyncMock(return_value=_LISTING_HTML)
+
+    result = await _row_links(scraper, page=page_mock, skip_started=True)
+
+    assert any("upcoming-match/aaaa1111" in url for url in result)
+    assert any("no-status-box/cccc3333" in url for url in result)
+    assert not any("finished-match/bbbb2222" in url for url in result)
+    assert not any("live-match/dddd4444" in url for url in result)
+    assert len(result) == 2
+
+
+async def test_extract_match_links_default_keeps_started_rows(setup_base_scraper_mocks):
+    """Default (skip_started=False) preserves prior behaviour: all rows are
+    kept regardless of status."""
+    mocks = setup_base_scraper_mocks
+    scraper = mocks["scraper"]
+    page_mock = mocks["page_mock"]
+    page_mock.content = AsyncMock(return_value=_LISTING_HTML)
+
+    result = await scraper.extract_match_links(page=page_mock)
+
+    assert len(result) == 4
+    assert any("finished-match/bbbb2222" in url for url in result)
+    assert any("live-match/dddd4444" in url for url in result)
+
+
+# -- extract_match_rows with date_filter ----------------------------------
+
+
+def _make_league_page_html() -> str:
+    """Build a minimal OddsPortal-like HTML page with 3 date groups."""
+    return page(
+        date_header("Today, 14 Apr")
+        + listing_row("/football/h2h/match-one/aaaaaaa1/#m1")
+        + listing_row("/football/h2h/match-two/aaaaaaa2/#m2")
+        + date_header("18 Apr 2026")
+        + listing_row("/football/h2h/match-three/aaaaaaa3/#m3")
+        + listing_row("/football/h2h/match-four/aaaaaaa4/#m4")
+        + date_header("19 Apr 2026")
+        + listing_row("/football/h2h/match-five/aaaaaaa5/#m5")
+    )
+
+
+async def test_extract_match_links_date_filter_matches_one_group(setup_base_scraper_mocks):
+    """Only rows under the matching date-header should be kept."""
+    mocks = setup_base_scraper_mocks
+    scraper = mocks["scraper"]
+    page_mock = mocks["page_mock"]
+    page_mock.content = AsyncMock(return_value=_make_league_page_html())
+
+    result = await _row_links(scraper, page=page_mock, date_filter=date(2026, 4, 18))
+
+    # Match 3 and Match 4 both inherit the "18 Apr 2026" header (Match 4 has no
+    # header of its own so it inherits from the previous one).
+    assert result == [
+        f"{ODDSPORTAL_BASE_URL}/football/h2h/match-three/aaaaaaa3/#m3",
+        f"{ODDSPORTAL_BASE_URL}/football/h2h/match-four/aaaaaaa4/#m4",
+    ]
+
+
+async def test_extract_match_links_date_filter_no_match_returns_empty(setup_base_scraper_mocks):
+    mocks = setup_base_scraper_mocks
+    scraper = mocks["scraper"]
+    page_mock = mocks["page_mock"]
+    page_mock.content = AsyncMock(return_value=_make_league_page_html())
+
+    result = await _row_links(scraper, page=page_mock, date_filter=date(2030, 1, 1))
+    assert result == []
+
+
+async def test_extract_match_links_date_filter_none_preserves_all_links(setup_base_scraper_mocks):
+    """Regression baseline: without date_filter, all links are returned."""
+    mocks = setup_base_scraper_mocks
+    scraper = mocks["scraper"]
+    page_mock = mocks["page_mock"]
+    page_mock.content = AsyncMock(return_value=_make_league_page_html())
+
+    result = await scraper.extract_match_links(page=page_mock)
+    assert len(result) == 5
+    assert all("/match-" in link for link in result)
+
+
+async def test_extract_match_links_unparseable_header_fails_safe(setup_base_scraper_mocks):
+    """Rows under an unparseable header should be kept (fail-safe)."""
+    mocks = setup_base_scraper_mocks
+    scraper = mocks["scraper"]
+    page_mock = mocks["page_mock"]
+    page_mock.content = AsyncMock(
+        return_value=page(
+            date_header("32 Xyz 2026")
+            + listing_row("/football/h2h/match-x/xxxxxxx1/#mx")
+            + date_header("18 Apr 2026")
+            + listing_row("/football/h2h/match-y/yyyyyyy1/#my")
+        )
+    )
+
+    result = await _row_links(scraper, page=page_mock, date_filter=date(2026, 4, 18))
+
+    # Match X survives because its header is unparseable (fail-safe).
+    # Match Y matches the filter explicitly.
+    assert f"{ODDSPORTAL_BASE_URL}/football/h2h/match-x/xxxxxxx1/#mx" in result
+    assert f"{ODDSPORTAL_BASE_URL}/football/h2h/match-y/yyyyyyy1/#my" in result
+
+
+async def test_extract_match_links_date_filter_no_match_logs_timezone_diagnostic(setup_base_scraper_mocks, caplog):
+    """A 0-result date filter emits a diagnostic listing the headers seen and
+    the --timezone hint (GitHub issue #58 follow-up)."""
+    mocks = setup_base_scraper_mocks
+    scraper = mocks["scraper"]
+    page_mock = mocks["page_mock"]
+    page_mock.content = AsyncMock(return_value=_make_league_page_html())
+
+    with caplog.at_level("WARNING"):
+        result = await _row_links(scraper, page=page_mock, date_filter=date(2030, 1, 1))
+
+    assert result == []
+    diagnostic = [r.message for r in caplog.records if "matched 0 matches" in r.message]
+    assert diagnostic, "Expected a 0-result date-filter diagnostic warning"
+    assert "2026-04-18" in diagnostic[0]
+    assert "2026-04-19" in diagnostic[0]
+    assert "--timezone" in diagnostic[0]
+
+
+async def test_extract_match_links_date_filter_match_emits_no_diagnostic(setup_base_scraper_mocks, caplog):
+    """When the date filter yields matches, no 0-result diagnostic is logged."""
+    mocks = setup_base_scraper_mocks
+    scraper = mocks["scraper"]
+    page_mock = mocks["page_mock"]
+    page_mock.content = AsyncMock(return_value=_make_league_page_html())
+
+    with caplog.at_level("WARNING"):
+        result = await _row_links(scraper, page=page_mock, date_filter=date(2026, 4, 18))
+
+    assert result
+    assert not [r for r in caplog.records if "matched 0 matches" in r.message]
+
+
+async def test_extract_match_links_deduplicates_preserving_order(setup_base_scraper_mocks):
+    """Duplicate links across rows should be deduplicated while preserving order."""
+    mocks = setup_base_scraper_mocks
+    scraper = mocks["scraper"]
+    page_mock = mocks["page_mock"]
+    page_mock.content = AsyncMock(
+        return_value=page(
+            listing_row("/football/h2h/match-one/aaaaaaa1/#m1")
+            + listing_row("/football/h2h/match-one/aaaaaaa1/#m1")
+            + listing_row("/football/h2h/match-two/aaaaaaa2/#m2")
+        )
+    )
+
+    result = await scraper.extract_match_links(page=page_mock)
+    assert result == [
+        f"{ODDSPORTAL_BASE_URL}/football/h2h/match-one/aaaaaaa1/#m1",
+        f"{ODDSPORTAL_BASE_URL}/football/h2h/match-two/aaaaaaa2/#m2",
+    ]
+
+
+async def test_extract_match_links_uses_playwright_manager_timezone(setup_base_scraper_mocks):
+    """Reference timezone should be read from PlaywrightManager when filtering."""
+    mocks = setup_base_scraper_mocks
+    scraper = mocks["scraper"]
+    page_mock = mocks["page_mock"]
+    mocks["playwright_manager_mock"].timezone_id = "Asia/Tokyo"
+
+    # "Today" in Tokyo becomes the reference date
+    tokyo_today = datetime.now(ZoneInfo("Asia/Tokyo")).date()
+    page_mock.content = AsyncMock(
+        return_value=page(date_header("Today, 14 Apr") + listing_row("/football/h2h/tokyo-match/tttttttt/#tk"))
+    )
+
+    result = await _row_links(scraper, page=page_mock, date_filter=tokyo_today)
+    assert len(result) == 1
+
+
+# -- extract_match_rows with kickoff_within_hours (GitHub issue #77) ---------
+
+
+APRIL_NOON = datetime(2026, 4, 18, 12, 0, tzinfo=UTC)
+
+
+def _make_kickoff_window_html() -> str:
+    """Listing with one date group ('18 Apr 2026') and three kickoff times.
+
+    Against the frozen now (12:00 on 18 Apr 2026): Soon is 1h away, Edge 1.5h
+    away, Late 4h away.
+    """
+    return page(
+        date_header("18 Apr 2026")
+        + listing_row("/football/h2h/soon-match/aaaaaaa1/#s1", status="13:00")
+        + listing_row("/football/h2h/edge-match/aaaaaaa2/#e1", status="13:30")
+        + listing_row("/football/h2h/late-match/aaaaaaa3/#l1", status="16:00")
+    )
+
+
+async def test_extract_match_links_kickoff_window_keeps_only_matches_within_window(setup_base_scraper_mocks):
+    """Only matches kicking off within the window are kept; later ones dropped."""
+    mocks = setup_base_scraper_mocks
+    scraper = mocks["scraper"]
+    page_mock = mocks["page_mock"]
+    page_mock.content = AsyncMock(return_value=_make_kickoff_window_html())
+
+    with patch("oddsharvester.core.base_scraper.datetime", frozen_clock(APRIL_NOON)):
+        result = await _row_links(scraper, page=page_mock, kickoff_within_hours=2)
+
+    assert any("soon-match/aaaaaaa1" in url for url in result)
+    assert any("edge-match/aaaaaaa2" in url for url in result)
+    assert not any("late-match/aaaaaaa3" in url for url in result)
+    assert len(result) == 2
+
+
+async def test_extract_match_links_kickoff_window_none_preserves_all(setup_base_scraper_mocks):
+    """Regression: without the window filter, all rows are returned."""
+    mocks = setup_base_scraper_mocks
+    scraper = mocks["scraper"]
+    page_mock = mocks["page_mock"]
+    page_mock.content = AsyncMock(return_value=_make_kickoff_window_html())
+
+    result = await scraper.extract_match_links(page=page_mock)
+    assert len(result) == 3
+
+
+async def test_extract_match_links_kickoff_window_unparseable_time_fails_safe(setup_base_scraper_mocks):
+    """A row with no parseable HH:MM (e.g. a live marker) has no computable
+    kickoff, so it is kept rather than silently dropped."""
+    mocks = setup_base_scraper_mocks
+    scraper = mocks["scraper"]
+    page_mock = mocks["page_mock"]
+    page_mock.content = AsyncMock(
+        return_value=page(
+            date_header("18 Apr 2026")
+            + listing_row("/football/h2h/live-match/bbbbbbb1/#lv", status="1H")
+            + listing_row("/football/h2h/late-match/bbbbbbb2/#lt", status="16:00")
+        )
+    )
+
+    with patch("oddsharvester.core.base_scraper.datetime", frozen_clock(APRIL_NOON)):
+        result = await _row_links(scraper, page=page_mock, kickoff_within_hours=1)
+
+    assert any("live-match/bbbbbbb1" in url for url in result)
+    assert not any("late-match/bbbbbbb2" in url for url in result)
+
+
+async def test_extract_match_links_kickoff_window_row_without_date_header_fails_safe(setup_base_scraper_mocks):
+    """Without a date-header, a row's kickoff date is unknown, so it is kept."""
+    mocks = setup_base_scraper_mocks
+    scraper = mocks["scraper"]
+    page_mock = mocks["page_mock"]
+    page_mock.content = AsyncMock(
+        return_value=page(listing_row("/football/h2h/orphan-match/ccccccc1/#or", status="16:00"))
+    )
+
+    result = await _row_links(scraper, page=page_mock, kickoff_within_hours=1)
+
+    assert any("orphan-match/ccccccc1" in url for url in result)
+
+
+async def test_extract_match_links_kickoff_window_composes_with_skip_started(setup_base_scraper_mocks):
+    """Window filter and skip_started compose: started rows dropped by
+    skip_started, far-future rows dropped by the window, the near upcoming row
+    survives."""
+    mocks = setup_base_scraper_mocks
+    scraper = mocks["scraper"]
+    page_mock = mocks["page_mock"]
+    page_mock.content = AsyncMock(
+        return_value=page(
+            date_header("18 Apr 2026")
+            + listing_row("/football/h2h/near-upcoming/ddddddd1/#n1", status="13:00")
+            + listing_row("/football/h2h/finished/ddddddd2/#f1", status="Finished FIN")
+            + listing_row("/football/h2h/far-future/ddddddd3/#r1", status="16:00")
+        )
+    )
+
+    with patch("oddsharvester.core.base_scraper.datetime", frozen_clock(APRIL_NOON)):
+        result = await _row_links(scraper, page=page_mock, kickoff_within_hours=2, skip_started=True)
+
+    assert any("near-upcoming/ddddddd1" in url for url in result)
+    assert not any("finished/ddddddd2" in url for url in result)
+    assert not any("far-future/ddddddd3" in url for url in result)
+    assert len(result) == 1
+
+
+# -- extract_match_rows kickoff column (GitHub issue #81) --------------------
+
+
+def _make_kickoff_column_html() -> str:
+    """One date group, a normal row and a started row (live period marker)."""
+    return page(
+        date_header("18 Apr 2026")
+        + listing_row("/football/h2h/normal-match/aaaaaaa1/#n1", status="20:30")
+        + listing_row("/football/h2h/started-match/aaaaaaa2/#s1", status="1H")
+    )
+
+
+async def test_extract_match_rows_converts_kickoff_from_browser_tz_to_utc(setup_base_scraper_mocks):
+    """Listing times render in the browser timezone (gotcha 10); output is UTC."""
+    mocks = setup_base_scraper_mocks
+    scraper = mocks["scraper"]
+    page_mock = mocks["page_mock"]
+    mocks["playwright_manager_mock"].timezone_id = "Europe/Paris"
+    page_mock.content = AsyncMock(return_value=_make_kickoff_column_html())
+
+    with page_clock(datetime(2026, 4, 18, 12, 0, tzinfo=UTC)):
+        rows = await scraper.extract_match_rows(page=page_mock, collect_kickoff=True)
+
+    normal = next(r for r in rows if "normal-match/aaaaaaa1" in r["match_link"])
+    assert normal["kickoff_utc"] == "2026-04-18 18:30:00 UTC"
+
+
+async def test_extract_match_rows_reads_a_winter_kickoff_at_the_summer_page_offset(setup_base_scraper_mocks):
+    """Scraped in BST, a January row shows 15:00 for a 14:00 UTC kickoff (gotchas §10)."""
+    mocks = setup_base_scraper_mocks
+    mocks["playwright_manager_mock"].timezone_id = "Europe/London"
+    mocks["page_mock"].content = AsyncMock(
+        return_value=page(
+            date_header("10 Jan 2027") + listing_row("/football/h2h/winter-match/aaaaaaa7/#w1", status="15:00")
+        )
+    )
+
+    with page_clock(SUMMER_NOW):
+        rows = await mocks["scraper"].extract_match_rows(page=mocks["page_mock"], collect_kickoff=True)
+
+    assert rows[0]["kickoff_utc"] == "2027-01-10 14:00:00 UTC"
+
+
+async def test_kickoff_window_reads_a_row_past_the_clock_change_at_the_page_offset(setup_base_scraper_mocks):
+    """Scraped at 00:30 BST on 25 Oct 2026, a 12:00 UTC kickoff that day shows 13:00: inside a 13-hour window."""
+    mocks = setup_base_scraper_mocks
+    mocks["playwright_manager_mock"].timezone_id = "Europe/London"
+    mocks["page_mock"].content = AsyncMock(
+        return_value=page(
+            date_header("25 Oct 2026")
+            + listing_row("/football/h2h/inside-window/aaaaaaa8/#i1", status="13:00")
+            + listing_row("/football/h2h/outside-window/aaaaaaa9/#o1", status="14:00")
+        )
+    )
+    clock = frozen_clock(datetime(2026, 10, 24, 23, 30, tzinfo=UTC))
+
+    with (
+        patch("oddsharvester.core.base_scraper.datetime", clock),
+        patch("oddsharvester.utils.page_time.datetime", clock),
+    ):
+        links = await _row_links(mocks["scraper"], page=mocks["page_mock"], kickoff_within_hours=13)
+
+    assert links == [f"{ODDSPORTAL_BASE_URL}/football/h2h/inside-window/aaaaaaa8/#i1"]
+
+
+async def test_extract_match_rows_without_collect_kickoff_leaves_every_kickoff_null(setup_base_scraper_mocks):
+    """The default keeps the historic pagination path at its current behaviour."""
+    mocks = setup_base_scraper_mocks
+    scraper = mocks["scraper"]
+    page_mock = mocks["page_mock"]
+    mocks["playwright_manager_mock"].timezone_id = "Europe/Paris"
+    page_mock.content = AsyncMock(return_value=_make_kickoff_column_html())
+
+    rows = await scraper.extract_match_rows(page=page_mock)
+
+    assert len(rows) == 2
+    assert all(row["kickoff_utc"] is None for row in rows)
+
+
+async def test_extract_match_rows_started_row_has_null_kickoff(setup_base_scraper_mocks):
+    """A started row (time-item is a period marker) yields no kickoff, and is
+    only reachable at all because skip_started defaults to False."""
+    mocks = setup_base_scraper_mocks
+    scraper = mocks["scraper"]
+    page_mock = mocks["page_mock"]
+    mocks["playwright_manager_mock"].timezone_id = "UTC"
+    page_mock.content = AsyncMock(return_value=_make_kickoff_column_html())
+
+    rows = await scraper.extract_match_rows(page=page_mock, collect_kickoff=True)
+
+    started = next(r for r in rows if "started-match/aaaaaaa2" in r["match_link"])
+    assert started["kickoff_utc"] is None
+
+
+async def test_extract_match_rows_unparseable_date_header_yields_null_kickoff(setup_base_scraper_mocks):
+    mocks = setup_base_scraper_mocks
+    scraper = mocks["scraper"]
+    page_mock = mocks["page_mock"]
+    mocks["playwright_manager_mock"].timezone_id = "UTC"
+    page_mock.content = AsyncMock(
+        return_value=page(
+            date_header("32 Xyz 2026") + listing_row("/football/h2h/orphan-match/aaaaaaa3/#or", status="20:30")
+        )
+    )
+
+    rows = await scraper.extract_match_rows(page=page_mock, collect_kickoff=True)
+
+    assert len(rows) == 1
+    assert rows[0]["kickoff_utc"] is None
+
+
+async def test_extract_match_rows_missing_time_item_yields_null_kickoff(setup_base_scraper_mocks):
+    mocks = setup_base_scraper_mocks
+    scraper = mocks["scraper"]
+    page_mock = mocks["page_mock"]
+    mocks["playwright_manager_mock"].timezone_id = "UTC"
+    page_mock.content = AsyncMock(
+        return_value=page(date_header("18 Apr 2026") + listing_row("/football/h2h/no-time/aaaaaaa4/#nt", status=""))
+    )
+
+    rows = await scraper.extract_match_rows(page=page_mock, collect_kickoff=True)
+
+    assert len(rows) == 1
+    assert rows[0]["kickoff_utc"] is None
+
+
+async def test_extract_match_rows_shares_one_kickoff_across_a_groups_rows(setup_base_scraper_mocks):
+    """Rows of the same group and kickoff time each carry that kickoff."""
+    mocks = setup_base_scraper_mocks
+    scraper = mocks["scraper"]
+    page_mock = mocks["page_mock"]
+    mocks["playwright_manager_mock"].timezone_id = "UTC"
+    page_mock.content = AsyncMock(
+        return_value=page(
+            date_header("18 Apr 2026")
+            + listing_row("/football/h2h/first-match/aaaaaaa5/#f1", status="20:30")
+            + listing_row("/football/h2h/second-match/aaaaaaa6/#s1", status="20:30")
+        )
+    )
+
+    rows = await scraper.extract_match_rows(page=page_mock, collect_kickoff=True)
+
+    assert len(rows) == 2
+    assert {row["kickoff_utc"] for row in rows} == {"2026-04-18 20:30:00 UTC"}
+
+
+async def test_extract_match_links_still_returns_plain_strings(setup_base_scraper_mocks):
+    """Contract guard: the historic pagination path reads bare URLs."""
+    mocks = setup_base_scraper_mocks
+    scraper = mocks["scraper"]
+    page_mock = mocks["page_mock"]
+    page_mock.content = AsyncMock(return_value=_make_kickoff_column_html())
+
+    result = await scraper.extract_match_links(page=page_mock)
+
+    assert len(result) == 2
+    assert all(isinstance(url, str) for url in result)
+
+
+# -- hidden row filtering (issue #61, gotchas §28) ---------
+
+
+async def test_extract_match_links_skips_the_anti_bot_trap_row(setup_base_scraper_mocks, caplog):
+    """The trap clones a real row with two invented team ids and no fragment, hidden off-screen (gotchas §28)."""
+    mocks = setup_base_scraper_mocks
+    scraper = mocks["scraper"]
+    page_mock = mocks["page_mock"]
+    page_mock.content = AsyncMock(
+        return_value=page(
+            listing_row("/football/h2h/arsenal-hA1Zm19f/leeds-tUxUbLR2/#xtmHKGT0")
+            + trap_row(listing_row("/football/h2h/crystal-palace-37e4f5e9/nottingham-5a49c1bd/"))
+            + listing_row("/football/h2h/aston-villa-W00wmLO0/brentford-xYe7DwID/#p6jPIfbD")
+        )
+    )
+
+    with caplog.at_level(logging.WARNING):
+        result = await scraper.extract_match_links(page=page_mock)
+
+    assert result == [
+        f"{ODDSPORTAL_BASE_URL}/football/h2h/arsenal-hA1Zm19f/leeds-tUxUbLR2/#xtmHKGT0",
+        f"{ODDSPORTAL_BASE_URL}/football/h2h/aston-villa-W00wmLO0/brentford-xYe7DwID/#p6jPIfbD",
+    ]
+    assert caplog.records == [], "a hidden trap row is skipped silently"
+
+
+LISTING_URL = "https://www.oddsportal.com/football/england/premier-league/"
+
+
+async def test_extract_match_rows_warns_when_every_row_of_the_page_is_hidden(setup_base_scraper_mocks, caplog):
+    """A hiding style on a wrapper would drop every row and read as an empty listing (gotchas §28)."""
+    mocks = setup_base_scraper_mocks
+    page_mock = mocks["page_mock"]
+    page_mock.url = LISTING_URL
+    page_mock.content = AsyncMock(
+        return_value=page(
+            '<div style="display: none">'
+            + listing_row("/football/h2h/arsenal-hA1Zm19f/leeds-tUxUbLR2/#xtmHKGT0")
+            + listing_row("/football/h2h/aston-villa-W00wmLO0/brentford-xYe7DwID/#p6jPIfbD")
+            + "</div>"
+        )
+    )
+
+    with caplog.at_level(logging.WARNING):
+        rows = await mocks["scraper"].extract_match_rows(page=page_mock)
+
+    assert rows == []
+    assert [record.getMessage() for record in caplog.records] == [
+        f"All 2 rows of this listing ({LISTING_URL}) are hidden: a hiding style on the page itself would read "
+        "as an empty listing (gotchas §28)."
+    ]
+
+
+async def test_extract_match_rows_warns_once_about_visible_links_without_an_event(setup_base_scraper_mocks, caplog):
+    """Real rows carry '#<event>'; a visible one without it is a trap clone the hiding check missed (gotchas §28)."""
+    mocks = setup_base_scraper_mocks
+    page_mock = mocks["page_mock"]
+    page_mock.url = LISTING_URL
+    page_mock.content = AsyncMock(
+        return_value=page(
+            listing_row("/football/h2h/arsenal-hA1Zm19f/leeds-tUxUbLR2/#xtmHKGT0")
+            + listing_row("/football/h2h/crystal-palace-37e4f5e9/nottingham-5a49c1bd/")
+            + listing_row("/football/h2h/everton-37e4f5e9/fulham-5a49c1bd/")
+        )
+    )
+
+    with caplog.at_level(logging.WARNING):
+        rows = await mocks["scraper"].extract_match_rows(page=page_mock)
+
+    assert len(rows) == 3, "the warning reports the rows, it does not drop them"
+    assert [record.getMessage() for record in caplog.records] == [
+        f"2 visible match links of this listing ({LISTING_URL}) carry no event id, first "
+        "/football/h2h/crystal-palace-37e4f5e9/nottingham-5a49c1bd/: real rows carry '#<event>', the anti-bot "
+        "trap clone does not (gotchas §28)."
+    ]
+
+
+async def test_extract_match_links_skips_offscreen_phantom_row(setup_base_scraper_mocks):
+    """Regression for issue #61: OddsPortal sometimes duplicates an event row
+    in the DOM — one visible, one CSS-hidden offscreen with a corrupted href
+    that 301-redirects to an unrelated match. Only the visible row should
+    be kept.
+
+    Captured from the live Super Lig listing (2026-05-11): both rows share
+    the same OddsPortal row id; the phantom carries the live IDs of an
+    unrelated 2017 Czech 2.Liga match.
+    """
+    mocks = setup_base_scraper_mocks
+    scraper = mocks["scraper"]
+    page_mock = mocks["page_mock"]
+    page_mock.content = AsyncMock(
+        return_value=page(
+            listing_row(
+                "/football/h2h/galatasaray-0j2eUlMC/kasimpasa-EXCPojim/#Aonqhgqt",
+                style="position: absolute; left: -9999px; height: 0px; overflow: hidden;",
+            )
+            + listing_row("/football/h2h/galatasaray-riaqqurF/kasimpasa-dOlaIG4l/#4CyOBFbK")
+        )
+    )
+
+    result = await scraper.extract_match_links(page=page_mock)
+
+    assert result == [
+        f"{ODDSPORTAL_BASE_URL}/football/h2h/galatasaray-riaqqurF/kasimpasa-dOlaIG4l/#4CyOBFbK",
+    ]
+
+
+def _listing_with_a_trap_carrying_a_date_header() -> str:
+    """The trap cloned the first row of the 19 Oct group, its date header included, into the 10 Oct group."""
+    return page(
+        date_header("10 Oct 2026")
+        + listing_row("/football/h2h/arsenal-hA1Zm19f/leeds-tUxUbLR2/#xtmHKGT0", status="13:30")
+        + trap_row(
+            date_header("19 Oct 2026") + listing_row("/football/h2h/everton-37e4f5e9/fulham-5a49c1bd/", status="16:00")
+        )
+        + listing_row("/football/h2h/aston-villa-W00wmLO0/brentford-xYe7DwID/#p6jPIfbD", status="16:00")
+        + date_header("19 Oct 2026")
+        + listing_row("/football/h2h/everton-AAAAAAAA/fulham-BBBBBBBB/#evfu1234", status="16:00")
+    )
+
+
+async def test_the_trap_clone_s_date_header_does_not_move_the_rows_after_it_out_of_the_date(setup_base_scraper_mocks):
+    mocks = setup_base_scraper_mocks
+    scraper = mocks["scraper"]
+    page_mock = mocks["page_mock"]
+    page_mock.content = AsyncMock(return_value=_listing_with_a_trap_carrying_a_date_header())
+
+    result = await _row_links(scraper, page=page_mock, date_filter=date(2026, 10, 10))
+
+    assert result == [
+        f"{ODDSPORTAL_BASE_URL}/football/h2h/arsenal-hA1Zm19f/leeds-tUxUbLR2/#xtmHKGT0",
+        f"{ODDSPORTAL_BASE_URL}/football/h2h/aston-villa-W00wmLO0/brentford-xYe7DwID/#p6jPIfbD",
+    ]
+
+
+async def test_the_trap_clone_s_date_header_does_not_redate_the_kickoffs_after_it(setup_base_scraper_mocks):
+    mocks = setup_base_scraper_mocks
+    scraper = mocks["scraper"]
+    page_mock = mocks["page_mock"]
+    mocks["playwright_manager_mock"].timezone_id = "UTC"
+    page_mock.content = AsyncMock(return_value=_listing_with_a_trap_carrying_a_date_header())
+
+    with page_clock(datetime(2026, 10, 5, 8, 0, tzinfo=UTC)):
+        rows = await scraper.extract_match_rows(page=page_mock, collect_kickoff=True)
+
+    assert [(r["match_link"].split("/h2h/")[1], r["kickoff_utc"]) for r in rows] == [
+        ("arsenal-hA1Zm19f/leeds-tUxUbLR2/#xtmHKGT0", "2026-10-10 13:30:00 UTC"),
+        ("aston-villa-W00wmLO0/brentford-xYe7DwID/#p6jPIfbD", "2026-10-10 16:00:00 UTC"),
+        ("everton-AAAAAAAA/fulham-BBBBBBBB/#evfu1234", "2026-10-19 16:00:00 UTC"),
+    ]
+
+
+async def test_extract_match_links_offscreen_skipped_before_date_filter(setup_base_scraper_mocks):
+    """An offscreen row must be skipped even if its inherited date-header
+    matches the filter — otherwise the phantom URL leaks into the results."""
+    mocks = setup_base_scraper_mocks
+    scraper = mocks["scraper"]
+    page_mock = mocks["page_mock"]
+    page_mock.content = AsyncMock(
+        return_value=page(
+            date_header("17 May 2026")
+            + listing_row("/football/h2h/real-aaa/match-bbb/#x1")
+            + listing_row("/football/h2h/phantom-ccc/match-ddd/#x2", style="position:absolute;left:-9999px;")
+        )
+    )
+
+    result = await _row_links(scraper, page=page_mock, date_filter=date(2026, 5, 17))
+
+    assert result == [f"{ODDSPORTAL_BASE_URL}/football/h2h/real-aaa/match-bbb/#x1"]
+
+
+async def test_extract_match_links_offscreen_row_keeps_header_inheritance(setup_base_scraper_mocks):
+    """Skipping a phantom row must not strip the header inheritance of the
+    visible rows that follow it."""
+    mocks = setup_base_scraper_mocks
+    scraper = mocks["scraper"]
+    page_mock = mocks["page_mock"]
+    page_mock.content = AsyncMock(
+        return_value=page(
+            date_header("17 May 2026")
+            + listing_row("/football/h2h/phantom-ccc/match-ddd/#x2", style="display:none;")
+            + listing_row("/football/h2h/real-aaa/match-bbb/#x1")
+        )
+    )
+
+    result = await _row_links(scraper, page=page_mock, date_filter=date(2026, 5, 17))
+
+    assert result == [f"{ODDSPORTAL_BASE_URL}/football/h2h/real-aaa/match-bbb/#x1"]
+
+
+async def test_extract_match_odds(setup_base_scraper_mocks):
+    """Test extracting odds for multiple match links concurrently."""
+    mocks = setup_base_scraper_mocks
+    scraper = mocks["scraper"]
+    pm = mocks["playwright_manager_mock"]
+
+    # Mock _scrape_match_data to return data directly
+    scraper._scrape_match_data = AsyncMock(side_effect=[{"match": "data1"}, {"match": "data2"}])
+
+    # Call the method under test
+    match_links = ["https://oddsportal.com/match1", "https://oddsportal.com/match2"]
+
+    async def mock_gather(*args):
+        results = []
+        for task in args:
+            if callable(task):
+                result = await task()
+            else:
+                result = await task
+            results.append(result)
+        return results
+
+    # Patch asyncio.gather temporarily
+    with patch("asyncio.gather", side_effect=mock_gather):
+        result = await scraper.extract_match_odds(
+            sport="football", match_links=match_links, markets=["1x2"], scrape_odds_history=False
+        )
+
+    # Verify a rotated page was acquired for each match link
+    assert pm.new_rotated_page.await_count == 2
+
+    # Verify the result is a ScrapeResult with successful matches
+    assert len(result.success) == 2
+    assert {"match": "data1"} in result.success
+    assert {"match": "data2"} in result.success
+    assert result.stats.total_urls == 2
+    assert result.stats.successful == 2
+    assert result.stats.failed == 0
+
+
+async def test_extract_match_odds_warms_non_default_contexts(setup_base_scraper_mocks):
+    mocks = setup_base_scraper_mocks
+    scraper = mocks["scraper"]
+    pm = mocks["playwright_manager_mock"]
+    pm.non_default_context_keys = MagicMock(return_value=["http://b.example.com:2"])
+    mocks["page_mock"].url = "https://www.oddsportal.com/"
+    _odds_dropdown(mocks["page_mock"], "Decimal Odds", [])
+
+    await scraper.extract_match_odds(sport="football", match_links=[], markets=["1x2"])
+
+    pm.new_page_on_key.assert_awaited_with("http://b.example.com:2")
+    assert "http://b.example.com:2" in scraper._warmed_proxy_keys
+    pm.blacklist_proxy.assert_not_called()
+
+
+async def test_warm_failure_blacklists_proxy(setup_base_scraper_mocks):
+    """A proxy whose context can't be warmed must be removed from rotation entirely,
+    not merely dinged with a single strike - a cold context silently corrupts odds."""
+    mocks = setup_base_scraper_mocks
+    scraper = mocks["scraper"]
+    pm = mocks["playwright_manager_mock"]
+    pm.non_default_context_keys = MagicMock(return_value=["http://b.example.com:2"])
+    mocks["page_mock"].goto = AsyncMock(side_effect=Exception("Page.goto: net::ERR_PROXY_CONNECTION_FAILED"))
+    pm.new_page_on_key = AsyncMock(return_value=mocks["page_mock"])
+    pm.blacklist_proxy = MagicMock()
+
+    await scraper.extract_match_odds(sport="football", match_links=[], markets=["1x2"])
+
+    pm.blacklist_proxy.assert_called_once_with("http://b.example.com:2")
+
+
+def _odds_dropdown(page_mock, current: str, options: list[str]) -> None:
+    """The odds-format button shows `current`; its dropdown lists `options`."""
+    button = AsyncMock()
+    button.inner_text = AsyncMock(return_value=current)
+    page_mock.query_selector.return_value = button
+    items = []
+    for text in options:
+        item = AsyncMock()
+        item.inner_text = AsyncMock(return_value=text)
+        items.append(item)
+    page_mock.query_selector_all.return_value = items
+
+
+async def test_set_odds_format_strict_raises_when_the_format_is_missing(setup_base_scraper_mocks):
+    mocks = setup_base_scraper_mocks
+    _odds_dropdown(mocks["page_mock"], "Fractional Odds", ["Fractional Odds", "Money Line Odds"])
+
+    with pytest.raises(ValueError, match="'Decimal Odds' not found"):
+        await mocks["scraper"].set_odds_format(page=mocks["page_mock"], strict=True)
+
+
+async def test_set_odds_format_strict_raises_on_timeout(setup_base_scraper_mocks):
+    mocks = setup_base_scraper_mocks
+    mocks["page_mock"].wait_for_selector.side_effect = TimeoutError("Timeout 8000ms exceeded")
+
+    with pytest.raises(TimeoutError):
+        await mocks["scraper"].set_odds_format(page=mocks["page_mock"], strict=True)
+
+
+async def test_set_odds_format_default_logs_a_missing_format_without_raising(setup_base_scraper_mocks, caplog):
+    """Listings and match pages keep the non-strict call: a missing format is logged, not raised."""
+    mocks = setup_base_scraper_mocks
+    _odds_dropdown(mocks["page_mock"], "Fractional Odds", ["Fractional Odds", "Money Line Odds"])
+
+    with caplog.at_level(logging.WARNING):
+        await mocks["scraper"].set_odds_format(page=mocks["page_mock"])
+
+    assert "'Decimal Odds' not found" in caplog.text
+
+
+async def test_set_odds_format_logs_on_the_scraper_logger(setup_base_scraper_mocks, caplog):
+    """The console format prints the logger name, so the odds format lines keep the scraper's."""
+    mocks = setup_base_scraper_mocks
+    _odds_dropdown(mocks["page_mock"], "Decimal Odds", [])
+
+    with caplog.at_level(logging.INFO):
+        await mocks["scraper"].set_odds_format(page=mocks["page_mock"])
+
+    assert [(record.name, record.getMessage()) for record in caplog.records] == [
+        ("BaseScraper", "Setting odds format: Decimal Odds"),
+        ("BaseScraper", "Current odds format detected: Decimal Odds"),
+        ("BaseScraper", "Odds format is already set to 'Decimal Odds'. Skipping."),
+    ]
+
+
+async def test_the_warm_up_accepts_the_cookie_banner_then_sets_the_odds_format(setup_base_scraper_mocks):
+    """The banner can cover the odds-format dropdown, so it goes first (gotchas §11)."""
+    mocks = setup_base_scraper_mocks
+    scraper = mocks["scraper"]
+    page_mock = mocks["page_mock"]
+    order = []
+    scraper.cookie_dismisser.dismiss = AsyncMock(side_effect=lambda page: order.append("cookies"))
+    scraper.set_odds_format = AsyncMock(side_effect=lambda page, strict: order.append("odds format"))
+
+    await scraper._warm_up_page(page_mock)
+
+    assert order == ["cookies", "odds format"]
+    scraper.set_odds_format.assert_awaited_once_with(page=page_mock, strict=False)
+    page_mock.goto.assert_not_awaited()
+
+
+@pytest.mark.parametrize(
+    ("base_url", "home"), [(None, ODDSPORTAL_BASE_URL), ("https://www.centroquote.it", "https://www.centroquote.it")]
+)
+async def test_the_warm_up_loads_the_run_home_page_first_within_the_given_timeout(
+    setup_base_scraper_mocks, base_url, home
+):
+    mocks = setup_base_scraper_mocks
+    scraper = mocks["scraper"]
+    page_mock = mocks["page_mock"]
+    scraper.base_url = base_url
+    order = []
+    page_mock.goto = AsyncMock(side_effect=lambda url, **kwargs: order.append("home"))
+    scraper.cookie_dismisser.dismiss = AsyncMock(side_effect=lambda page: order.append("cookies"))
+    scraper.set_odds_format = AsyncMock(side_effect=lambda page, strict: order.append("odds format"))
+
+    await scraper._warm_up_page(page_mock, home_timeout_ms=GOTO_TIMEOUT_LONG_MS)
+
+    page_mock.goto.assert_awaited_once_with(home, timeout=GOTO_TIMEOUT_LONG_MS, wait_until="domcontentloaded")
+    assert order == ["home", "cookies", "odds format"]
+
+
+@pytest.mark.parametrize(
+    ("strict_on_canonical_host", "landed", "strict"),
+    [
+        (True, "https://www.oddsportal.com/", True),
+        (True, "https://www.cuotasahora.com/", False),
+        (False, "https://www.oddsportal.com/", False),
+    ],
+)
+async def test_the_warm_up_is_strict_only_when_asked_and_on_the_canonical_host(
+    setup_base_scraper_mocks, strict_on_canonical_host, landed, strict
+):
+    mocks = setup_base_scraper_mocks
+    scraper = mocks["scraper"]
+    page_mock = mocks["page_mock"]
+    page_mock.url = landed
+    scraper.set_odds_format = AsyncMock()
+
+    await scraper._warm_up_page(page_mock, strict_on_canonical_host=strict_on_canonical_host)
+
+    scraper.set_odds_format.assert_awaited_once_with(page=page_mock, strict=strict)
+
+
+async def test_the_proxy_warm_up_passes_its_timeout_and_strictness(setup_base_scraper_mocks):
+    mocks = setup_base_scraper_mocks
+    scraper = mocks["scraper"]
+    mocks["playwright_manager_mock"].non_default_context_keys = MagicMock(return_value=["http://b.example.com:2"])
+    scraper._warm_up_page = AsyncMock()
+
+    await scraper._warm_proxy_contexts()
+
+    scraper._warm_up_page.assert_awaited_once_with(
+        mocks["page_mock"], home_timeout_ms=NAVIGATION_TIMEOUT_MS, strict_on_canonical_host=True
+    )
+    mocks["page_mock"].close.assert_awaited_once()
+
+
+async def test_a_warm_up_page_that_will_not_close_does_not_stop_the_other_proxies(setup_base_scraper_mocks, caplog):
+    mocks = setup_base_scraper_mocks
+    scraper = mocks["scraper"]
+    pm = mocks["playwright_manager_mock"]
+    keys = ["http://a.example.com:1", "http://b.example.com:2"]
+    pm.non_default_context_keys = MagicMock(return_value=keys)
+    scraper._warm_up_page = AsyncMock()
+    mocks["page_mock"].close = AsyncMock(side_effect=[RuntimeError("Target page has been closed"), None])
+
+    with caplog.at_level(logging.WARNING):
+        await scraper._warm_proxy_contexts()
+
+    assert [call.args[0] for call in pm.new_page_on_key.await_args_list] == keys
+    assert scraper._warmed_proxy_keys == set(keys)
+    pm.blacklist_proxy.assert_not_called()
+    assert "Could not close the warm-up page of proxy context http://a.example.com:1: Target page has been closed" in (
+        caplog.text
+    )
+
+
+@pytest.mark.parametrize("failure", ["format_missing", "timeout"])
+async def test_warm_up_blacklists_a_proxy_whose_odds_format_cannot_be_set(setup_base_scraper_mocks, failure):
+    """B7: a context left on non-decimal odds would corrupt every match it scrapes (gotchas §11)."""
+    mocks = setup_base_scraper_mocks
+    pm = mocks["playwright_manager_mock"]
+    pm.non_default_context_keys = MagicMock(return_value=["http://b.example.com:2"])
+    mocks["page_mock"].url = "https://www.oddsportal.com/"
+    if failure == "format_missing":
+        _odds_dropdown(mocks["page_mock"], "Fractional Odds", ["Fractional Odds", "Money Line Odds"])
+    else:
+        mocks["page_mock"].wait_for_selector.side_effect = TimeoutError("Timeout 8000ms exceeded")
+
+    await mocks["scraper"]._warm_proxy_contexts()
+
+    pm.blacklist_proxy.assert_called_once_with("http://b.example.com:2")
+    assert pm.new_page_on_key.await_count == 2, "a failed warm-up is tried once more before the blacklist"
+    assert mocks["page_mock"].close.await_count == 2
+
+
+async def test_warm_up_keeps_a_proxy_that_warms_on_its_second_try(setup_base_scraper_mocks, caplog):
+    """A strict warm-up that times out is often on a context already set to decimal odds (gotchas §11)."""
+    mocks = setup_base_scraper_mocks
+    pm = mocks["playwright_manager_mock"]
+    pm.non_default_context_keys = MagicMock(return_value=["http://b.example.com:2"])
+    mocks["page_mock"].url = "https://www.oddsportal.com/"
+    mocks["page_mock"].goto = AsyncMock(side_effect=[TimeoutError("Timeout 30000ms exceeded"), None])
+    _odds_dropdown(mocks["page_mock"], "Decimal Odds", [])
+
+    with caplog.at_level(logging.WARNING):
+        await mocks["scraper"]._warm_proxy_contexts()
+
+    pm.blacklist_proxy.assert_not_called()
+    assert pm.new_page_on_key.await_count == 2
+    assert mocks["page_mock"].close.await_count == 2
+    assert "Failed to warm proxy context http://b.example.com:2: Timeout 30000ms exceeded. Retrying." in caplog.text
+
+
+async def test_warm_up_keeps_a_proxy_set_to_decimal_odds(setup_base_scraper_mocks):
+    mocks = setup_base_scraper_mocks
+    pm = mocks["playwright_manager_mock"]
+    pm.non_default_context_keys = MagicMock(return_value=["http://b.example.com:2"])
+    mocks["page_mock"].url = "https://www.oddsportal.com/"
+    _odds_dropdown(mocks["page_mock"], "Decimal Odds", [])
+
+    await mocks["scraper"]._warm_proxy_contexts()
+
+    pm.blacklist_proxy.assert_not_called()
+    assert "http://b.example.com:2" in mocks["scraper"]._warmed_proxy_keys
+
+
+async def test_warm_up_opens_the_base_url_mirror_and_keeps_its_proxy(setup_base_scraper_mocks):
+    """A mirror localizes the odds-format labels (gotchas §7), so its warm-up only logs a format it cannot set."""
+    mocks = setup_base_scraper_mocks
+    pm = mocks["playwright_manager_mock"]
+    pm.non_default_context_keys = MagicMock(return_value=["http://b.example.com:2"])
+    mocks["page_mock"].url = "https://www.centroquote.it/"
+    _odds_dropdown(mocks["page_mock"], "Quote decimali", ["Quote decimali", "Quote frazionarie"])
+    scraper = BaseScraper(
+        playwright_manager=pm,
+        market_extractor=mocks["market_extractor_mock"],
+        scroller=AsyncMock(),
+        cookie_dismisser=AsyncMock(),
+        selection_manager=mocks["selection_manager_mock"],
+        base_url="https://www.centroquote.it",
+    )
+
+    await scraper._warm_proxy_contexts()
+
+    mocks["page_mock"].goto.assert_awaited_once_with(
+        "https://www.centroquote.it", timeout=NAVIGATION_TIMEOUT_MS, wait_until="domcontentloaded"
+    )
+    pm.blacklist_proxy.assert_not_called()
+
+
+async def test_warm_up_keeps_a_proxy_geo_redirected_to_a_mirror(setup_base_scraper_mocks):
+    """A proxy can be geo-redirected to a localized mirror even though the canonical domain was
+    requested (gotchas §7); strict mode must follow where the page actually landed, not the request."""
+    mocks = setup_base_scraper_mocks
+    pm = mocks["playwright_manager_mock"]
+    pm.non_default_context_keys = MagicMock(return_value=["http://b.example.com:2"])
+    mocks["page_mock"].url = "https://www.cuotasahora.com/"
+    _odds_dropdown(mocks["page_mock"], "Cuotas decimales", ["Cuotas decimales", "Cuotas fraccionarias"])
+
+    await mocks["scraper"]._warm_proxy_contexts()
+
+    mocks["page_mock"].goto.assert_awaited_once_with(
+        "https://www.oddsportal.com", timeout=NAVIGATION_TIMEOUT_MS, wait_until="domcontentloaded"
+    )
+    pm.blacklist_proxy.assert_not_called()
+
+
+async def test_extract_match_odds_uses_rotated_page(setup_base_scraper_mocks):
+    mocks = setup_base_scraper_mocks
+    scraper = mocks["scraper"]
+    pm = mocks["playwright_manager_mock"]
+
+    await scraper.extract_match_odds(
+        sport="football", match_links=["https://www.oddsportal.com/football/x/y/#z"], markets=["1x2"]
+    )
+
+    pm.new_rotated_page.assert_awaited()
+    pm.report_page_result.assert_called()
+
+
+async def test_scrape_match_data(setup_base_scraper_mocks):
+    """Test scraping data for a specific match."""
+    mocks = setup_base_scraper_mocks
+    scraper = mocks["scraper"]
+    page_mock = mocks["page_mock"]
+
+    # Mock _extract_match_details
+    scraper._hydrate_match_view = AsyncMock()
+    scraper._dismiss_login_modal = AsyncMock()
+    scraper._extract_match_details = AsyncMock(
+        return_value={"home_team": "Arsenal", "away_team": "Chelsea", "match_date": "2023-05-01 20:00:00 UTC"}
+    )
+
+    # Mock market_extractor.scrape_markets
+    mocks["market_extractor_mock"].scrape_markets = AsyncMock(
+        return_value={
+            "1x2": {"odds": [2.0, 3.5, 4.0], "bookmakers": ["bet365", "bwin", "unibet"]},
+            "over_under_2_5": {"odds": [1.8, 2.1], "bookmakers": ["bet365", "bwin"]},
+        }
+    )
+
+    page_mock.wait_for_timeout = AsyncMock()
+    page_mock.wait_for_selector = AsyncMock()
+
+    # Call the method under test
+    result = await scraper._scrape_match_data(
+        page=page_mock,
+        sport="football",
+        match_link="https://oddsportal.com/football/england/arsenal-chelsea/123456",
+        markets=["1x2", "over_under_2_5"],
+        scrape_odds_history=True,
+        target_bookmaker="bet365",
+    )
+
+    # Verify interactions
+    page_mock.goto.assert_called_once_with(
+        "https://oddsportal.com/football/england/arsenal-chelsea/123456",
+        timeout=NAVIGATION_TIMEOUT_MS,
+        wait_until="domcontentloaded",
+    )
+
+    scraper._extract_match_details.assert_called_once_with(
+        page_mock, "https://oddsportal.com/football/england/arsenal-chelsea/123456"
+    )
+
+    mocks["market_extractor_mock"].scrape_markets.assert_called_once_with(
+        page=page_mock,
+        sport="football",
+        markets=["1x2", "over_under_2_5"],
+        period=None,
+        scrape_odds_history=True,
+        target_bookmaker="bet365",
+        preview_submarkets_only=False,
+        history_reference=datetime(2023, 5, 1, 20, 0),
+        history_timezone=None,
+        bookies_filter=BookiesFilter.ALL,
+    )
+
+    # Verify the bookies filter was applied via SelectionManager with the right strategy
+    from oddsharvester.core.browser.selection import BOOKIES_FILTER_STRATEGY
+
+    mocks["selection_manager_mock"].ensure_selected.assert_called_once_with(
+        page=page_mock,
+        target_value=BookiesFilter.ALL.value,
+        display_label=BookiesFilter.get_display_label(BookiesFilter.ALL),
+        strategy=BOOKIES_FILTER_STRATEGY,
+    )
+
+    # Verify results
+    assert result["home_team"] == "Arsenal"
+    assert result["away_team"] == "Chelsea"
+    assert result["match_date"] == "2023-05-01 20:00:00 UTC"
+    assert "1x2" in result
+    assert "over_under_2_5" in result
+
+
+async def test_scrape_match_data_no_details(setup_base_scraper_mocks):
+    """A page without match details is a typed, retryable content failure, not a silent None."""
+    from oddsharvester.core.exceptions import MatchContentError
+    from oddsharvester.core.scrape_result import ErrorType
+
+    mocks = setup_base_scraper_mocks
+    scraper = mocks["scraper"]
+    scraper._hydrate_match_view = AsyncMock()
+    scraper._dismiss_login_modal = AsyncMock()
+    scraper._extract_match_details = AsyncMock(return_value=None)
+
+    with pytest.raises(MatchContentError) as excinfo:
+        await scraper._scrape_match_data(
+            page=mocks["page_mock"],
+            sport="football",
+            match_link="https://oddsportal.com/football/england/arsenal-chelsea/123456",
+            markets=["1x2"],
+        )
+
+    assert excinfo.value.error_type is ErrorType.HEADER_NOT_FOUND
+    assert excinfo.value.is_retryable is True
+    mocks["market_extractor_mock"].scrape_markets.assert_not_called()
+
+
+async def test_scrape_match_data_reraises_proxy_error(setup_base_scraper_mocks):
+    """Proxy-attributable navigation errors must propagate so failover can blacklist the dead proxy."""
+    mocks = setup_base_scraper_mocks
+    scraper = mocks["scraper"]
+
+    mocks["page_mock"].goto = AsyncMock(side_effect=Exception("Page.goto: net::ERR_PROXY_CONNECTION_FAILED"))
+
+    with pytest.raises(Exception, match="ERR_PROXY_CONNECTION_FAILED"):
+        await scraper._scrape_match_data(
+            page=mocks["page_mock"],
+            sport="football",
+            match_link="https://www.oddsportal.com/football/x/y/",
+        )
+
+
+async def test_scrape_match_data_types_a_post_navigation_error(setup_base_scraper_mocks):
+    """An error after a successful goto keeps its real type and message, and is not blamed on the proxy."""
+    from oddsharvester.core.exceptions import MatchContentError
+    from oddsharvester.core.retry import is_proxy_attributable_error
+    from oddsharvester.core.scrape_result import ErrorType
+
+    mocks = setup_base_scraper_mocks
+    scraper = mocks["scraper"]
+    scraper._dismiss_login_modal = AsyncMock()
+    scraper._hydrate_match_view = AsyncMock()
+    mocks["selection_manager_mock"].ensure_selected = AsyncMock(side_effect=TimeoutError("Timeout 5000ms exceeded"))
+
+    with pytest.raises(MatchContentError) as excinfo:
+        await scraper._scrape_match_data(
+            page=mocks["page_mock"], sport="football", match_link="https://www.oddsportal.com/football/x/y/"
+        )
+
+    assert str(excinfo.value).startswith("TimeoutError: Timeout 5000ms exceeded")
+    assert excinfo.value.error_type is ErrorType.PARSING
+    assert not is_proxy_attributable_error(excinfo.value.error_type)
+    assert isinstance(excinfo.value.__cause__, TimeoutError)
+
+
+@patch("oddsharvester.core.retry.asyncio.sleep", new_callable=AsyncMock)
+async def test_extract_match_odds_rate_limiting(mock_sleep, setup_base_scraper_mocks):
+    """Test that rate limiting delay is applied between match requests."""
+    mocks = setup_base_scraper_mocks
+    scraper = mocks["scraper"]
+
+    # Mock _scrape_match_data to return data directly
+    scraper._scrape_match_data = AsyncMock(side_effect=[{"match": "data1"}, {"match": "data2"}, {"match": "data3"}])
+
+    match_links = [
+        "https://oddsportal.com/match1",
+        "https://oddsportal.com/match2",
+        "https://oddsportal.com/match3",
+    ]
+
+    # Use concurrent_scraping_task=1 to force sequential execution for predictable test behavior
+    result = await scraper.extract_match_odds(
+        sport="football",
+        match_links=match_links,
+        markets=["1x2"],
+        concurrent_scraping_task=1,
+        request_delay=2.0,
+    )
+
+    # First request should not have a delay, subsequent ones should
+    # With concurrency=1, requests are sequential so we expect 2 sleep calls (for 2nd and 3rd requests)
+    assert mock_sleep.call_count == 2
+    assert len(result.success) == 3
+
+
+@patch("oddsharvester.core.retry.asyncio.sleep", new_callable=AsyncMock)
+async def test_extract_match_odds_no_delay_when_zero(mock_sleep, setup_base_scraper_mocks):
+    """Test that no delay is applied when request_delay is 0."""
+    mocks = setup_base_scraper_mocks
+    scraper = mocks["scraper"]
+
+    scraper._scrape_match_data = AsyncMock(side_effect=[{"match": "data1"}, {"match": "data2"}])
+
+    match_links = ["https://oddsportal.com/match1", "https://oddsportal.com/match2"]
+
+    result = await scraper.extract_match_odds(
+        sport="football",
+        match_links=match_links,
+        markets=["1x2"],
+        concurrent_scraping_task=1,
+        request_delay=0,
+    )
+
+    mock_sleep.assert_not_called()
+    assert len(result.success) == 2
+
+
+async def test_scrape_match_data_propagates_h2h_fragment_error(setup_base_scraper_mocks):
+    """The hydration failure must survive the broad handler in _scrape_match_data."""
+    from oddsharvester.core.exceptions import H2HFragmentResolutionError
+
+    mocks = setup_base_scraper_mocks
+    scraper = mocks["scraper"]
+
+    scraper._dismiss_login_modal = AsyncMock()
+    scraper._hydrate_match_view = AsyncMock(
+        side_effect=H2HFragmentResolutionError("match view hydration failed: never rendered match content")
+    )
+    scraper._extract_match_details = AsyncMock()
+
+    with pytest.raises(H2HFragmentResolutionError):
+        await scraper._scrape_match_data(
+            page=mocks["page_mock"],
+            sport="football",
+            match_link="https://www.oddsportal.com/football/h2h/a/b/#WbDmMwm1",
+        )
+
+
+# -- base_url storage and match-link join -------------------------------------
+
+_SERIE_A_HREF = "/football/h2h/inter-aaa/milan-bbb/#serie-a-xyz"
+_SERIE_A_HTML = page(listing_row(_SERIE_A_HREF))
+
+
+class TestBaseScraperBaseUrl:
+    """Tests that BaseScraper stores base_url and applies it when building match links."""
+
+    def test_base_url_defaults_to_none(self, setup_base_scraper_mocks):
+        """A scraper constructed without base_url has scraper.base_url is None."""
+        scraper = setup_base_scraper_mocks["scraper"]
+        assert scraper.base_url is None
+
+    def test_base_url_stored_when_provided(self, setup_base_scraper_mocks):
+        """A scraper constructed with base_url stores it verbatim."""
+        mocks = setup_base_scraper_mocks
+        scraper = BaseScraper(
+            playwright_manager=mocks["playwright_manager_mock"],
+            market_extractor=mocks["market_extractor_mock"],
+            scroller=AsyncMock(),
+            cookie_dismisser=AsyncMock(),
+            selection_manager=mocks["selection_manager_mock"],
+            base_url="https://www.centroquote.it",
+        )
+        assert scraper.base_url == "https://www.centroquote.it"
+
+    async def test_extract_match_links_default_uses_oddsportal_base(self, setup_base_scraper_mocks):
+        """With no base_url, extract_match_links prefixes with the canonical OddsPortal domain."""
+        mocks = setup_base_scraper_mocks
+        scraper = mocks["scraper"]
+        page_mock = mocks["page_mock"]
+        page_mock.content = AsyncMock(return_value=_SERIE_A_HTML)
+
+        result = await scraper.extract_match_links(page=page_mock)
+
+        assert result == [f"{ODDSPORTAL_BASE_URL}{_SERIE_A_HREF}"]
+
+    async def test_extract_match_links_regional_base_url_applied(self, setup_base_scraper_mocks):
+        """With base_url set, extract_match_links prefixes with the regional domain instead."""
+        mocks = setup_base_scraper_mocks
+        regional_scraper = BaseScraper(
+            playwright_manager=mocks["playwright_manager_mock"],
+            market_extractor=mocks["market_extractor_mock"],
+            scroller=AsyncMock(),
+            cookie_dismisser=AsyncMock(),
+            selection_manager=mocks["selection_manager_mock"],
+            base_url="https://www.centroquote.it",
+        )
+        page_mock = mocks["page_mock"]
+        page_mock.content = AsyncMock(return_value=_SERIE_A_HTML)
+
+        result = await regional_scraper.extract_match_links(page=page_mock)
+
+        assert result == [f"https://www.centroquote.it{_SERIE_A_HREF}"]
+
+
+# -- OddsPortalScraper URL wiring --------------------------------------------
+
+
+def _build_odds_portal_scraper(setup_base_scraper_mocks, base_url=None):
+    """Construct an OddsPortalScraper with the same mocked collaborators used in
+    the setup_base_scraper_mocks fixture. Mirrors the pattern used in
+    TestBaseScraperBaseUrl.test_base_url_stored_when_provided.
+
+    playwright_manager_mock.page is set explicitly because PlaywrightManager.page is
+    an instance attribute (not a class-level method), so MagicMock(spec=...) doesn't
+    include it automatically. Setting it to page_mock makes the truthy guard in
+    collect_historic_links / collect_upcoming_links pass before the URLBuilder call fires.
+    """
+    mocks = setup_base_scraper_mocks
+    mocks["playwright_manager_mock"].page = mocks["page_mock"]
+    return OddsPortalScraper(
+        playwright_manager=mocks["playwright_manager_mock"],
+        market_extractor=mocks["market_extractor_mock"],
+        scroller=AsyncMock(),
+        cookie_dismisser=AsyncMock(),
+        selection_manager=mocks["selection_manager_mock"],
+        base_url=base_url,
+    )
+
+
+class TestOddsPortalScraperUrlWiring:
+    async def test_collect_historic_links_forwards_base_url_to_url_builder(self, setup_base_scraper_mocks, monkeypatch):
+        from oddsharvester.core import odds_portal_scraper as ops
+
+        scraper = _build_odds_portal_scraper(setup_base_scraper_mocks, base_url="https://www.centroquote.it")
+
+        captured = {}
+
+        class _StopError(Exception):
+            pass
+
+        def fake_get_historic(*, sport, league, season=None, base_url=None):
+            captured["base_url"] = base_url
+            raise _StopError
+
+        monkeypatch.setattr(ops.URLBuilder, "get_historic_matches_url", staticmethod(fake_get_historic))
+
+        with pytest.raises(_StopError):
+            await scraper.collect_historic_links(sport="football", league="england-premier-league", season="current")
+        assert captured["base_url"] == "https://www.centroquote.it"
+
+    async def test_collect_upcoming_links_forwards_base_url_to_url_builder(self, setup_base_scraper_mocks, monkeypatch):
+        from oddsharvester.core import odds_portal_scraper as ops
+
+        scraper = _build_odds_portal_scraper(setup_base_scraper_mocks, base_url="https://www.centroquote.it")
+
+        captured = {}
+
+        class _StopError(Exception):
+            pass
+
+        def fake_get_upcoming(*, sport, date, league=None, base_url=None):
+            captured["base_url"] = base_url
+            raise _StopError
+
+        monkeypatch.setattr(ops.URLBuilder, "get_upcoming_matches_url", staticmethod(fake_get_upcoming))
+
+        with pytest.raises(_StopError):
+            await scraper.collect_upcoming_links(sport="football", date="2025-01-15")
+        assert captured["base_url"] == "https://www.centroquote.it"
+
+    async def test_collect_historic_links_default_base_url_is_none(self, setup_base_scraper_mocks, monkeypatch):
+        from oddsharvester.core import odds_portal_scraper as ops
+
+        scraper = _build_odds_portal_scraper(setup_base_scraper_mocks)
+
+        captured = {}
+
+        class _StopError(Exception):
+            pass
+
+        def fake_get_historic(*, sport, league, season=None, base_url=None):
+            captured["base_url"] = base_url
+            raise _StopError
+
+        monkeypatch.setattr(ops.URLBuilder, "get_historic_matches_url", staticmethod(fake_get_historic))
+
+        with pytest.raises(_StopError):
+            await scraper.collect_historic_links(sport="football", league="england-premier-league", season="current")
+        assert captured["base_url"] is None
+
+
+LIVE_INFO_TENNIS_HTML = page(live_block("2nd Set", "1:0", partial="6:4, 0:0"))
+
+LIVE_NOW_LISTING_HTML = page(
+    live_section(
+        "/tennis/atp-singles/atp-cup/",
+        listing_row(
+            "/tennis/h2h/janvier-maxime-S4riPNES/kuzmanov-dimitar-WEwUtEGs/inplay-odds/#t0bmQMVh",
+            status="1S",
+            home="Janvier M.",
+            away="Kuzmanov D.",
+        ),
+    )
+    + live_section(
+        "/football/england/premier-league/",
+        listing_row(
+            "/football/h2h/arsenal-chelsea-xYz12345/inplay-odds/#aB3dE6fG",
+            status="65'",
+            home="Arsenal",
+            away="Chelsea",
+        )
+        + listing_row(
+            "/football/h2h/hidden-twin-corrupt/inplay-odds/#zzz",
+            status="",
+            style="position:absolute;left:-9999px",
+        ),
+    )
+)
+
+
+async def test_extract_live_match_links(setup_base_scraper_mocks):
+    """Live-now rows yield absolute in-play links."""
+    mocks = setup_base_scraper_mocks
+    scraper = mocks["scraper"]
+    page_mock = mocks["page_mock"]
+    page_mock.content = AsyncMock(return_value=LIVE_NOW_LISTING_HTML)
+
+    rows = await scraper.extract_live_match_links(page=page_mock)
+
+    assert [r["match_link"] for r in rows] == [
+        "https://www.oddsportal.com/tennis/h2h/janvier-maxime-S4riPNES/kuzmanov-dimitar-WEwUtEGs/inplay-odds/#t0bmQMVh",
+        "https://www.oddsportal.com/football/h2h/arsenal-chelsea-xYz12345/inplay-odds/#aB3dE6fG",
+    ]
+
+
+async def test_extract_live_match_links_skips_offscreen_twin(setup_base_scraper_mocks):
+    """The CSS-hidden duplicate row is dropped, not returned as a third match."""
+    mocks = setup_base_scraper_mocks
+    scraper = mocks["scraper"]
+    page_mock = mocks["page_mock"]
+    page_mock.content = AsyncMock(return_value=LIVE_NOW_LISTING_HTML)
+
+    rows = await scraper.extract_live_match_links(page=page_mock)
+
+    assert len(rows) == 2
+    assert not any("hidden-twin-corrupt" in r["match_link"] for r in rows)
+
+
+async def test_extract_live_match_links_warns_when_every_row_is_hidden(setup_base_scraper_mocks, caplog):
+    mocks = setup_base_scraper_mocks
+    page_mock = mocks["page_mock"]
+    page_mock.url = "https://www.oddsportal.com/inplay-odds/live-now/football/"
+    page_mock.content = AsyncMock(
+        return_value=page(
+            '<div style="visibility: hidden">'
+            + live_section(
+                "/football/england/premier-league/",
+                listing_row("/football/h2h/arsenal-hA1Zm19f/leeds-tUxUbLR2/inplay-odds/#xtmHKGT0", status="65'"),
+            )
+            + "</div>"
+        )
+    )
+
+    with caplog.at_level(logging.WARNING):
+        rows = await mocks["scraper"].extract_live_match_links(page=page_mock)
+
+    assert rows == []
+    assert "All 1 rows of this live listing (https://www.oddsportal.com/inplay-odds/live-now/football/) are hidden" in (
+        caplog.text
+    )
+
+
+async def test_extract_live_match_links_skips_the_anti_bot_trap_row(setup_base_scraper_mocks):
+    """The trap matches in-play links too: a clone hidden off-screen, ids invented, fragment dropped (gotchas §28)."""
+    mocks = setup_base_scraper_mocks
+    scraper = mocks["scraper"]
+    page_mock = mocks["page_mock"]
+    page_mock.content = AsyncMock(
+        return_value=page(
+            live_section(
+                "/football/england/premier-league/",
+                listing_row("/football/h2h/arsenal-hA1Zm19f/leeds-tUxUbLR2/inplay-odds/#xtmHKGT0", status="65'")
+                + trap_row(
+                    listing_row("/football/h2h/brentford-37e4f5e9/liverpool-5a49c1bd/inplay-odds/", status="65'")
+                )
+                + listing_row(
+                    "/football/h2h/aston-villa-W00wmLO0/brentford-xYe7DwID/inplay-odds/#p6jPIfbD", status="12'"
+                ),
+            )
+        )
+    )
+
+    rows = await scraper.extract_live_match_links(page=page_mock)
+
+    assert [r["match_link"] for r in rows] == [
+        "https://www.oddsportal.com/football/h2h/arsenal-hA1Zm19f/leeds-tUxUbLR2/inplay-odds/#xtmHKGT0",
+        "https://www.oddsportal.com/football/h2h/aston-villa-W00wmLO0/brentford-xYe7DwID/inplay-odds/#p6jPIfbD",
+    ]
+
+
+async def test_extract_live_match_links_league_filter(setup_base_scraper_mocks):
+    """A league slug keeps only the rows of the section whose header link is that league's path."""
+    mocks = setup_base_scraper_mocks
+    scraper = mocks["scraper"]
+    page_mock = mocks["page_mock"]
+    page_mock.content = AsyncMock(return_value=LIVE_NOW_LISTING_HTML)
+
+    rows = await scraper.extract_live_match_links(page=page_mock, sport="football", league="england-premier-league")
+
+    assert len(rows) == 1
+    assert "arsenal-chelsea" in rows[0]["match_link"]
+
+
+async def test_extract_live_match_links_empty_listing(setup_base_scraper_mocks):
+    """No live matches is a normal outcome, not an error."""
+    mocks = setup_base_scraper_mocks
+    scraper = mocks["scraper"]
+    page_mock = mocks["page_mock"]
+    page_mock.content = AsyncMock(return_value="<html><body></body></html>")
+
+    assert await scraper.extract_live_match_links(page=page_mock) == []
+
+
+async def test_extract_live_match_links_reraises_a_page_error(setup_base_scraper_mocks):
+    """A live listing that cannot be read must not pass for 'nothing in play'."""
+    mocks = setup_base_scraper_mocks
+    mocks["page_mock"].content = AsyncMock(side_effect=RuntimeError("Target page crashed"))
+
+    with pytest.raises(RuntimeError, match="Target page crashed"):
+        await mocks["scraper"].extract_live_match_links(page=mocks["page_mock"])
+
+
+async def test_extract_live_match_links_keeps_only_the_requested_sport(setup_base_scraper_mocks, caplog):
+    """The live-now listing keeps the rows under the sport's site path and counts the others."""
+    mocks = setup_base_scraper_mocks
+    mocks["page_mock"].content = AsyncMock(return_value=LIVE_NOW_LISTING_HTML)
+
+    with caplog.at_level(logging.INFO):
+        rows = await mocks["scraper"].extract_live_match_links(page=mocks["page_mock"], sport="football")
+
+    assert [r["match_link"] for r in rows] == [
+        "https://www.oddsportal.com/football/h2h/arsenal-chelsea-xYz12345/inplay-odds/#aB3dE6fG",
+    ]
+    assert "1 rows of another sport dropped" in caplog.text
+
+
+async def test_extract_live_match_links_warns_when_every_row_is_another_sport(setup_base_scraper_mocks, caplog):
+    mocks = setup_base_scraper_mocks
+    mocks["page_mock"].content = AsyncMock(return_value=LIVE_NOW_LISTING_HTML)
+
+    with caplog.at_level(logging.WARNING):
+        rows = await mocks["scraper"].extract_live_match_links(page=mocks["page_mock"], sport="ice-hockey")
+
+    assert rows == []
+    assert (
+        "None of the 2 rows of this live listing links under /hockey/: it lists no 'ice-hockey' match." in caplog.text
+    )
+
+
+async def test_extract_live_match_links_keeps_a_match_listed_first_under_another_league(setup_base_scraper_mocks):
+    """A match under two sections: its copy under the requested league is kept even when the other comes first."""
+    mocks = setup_base_scraper_mocks
+    shared = "/football/h2h/arsenal-hA1Zm19f/leeds-tUxUbLR2/inplay-odds/#xtmHKGT0"
+    mocks["page_mock"].content = AsyncMock(
+        return_value=page(
+            live_section("/football/europe/champions-league/", listing_row(shared, status="65'"))
+            + live_section("/football/england/premier-league/", listing_row(shared, status="65'"))
+        )
+    )
+
+    rows = await mocks["scraper"].extract_live_match_links(
+        page=mocks["page_mock"], sport="football", league="england-premier-league"
+    )
+
+    assert [r["match_link"] for r in rows] == [f"{ODDSPORTAL_BASE_URL}{shared}"]
+
+
+async def test_extract_live_match_links_keeps_one_row_per_match_listed_twice(setup_base_scraper_mocks):
+    mocks = setup_base_scraper_mocks
+    shared = "/football/h2h/arsenal-hA1Zm19f/leeds-tUxUbLR2/inplay-odds/#xtmHKGT0"
+    other = "/football/h2h/aston-villa-W00wmLO0/brentford-xYe7DwID/inplay-odds/#p6jPIfbD"
+    mocks["page_mock"].content = AsyncMock(
+        return_value=page(
+            live_section("/football/europe/champions-league/", listing_row(shared))
+            + live_section("/football/england/premier-league/", listing_row(shared) + listing_row(other))
+        )
+    )
+
+    rows = await mocks["scraper"].extract_live_match_links(page=mocks["page_mock"], sport="football")
+
+    assert [r["match_link"] for r in rows] == [f"{ODDSPORTAL_BASE_URL}{shared}", f"{ODDSPORTAL_BASE_URL}{other}"]
+
+
+async def test_extract_live_match_links_counts_the_short_links_it_drops(setup_base_scraper_mocks, caplog):
+    """An in-play href of 3 segments or fewer is no match: it is dropped and counted, as in the other walk."""
+    mocks = setup_base_scraper_mocks
+    mocks["page_mock"].content = AsyncMock(
+        return_value=page(
+            live_section(
+                "/football/england/premier-league/",
+                listing_row("/football/h2h/inplay-odds/") + listing_row(_FOOTBALL_ROW.replace("/#", "/inplay-odds/#")),
+            )
+            + live_section("/football/spain/laliga/", listing_row("/football/h2h/a-1/b-2/inplay-odds/#c3"))
+        )
+    )
+
+    with caplog.at_level(logging.INFO):
+        rows = await mocks["scraper"].extract_live_match_links(
+            page=mocks["page_mock"], sport="football", league="england-premier-league"
+        )
+
+    assert [r["match_link"] for r in rows] == [f"{ODDSPORTAL_BASE_URL}{_FOOTBALL_ROW.replace('/#', '/inplay-odds/#')}"]
+    assert (
+        "Extracted 1 live match links (0 offscreen rows skipped, 1 short links dropped, "
+        "0 rows of another sport dropped, 1 rows outside league 'england-premier-league')." in caplog.messages
+    )
+
+
+async def test_extract_live_match_links_ignores_non_inplay_anchors(setup_base_scraper_mocks):
+    """Rows whose only anchor is a league link (not a match) are skipped."""
+    mocks = setup_base_scraper_mocks
+    scraper = mocks["scraper"]
+    page_mock = mocks["page_mock"]
+    page_mock.content = AsyncMock(
+        return_value="""
+        <html><body>
+        <div data-testid="game-row">
+          <a href="/football/england/premier-league/">Premier League</a>
+        </div>
+        </body></html>
+        """
+    )
+
+    assert await scraper.extract_live_match_links(page=page_mock) == []
+
+
+async def test_scrape_match_data_live_mode_adds_live_fields(setup_base_scraper_mocks):
+    """Live mode enriches the match record with score, period and a scrape timestamp."""
+    mocks = setup_base_scraper_mocks
+    scraper = mocks["scraper"]
+    page_mock = mocks["page_mock"]
+    page_mock.content = AsyncMock(return_value=f"<html><body>{LIVE_INFO_TENNIS_HTML}</body></html>")
+    scraper._hydrate_match_view = AsyncMock()
+    scraper._dismiss_login_modal = AsyncMock()
+    scraper._extract_match_details = AsyncMock(return_value={"home_team": "A"})
+
+    data = await scraper._scrape_match_data(
+        page=page_mock, sport="tennis", match_link="https://x/inplay-odds/#a", live_mode=True
+    )
+
+    assert data["live_period"] == "2nd Set"
+    assert data["live_score_home"] == 1
+    assert data["live_score_away"] == 0
+    assert data["live_score_raw"] == "1:0 (6:4, 0:0)"
+    assert data["scraped_at_utc"].endswith("Z")
+
+
+@pytest.mark.parametrize(
+    "header",
+    ["<div>FT 2:1</div>", live_block("Final result", "2:1")],
+    ids=["live block gone", "live block with a final state"],
+)
+async def test_scrape_match_data_live_mode_returns_none_for_an_ended_match(setup_base_scraper_mocks, caplog, header):
+    """A match that ended loses its live block or keeps it with a final state (gotchas §16): no record to return."""
+    mocks = setup_base_scraper_mocks
+    scraper = mocks["scraper"]
+    page_mock = mocks["page_mock"]
+    page_mock.content = AsyncMock(return_value=f"<html><body>{header}</body></html>")
+    scraper._hydrate_match_view = AsyncMock()
+    scraper._dismiss_login_modal = AsyncMock()
+    scraper._extract_match_details = AsyncMock(return_value={"home_team": "A"})
+
+    with caplog.at_level(logging.INFO):
+        data = await scraper._scrape_match_data(
+            page=page_mock, sport="football", match_link="https://x/inplay-odds/#a", live_mode=True
+        )
+
+    assert data is None
+    assert (
+        "https://x/inplay-odds/#a is no longer live: its header shows no live block, or one in a final state; "
+        "skipping." in caplog.messages
+    )
+
+
+async def test_extract_match_odds_drops_an_ended_live_match(setup_base_scraper_mocks, caplog):
+    """B10: a match that ended between listing and visit reaches neither the stream, the output nor the totals."""
+    mocks = setup_base_scraper_mocks
+    emitted: list[dict] = []
+    scraper = BaseScraper(
+        playwright_manager=mocks["playwright_manager_mock"],
+        market_extractor=mocks["market_extractor_mock"],
+        scroller=AsyncMock(),
+        cookie_dismisser=AsyncMock(),
+        selection_manager=mocks["selection_manager_mock"],
+        on_match=emitted.append,
+    )
+    live = {"match_link": "https://x/a/inplay-odds/#a", "live_period": "1H"}
+    ended_link, failed_link = "https://x/b/inplay-odds/#b", "https://x/c/inplay-odds/#c"
+
+    def scrape(**kwargs):
+        if kwargs["match_link"] == failed_link:
+            raise ValueError("structure changed")
+        return live if kwargs["match_link"] == live["match_link"] else None
+
+    scraper._scrape_match_data = AsyncMock(side_effect=scrape)
+
+    with caplog.at_level(logging.INFO):
+        result = await scraper.extract_match_odds(
+            sport="football",
+            match_links=[live["match_link"], ended_link, failed_link],
+            request_delay=0,
+            live_mode=True,
+        )
+
+    assert result.success == [live]
+    assert emitted == [live]
+    assert [failure.url for failure in result.failed] == [failed_link]
+    assert (result.stats.total_urls, result.stats.successful, result.stats.failed) == (2, 1, 1)
+    assert "1 matches ended between listing and scrape; dropped from output." in caplog.text
+
+
+async def test_scrape_match_data_without_live_mode_adds_no_live_fields(setup_base_scraper_mocks):
+    """Default (non-live) scraping is untouched by the live-mode branch."""
+    mocks = setup_base_scraper_mocks
+    scraper = mocks["scraper"]
+    page_mock = mocks["page_mock"]
+    page_mock.content = AsyncMock(return_value=f"<html><body>{LIVE_INFO_TENNIS_HTML}</body></html>")
+    scraper._hydrate_match_view = AsyncMock()
+    scraper._dismiss_login_modal = AsyncMock()
+    scraper._extract_match_details = AsyncMock(return_value={"home_team": "A"})
+
+    data = await scraper._scrape_match_data(page=page_mock, sport="tennis", match_link="https://x/")
+
+    assert data == {"home_team": "A"}
+
+
+async def test_extract_match_odds_retries_h2h_fragment_failure(setup_base_scraper_mocks):
+    """Issue #83: a resync timeout must be retried in-run, and a second attempt
+    that succeeds must land in result.success rather than in the failed list."""
+    from oddsharvester.core.exceptions import H2HFragmentResolutionError
+    from oddsharvester.core.retry import RetryConfig
+
+    mocks = setup_base_scraper_mocks
+    scraper = mocks["scraper"]
+
+    scraper._hydrate_match_view = AsyncMock()
+    scraper._dismiss_login_modal = AsyncMock()
+    scraper._extract_match_details = AsyncMock(
+        side_effect=[
+            H2HFragmentResolutionError("page never updated eventData.id to match the fragment"),
+            {"match_link": "https://www.oddsportal.com/football/h2h/a/b/#WbDmMwm1", "home_team": "A"},
+        ]
+    )
+
+    result = await scraper.extract_match_odds(
+        sport="football",
+        match_links=["https://www.oddsportal.com/football/h2h/a/b/#WbDmMwm1"],
+        retry_config=RetryConfig(max_attempts=2, base_delay=0, max_delay=0),
+        request_delay=0,
+    )
+
+    assert result.stats.successful == 1
+    assert result.stats.failed == 0
+    assert scraper._extract_match_details.await_count == 2
+
+
+async def test_extract_match_odds_h2h_failure_is_reported_retryable(setup_base_scraper_mocks):
+    """When every attempt times out, the URL is reported retryable and typed
+    HEADER_NOT_FOUND, and the proxy is not blamed for a client-side render race."""
+    from oddsharvester.core.exceptions import H2HFragmentResolutionError
+    from oddsharvester.core.retry import RetryConfig
+    from oddsharvester.core.scrape_result import ErrorType
+
+    mocks = setup_base_scraper_mocks
+    scraper = mocks["scraper"]
+
+    scraper._hydrate_match_view = AsyncMock()
+    scraper._dismiss_login_modal = AsyncMock()
+    scraper._extract_match_details = AsyncMock(
+        side_effect=H2HFragmentResolutionError("page never updated eventData.id to match the fragment")
+    )
+
+    result = await scraper.extract_match_odds(
+        sport="football",
+        match_links=["https://www.oddsportal.com/football/h2h/a/b/#WbDmMwm1"],
+        retry_config=RetryConfig(max_attempts=2, base_delay=0, max_delay=0),
+        request_delay=0,
+    )
+
+    assert result.stats.failed == 1
+    failed = result.failed[0]
+    assert failed.attempts == 2
+    assert failed.is_retryable is True
+    assert failed.error_type is ErrorType.HEADER_NOT_FOUND
+    assert result.get_retryable_urls() == ["https://www.oddsportal.com/football/h2h/a/b/#WbDmMwm1"]
+
+    mocks["playwright_manager_mock"].report_page_result.assert_called_once_with("direct", is_proxy_failure=False)
+
+
+# -- match details + hydration on the redesigned DOM (issue #85) --------------
+
+
+def _make_hydrated_match_html(
+    date_p: str = "24 May 2026,",
+    time_p: str = "17:00",
+    score_text: str = "Final result 1:2 (0:1, 1:1)",
+    league: str = "Premier League 2025/2026",
+    ld_json: str | None = None,
+) -> str:
+    """Match page as rendered by the SPA (verified live 2026-09-02)."""
+    ld_block = f'<script type="application/ld+json">{ld_json}</script>' if ld_json else ""
+    return ld_block + match_header(
+        home="Crystal Palace",
+        away="Arsenal",
+        weekday="Sunday,",
+        date=date_p,
+        time=time_p,
+        date_row_extra=f"<div>{score_text}</div>",
+        breadcrumb=(
+            ("/", "Home"),
+            ("/football/", "Football"),
+            ("/football/england/", "England"),
+            (f"/football/england/{league}/", league),
+        ),
+    )
+
+
+_MATCHING_LD_JSON = (
+    '{"@context":"https://schema.org","@type":["Event","SportsEvent"],"sport":"Football",'
+    '"name":"Crystal Palace - Arsenal","startDate":"2026-05-24T18:00:00+01:00",'
+    '"location":{"@type":"Place","name":"Selhurst Park",'
+    '"address":{"addressLocality":"London","addressCountry":"England"}}}'
+)
+
+_STALE_LD_JSON = _MATCHING_LD_JSON.replace("2026-05-24T18:00:00+01:00", "2026-12-26T16:00:00+01:00")
+
+
+async def test_extract_match_details_from_hydrated_dom(setup_base_scraper_mocks):
+    """Happy path: every field comes from the DOM; venue from the matching JSON-LD."""
+    mocks = setup_base_scraper_mocks
+    scraper = mocks["scraper"]
+    page_mock = mocks["page_mock"]
+    mocks["playwright_manager_mock"].timezone_id = "UTC"
+
+    page_mock.content = AsyncMock(return_value=_make_hydrated_match_html(ld_json=_MATCHING_LD_JSON, time_p="17:00"))
+
+    result = await scraper._extract_match_details(
+        page=page_mock,
+        match_link="https://www.oddsportal.com/football/h2h/arsenal-hA1Zm19f/crystal-palace-AovF1Mia/#UNC9hLMj",
+    )
+
+    assert result["home_team"] == "Crystal Palace"
+    assert result["away_team"] == "Arsenal"
+    assert result["league_name"] == "Premier League"
+    assert result["match_date"] == "2026-05-24 17:00:00 UTC"
+    assert result["home_score"] == "1"
+    assert result["away_score"] == "2"
+    assert result["partial_results"] == "(0:1, 1:1)"
+    assert result["venue"] == "Selhurst Park"
+    assert result["venue_town"] == "London"
+    assert result["venue_country"] == "England"
+    assert result["match_info"] is None
+    assert "scraped_date" in result
+
+
+async def test_extract_match_details_ignores_stale_ld_json_venue(setup_base_scraper_mocks):
+    """The SSR JSON-LD describes the *next upcoming* meeting (gotchas 1b): a
+    startDate that does not match the DOM date must not contribute venue data."""
+    mocks = setup_base_scraper_mocks
+    scraper = mocks["scraper"]
+    page_mock = mocks["page_mock"]
+    mocks["playwright_manager_mock"].timezone_id = "UTC"
+
+    page_mock.content = AsyncMock(return_value=_make_hydrated_match_html(ld_json=_STALE_LD_JSON))
+
+    result = await scraper._extract_match_details(page=page_mock, match_link="https://example.test/m#id1")
+
+    assert result is not None
+    assert result["venue"] is None
+    assert result["venue_town"] is None
+    assert result["venue_country"] is None
+
+
+async def test_extract_match_details_returns_none_without_landmarks(setup_base_scraper_mocks):
+    """A non-hydrated page (H2H landing skeleton) has neither teams nor kickoff."""
+    mocks = setup_base_scraper_mocks
+    scraper = mocks["scraper"]
+    page_mock = mocks["page_mock"]
+    page_mock.content = AsyncMock(
+        return_value="<html><body><h1>LASK - Celtic</h1><p>Select a match from the listings</p></body></html>"
+    )
+
+    result = await scraper._extract_match_details(page=page_mock, match_link="https://example.test/m#id1")
+    assert result is None
+
+
+async def test_extract_match_details_declares_null_season(setup_base_scraper_mocks):
+    """Every row carries a season column; commands with no season leave it null (issue #78)."""
+    mocks = setup_base_scraper_mocks
+    scraper = mocks["scraper"]
+    page_mock = mocks["page_mock"]
+    mocks["playwright_manager_mock"].timezone_id = "UTC"
+    page_mock.content = AsyncMock(return_value=_make_hydrated_match_html())
+
+    result = await scraper._extract_match_details(page=page_mock, match_link="https://example.test/m#id1")
+
+    assert result["season"] is None
+    # Column position is part of the schema contract: the CSV header follows key order.
+    keys = list(result.keys())
+    assert keys.index("season") == keys.index("match_date") + 1
+    assert keys.index("match_link") == keys.index("season") + 1
+
+
+async def test_local_kickoff_disabled_adds_no_keys(setup_base_scraper_mocks):
+    mocks = setup_base_scraper_mocks
+    scraper = mocks["scraper"]
+    page_mock = mocks["page_mock"]
+    mocks["playwright_manager_mock"].timezone_id = "UTC"
+    page_mock.content = AsyncMock(return_value=_make_hydrated_match_html(ld_json=_MATCHING_LD_JSON))
+
+    result = await scraper._extract_match_details(page=page_mock, match_link="https://example.test/m#id1")
+
+    assert "venue_timezone" not in result
+    assert "match_date_venue_local" not in result
+
+
+async def test_local_kickoff_enabled_adds_local_fields(setup_base_scraper_mocks):
+    mocks = setup_base_scraper_mocks
+    scraper = mocks["scraper"]
+    scraper.local_kickoff = True
+    page_mock = mocks["page_mock"]
+    mocks["playwright_manager_mock"].timezone_id = "UTC"
+    page_mock.content = AsyncMock(return_value=_make_hydrated_match_html(ld_json=_MATCHING_LD_JSON))
+
+    result = await scraper._extract_match_details(page=page_mock, match_link="https://example.test/m#id1")
+
+    assert result["venue_timezone"] == "Europe/London"
+    assert result["match_date_venue_local"] is not None
+
+
+async def test_local_kickoff_enabled_unresolved_venue_sets_none(setup_base_scraper_mocks):
+    """Without a trustworthy JSON-LD venue, both local-kickoff fields stay None."""
+    mocks = setup_base_scraper_mocks
+    scraper = mocks["scraper"]
+    scraper.local_kickoff = True
+    page_mock = mocks["page_mock"]
+    mocks["playwright_manager_mock"].timezone_id = "UTC"
+    page_mock.content = AsyncMock(return_value=_make_hydrated_match_html(ld_json=_STALE_LD_JSON))
+
+    result = await scraper._extract_match_details(page=page_mock, match_link="https://example.test/m#id1")
+
+    assert result["venue_timezone"] is None
+    assert result["match_date_venue_local"] is None
+
+
+async def test_extract_match_details_teams_via_participant_name_testid(setup_base_scraper_mocks):
+    """Live pages carry the team name in a [data-testid='participant-name'] element
+    that is not necessarily a <p>."""
+    mocks = setup_base_scraper_mocks
+    scraper = mocks["scraper"]
+    page_mock = mocks["page_mock"]
+    mocks["playwright_manager_mock"].timezone_id = "UTC"
+    html = (
+        _make_hydrated_match_html()
+        .replace(
+            '<p class="participant-name">Crystal Palace</p>', '<div data-testid="participant-name">Crystal Palace</div>'
+        )
+        .replace('<p class="participant-name">Arsenal</p>', '<div data-testid="participant-name">Arsenal</div>')
+    )
+    page_mock.content = AsyncMock(return_value=html)
+
+    result = await scraper._extract_match_details(page=page_mock, match_link="https://example.test/m#id1")
+
+    assert result["home_team"] == "Crystal Palace"
+    assert result["away_team"] == "Arsenal"
+
+
+async def test_extract_match_details_reads_the_match_date_with_the_browser_zone_and_month_names(
+    setup_base_scraper_mocks,
+):
+    """The scraper hands the parser its browser's zone and month names: 18:00 shown in BST is 17:00 UTC."""
+    mocks = setup_base_scraper_mocks
+    mocks["playwright_manager_mock"].timezone_id = "Europe/London"
+    mocks["playwright_manager_mock"].month_name_to_num = {"localized-month-05": 5}
+    mocks["page_mock"].content = AsyncMock(
+        return_value=_make_hydrated_match_html(date_p="24 localized-month-05 2026,", time_p="18:00")
+    )
+
+    with page_clock(SUMMER_NOW):
+        result = await mocks["scraper"]._extract_match_details(
+            page=mocks["page_mock"], match_link="https://example.test/m#id1"
+        )
+
+    assert result["match_date"] == "2026-05-24 17:00:00 UTC"
+
+
+@pytest.mark.parametrize(
+    ("html", "message"),
+    [
+        (_make_hydrated_match_html(date_p="32 Aug 2022,"), "DOM parse failed for match_date"),
+        ("<html><body></body></html>", "No match landmarks found for"),
+    ],
+    ids=["a parser", "the assembly"],
+)
+async def test_match_page_parsing_logs_on_the_scraper_logger(setup_base_scraper_mocks, caplog, html, message):
+    """The console format prints the logger name, so the match page parsers log on the scraper's logger."""
+    mocks = setup_base_scraper_mocks
+    mocks["page_mock"].content = AsyncMock(return_value=html)
+
+    with caplog.at_level(logging.WARNING):
+        await mocks["scraper"]._extract_match_details(page=mocks["page_mock"], match_link="https://example.test/m#id1")
+
+    assert [record.name for record in caplog.records if record.getMessage().startswith(message)] == ["BaseScraper"]
+
+
+_UNKNOWN_PLACE_LD_JSON = _MATCHING_LD_JSON.replace('"London"', '"Nowhere"').replace('"England"', '"Atlantis"')
+_PLACE_AS_TEXT_LD_JSON = '{"@type":"SportsEvent","startDate":"2026-05-24T18:00:00+01:00","location":"Selhurst Park"}'
+
+
+@pytest.mark.parametrize(
+    ("broken", "ld_json", "message"),
+    [
+        ("match_title_block", None, "DOM parse failed for teams"),
+        ("content_root", None, "DOM parse failed for league_name"),
+        ("match_date_cell", None, "DOM parse failed for results"),
+        (None, _PLACE_AS_TEXT_LD_JSON, "JSON-LD venue parse failed"),
+        (None, _UNKNOWN_PLACE_LD_JSON, "Unresolved venue timezone"),
+    ],
+    ids=["teams", "league", "results", "venue", "venue timezone"],
+)
+async def test_every_match_page_log_line_is_on_the_scraper_logger(
+    setup_base_scraper_mocks, caplog, broken, ld_json, message
+):
+    """The other five log sites of the match page parsers, as the two above."""
+    mocks = setup_base_scraper_mocks
+    mocks["page_mock"].content = AsyncMock(return_value=_make_hydrated_match_html(ld_json=ld_json))
+    mocks["scraper"].local_kickoff = True
+    breaking = (
+        patch.object(OddsPortalSelectors, broken, side_effect=RuntimeError("layout changed"))
+        if broken
+        else nullcontext()
+    )
+
+    with breaking, caplog.at_level(logging.DEBUG):
+        await mocks["scraper"]._extract_match_details(page=mocks["page_mock"], match_link="https://example.test/m#id1")
+
+    assert [record.name for record in caplog.records if record.getMessage().startswith(message)] == ["BaseScraper"]
+
+
+def _match_load_scraper(mocks, order):
+    scraper = mocks["scraper"]
+    scraper._dismiss_login_modal = AsyncMock(side_effect=lambda page: order.append("dismiss"))
+    scraper._hydrate_match_view = AsyncMock(side_effect=lambda *args, **kwargs: order.append("hydrate"))
+    scraper._extract_match_details = AsyncMock(return_value={"home_team": "Arsenal", "away_team": "Leeds"})
+    return scraper
+
+
+async def test_a_match_load_waits_for_the_view_or_the_login_modal_first(setup_base_scraper_mocks):
+    """R1: the scrape goes on as soon as the tabs or the login modal show, at most DYNAMIC_CONTENT_WAIT_MS."""
+    mocks = setup_base_scraper_mocks
+    page_mock = mocks["page_mock"]
+    order = []
+    page_mock.wait_for_function = AsyncMock(side_effect=lambda *args, **kwargs: order.append("signal"))
+    scraper = _match_load_scraper(mocks, order)
+
+    await scraper._scrape_match_data(
+        page=page_mock, sport="football", match_link="https://www.oddsportal.com/football/h2h/a/b/#xtmHKGT0"
+    )
+
+    assert order == ["signal", "dismiss", "hydrate"]
+    page_mock.wait_for_function.assert_awaited_once_with(
+        BaseScraper._VIEW_OR_LOGIN_MODAL_JS,
+        arg={"tabs": OddsPortalSelectors.MATCH_CONTENT_READY_SELECTOR, "modal": OddsPortalSelectors.LOGIN_MODAL_CLOSE},
+        timeout=DYNAMIC_CONTENT_WAIT_MS,
+        polling=SIGNAL_POLL_MS,
+    )
+    page_mock.wait_for_timeout.assert_not_awaited()
+
+
+async def test_a_match_load_carries_on_when_neither_view_nor_modal_shows(setup_base_scraper_mocks, caplog):
+    mocks = setup_base_scraper_mocks
+    page_mock = mocks["page_mock"]
+    page_mock.wait_for_function = AsyncMock(side_effect=TimeoutError("Timeout 2000ms exceeded."))
+    order = []
+    scraper = _match_load_scraper(mocks, order)
+
+    with caplog.at_level("WARNING"):
+        result = await scraper._scrape_match_data(
+            page=page_mock, sport="football", match_link="https://www.oddsportal.com/football/h2h/a/b/#xtmHKGT0"
+        )
+
+    assert "No match view or login modal within 2000 ms; carrying on with the page as it is." in caplog.text
+    assert order == ["dismiss", "hydrate"]
+    assert result["home_team"] == "Arsenal"
+
+
+async def test_dismissing_the_login_modal_waits_for_it_to_hide(setup_base_scraper_mocks, caplog):
+    """R2: after the click, the modal hidden, at most LOGIN_MODAL_CLOSE_WAIT_MS."""
+    mocks = setup_base_scraper_mocks
+    page_mock = mocks["page_mock"]
+    close = AsyncMock()
+    close.is_visible = AsyncMock(return_value=True)
+    page_mock.query_selector = AsyncMock(return_value=close)
+
+    with caplog.at_level("INFO"):
+        await mocks["scraper"]._dismiss_login_modal(page_mock)
+
+    close.click.assert_awaited_once()
+    page_mock.wait_for_selector.assert_awaited_once_with(
+        OddsPortalSelectors.LOGIN_MODAL_CLOSE, state="hidden", timeout=LOGIN_MODAL_CLOSE_WAIT_MS
+    )
+    page_mock.wait_for_timeout.assert_not_awaited()
+    assert "Dismissed the login modal." in caplog.text
+
+
+async def test_dismissing_the_login_modal_carries_on_when_it_stays(setup_base_scraper_mocks, caplog):
+    mocks = setup_base_scraper_mocks
+    page_mock = mocks["page_mock"]
+    close = AsyncMock()
+    close.is_visible = AsyncMock(return_value=True)
+    page_mock.query_selector = AsyncMock(return_value=close)
+    page_mock.wait_for_selector = AsyncMock(side_effect=TimeoutError("Timeout 500ms exceeded."))
+
+    with caplog.at_level("WARNING"):
+        await mocks["scraper"]._dismiss_login_modal(page_mock)
+
+    assert "No login modal closing within 500 ms; carrying on with the page as it is." in caplog.text
+
+
+async def test_hydrate_match_view_success_first_attempt(setup_base_scraper_mocks):
+    """The view renders on load, so a first successful wait nudges nothing."""
+    mocks = setup_base_scraper_mocks
+    scraper = mocks["scraper"]
+    page_mock = mocks["page_mock"]
+    page_mock.evaluate = AsyncMock()
+    page_mock.wait_for_selector = AsyncMock()
+
+    await scraper._hydrate_match_view(
+        page=page_mock, match_link="https://www.oddsportal.com/football/h2h/a/b/#UNC9hLMj", sport="football"
+    )
+
+    page_mock.wait_for_selector.assert_awaited_once()
+    page_mock.evaluate.assert_not_awaited()
+
+
+async def test_hydrate_match_view_two_outcome_sport_uses_home_away(setup_base_scraper_mocks):
+    """The retry nudge targets a market tab the sport actually has."""
+    mocks = setup_base_scraper_mocks
+    scraper = mocks["scraper"]
+    page_mock = mocks["page_mock"]
+    page_mock.evaluate = AsyncMock()
+    page_mock.query_selector = AsyncMock(return_value=None)
+    page_mock.wait_for_selector = AsyncMock(side_effect=[TimeoutError("no content"), None])
+
+    await scraper._hydrate_match_view(
+        page=page_mock, match_link="https://www.oddsportal.com/tennis/h2h/a/b/#WbDmMwm1", sport="tennis"
+    )
+
+    args, kwargs = page_mock.evaluate.await_args
+    payload = args[1] if len(args) >= 2 else kwargs.get("arg")
+    assert payload["code"] == "home-away"
+
+
+async def test_hydrate_match_view_exhaustion_raises_retryable(setup_base_scraper_mocks):
+    from playwright.async_api import TimeoutError as PlaywrightTimeoutError
+
+    from oddsharvester.core.exceptions import H2HFragmentResolutionError
+
+    mocks = setup_base_scraper_mocks
+    scraper = mocks["scraper"]
+    page_mock = mocks["page_mock"]
+    page_mock.evaluate = AsyncMock()
+    page_mock.query_selector = AsyncMock(return_value=None)
+    page_mock.wait_for_selector = AsyncMock(side_effect=PlaywrightTimeoutError("timeout"))
+
+    with pytest.raises(H2HFragmentResolutionError) as excinfo:
+        await scraper._hydrate_match_view(
+            page=page_mock, match_link="https://www.oddsportal.com/football/h2h/a/b/#UNC9hLMj", sport="football"
+        )
+
+    assert excinfo.value.is_retryable is True
+    assert "hydration" in str(excinfo.value)
+    assert page_mock.evaluate.await_count == 3
+
+
+async def test_hydrate_match_view_without_fragment_waits_directly(setup_base_scraper_mocks):
+    """Legacy non-fragment match URLs skip the hash nudge entirely."""
+    mocks = setup_base_scraper_mocks
+    scraper = mocks["scraper"]
+    page_mock = mocks["page_mock"]
+    page_mock.evaluate = AsyncMock()
+    page_mock.wait_for_selector = AsyncMock()
+
+    await scraper._hydrate_match_view(
+        page=page_mock, match_link="https://www.oddsportal.com/football/england/x-y/abcd1234/", sport="football"
+    )
+
+    page_mock.evaluate.assert_not_awaited()
+    page_mock.wait_for_selector.assert_awaited_once()
+
+
+# -- live (in-play) on the redesigned DOM (issue #85 follow-up) ---------------
+
+_INPLAY_HEADER_HTML = """
+<div data-testid="game-participants">
+  <div class="my-3 flex w-full gap-2">
+    <div data-testid="game-host"><a data-testid="participant-name" href="/tennis/team/x/">Kopp S.</a></div>
+    <div class="shrink-0 text-right font-semibold text-red-dark">1</div>
+  </div>
+  <div class="relative inline-block"><span class="max-mm:!hidden text-red-dark">:</span></div>
+  <div class="flex w-full gap-2">
+    <div data-testid="game-guest"><a data-testid="participant-name" href="/tennis/team/y/">Ribeiro E.</a></div>
+    <div class="shrink-0 text-right font-semibold text-red-dark">2</div>
+  </div>
+</div>
+"""
+
+
+async def test_hydrate_match_view_inplay_waits_without_market_nudge(setup_base_scraper_mocks):
+    """/inplay-odds/ pages hydrate on their own and route their own market codes;
+    forcing '#id:1X2;2' can flip the view to Pre-match Odds. Wait first."""
+    mocks = setup_base_scraper_mocks
+    scraper = mocks["scraper"]
+    page_mock = mocks["page_mock"]
+    page_mock.evaluate = AsyncMock()
+    page_mock.wait_for_selector = AsyncMock()
+
+    await scraper._hydrate_match_view(
+        page=page_mock,
+        match_link="https://www.oddsportal.com/tennis/h2h/a/b/inplay-odds/#niGX35MH",
+        sport="tennis",
+    )
+
+    page_mock.evaluate.assert_not_awaited()
+    page_mock.wait_for_selector.assert_awaited_once()
+
+
+async def test_hydrate_match_view_inplay_nudges_bare_id_on_timeout(setup_base_scraper_mocks):
+    from playwright.async_api import TimeoutError as PlaywrightTimeoutError
+
+    mocks = setup_base_scraper_mocks
+    scraper = mocks["scraper"]
+    page_mock = mocks["page_mock"]
+    page_mock.evaluate = AsyncMock()
+    page_mock.query_selector = AsyncMock(return_value=None)
+    page_mock.wait_for_selector = AsyncMock(side_effect=[PlaywrightTimeoutError("t"), None])
+
+    await scraper._hydrate_match_view(
+        page=page_mock,
+        match_link="https://www.oddsportal.com/tennis/h2h/a/b/inplay-odds/#niGX35MH",
+        sport="tennis",
+    )
+
+    args, kwargs = page_mock.evaluate.await_args
+    payload = args[1] if len(args) >= 2 else kwargs.get("arg")
+    assert payload["fragment"] == "niGX35MH"
+    assert payload.get("bare") is True
+
+
+async def test_extract_match_odds_streams_each_success_before_the_run_ends(setup_base_scraper_mocks):
+    """Each match reaches the callback as it completes, not once every link is done."""
+    mocks = setup_base_scraper_mocks
+    emitted: list[dict] = []
+    emitted_when_each_started: list[int] = []
+
+    scraper = BaseScraper(
+        playwright_manager=mocks["playwright_manager_mock"],
+        market_extractor=mocks["market_extractor_mock"],
+        scroller=AsyncMock(),
+        cookie_dismisser=AsyncMock(),
+        selection_manager=mocks["selection_manager_mock"],
+        on_match=emitted.append,
+    )
+
+    async def scrape(**kwargs):
+        emitted_when_each_started.append(len(emitted))
+        return {"match_link": kwargs["match_link"]}
+
+    scraper._scrape_match_data = AsyncMock(side_effect=scrape)
+
+    result = await scraper.extract_match_odds(
+        sport="football",
+        match_links=["https://x/a", "https://x/b"],
+        concurrent_scraping_task=1,
+        request_delay=0,
+    )
+
+    assert emitted == [{"match_link": "https://x/a"}, {"match_link": "https://x/b"}]
+    assert emitted_when_each_started == [0, 1], "the second match started only after the first was streamed"
+    assert result.stats.successful == 2
+
+
+async def test_extract_match_odds_does_not_stream_failed_matches(setup_base_scraper_mocks):
+    from oddsharvester.core.retry import RetryConfig
+
+    mocks = setup_base_scraper_mocks
+    scraper = mocks["scraper"]
+    emitted: list[dict] = []
+    scraper.on_match = emitted.append
+    scraper._scrape_match_data = AsyncMock(return_value=None)
+
+    result = await scraper.extract_match_odds(
+        sport="football",
+        match_links=["https://x/a"],
+        retry_config=RetryConfig(max_attempts=1, base_delay=0, max_delay=0),
+        request_delay=0,
+    )
+
+    assert result.stats.failed == 1
+    assert emitted == []
+
+
+async def test_extract_match_odds_without_callback_is_unchanged(setup_base_scraper_mocks):
+    mocks = setup_base_scraper_mocks
+    scraper = mocks["scraper"]
+    scraper._scrape_match_data = AsyncMock(return_value={"match_link": "https://x/a"})
+
+    result = await scraper.extract_match_odds(sport="football", match_links=["https://x/a"], request_delay=0)
+
+    assert scraper.on_match is None
+    assert result.success == [{"match_link": "https://x/a"}]
+
+
+async def test_extract_match_odds_survives_a_failing_callback(setup_base_scraper_mocks):
+    """A broken consumer must not turn a scraped match into a failed one."""
+    mocks = setup_base_scraper_mocks
+    scraper = mocks["scraper"]
+    scraper.on_match = MagicMock(side_effect=RuntimeError("consumer exploded"))
+    scraper._scrape_match_data = AsyncMock(return_value={"match_link": "https://x/a"})
+
+    result = await scraper.extract_match_odds(sport="football", match_links=["https://x/a"], request_delay=0)
+
+    assert result.stats.successful == 1
+    assert result.stats.failed == 0
+    scraper.on_match.assert_called_once_with({"match_link": "https://x/a"})
+
+
+def _fake_response(status, url, resource_type="fetch"):
+    response = MagicMock()
+    response.status = status
+    response.url = url
+    response.request.resource_type = resource_type
+    return response
+
+
+def _capture_response_listener(page_mock):
+    listeners = []
+    page_mock.on = MagicMock(side_effect=lambda event, handler: listeners.append(handler))
+    page_mock.remove_listener = MagicMock()
+    return listeners
+
+
+async def test_scrape_match_data_raises_rate_limit_when_a_429_blocked_hydration(setup_base_scraper_mocks):
+    """A 429 on the match feed leaves the view empty: report the rate limit, not a render race."""
+    from oddsharvester.core.exceptions import H2HFragmentResolutionError, RateLimitError
+    from oddsharvester.core.scrape_result import ErrorType
+
+    mocks = setup_base_scraper_mocks
+    scraper = mocks["scraper"]
+    page_mock = mocks["page_mock"]
+    listeners = _capture_response_listener(page_mock)
+
+    async def goto(*args, **kwargs):
+        for handler in listeners:
+            handler(_fake_response(429, "https://www.oddsportal.com/proxy/match-event/1-1-YDZojogM"))
+
+    page_mock.goto = AsyncMock(side_effect=goto)
+    scraper._dismiss_login_modal = AsyncMock()
+    scraper._hydrate_match_view = AsyncMock(side_effect=H2HFragmentResolutionError("never rendered match content"))
+
+    with pytest.raises(RateLimitError) as excinfo:
+        await scraper._scrape_match_data(
+            page=page_mock, sport="football", match_link="https://www.oddsportal.com/football/h2h/a/b/#YDZojogM"
+        )
+
+    assert excinfo.value.error_type is ErrorType.RATE_LIMITED
+    assert excinfo.value.is_retryable is True
+
+
+async def test_scrape_match_data_raises_rate_limit_instead_of_partial_markets(setup_base_scraper_mocks):
+    """A 429 while switching market tabs must not return a record with a silently empty market."""
+    from oddsharvester.core.exceptions import RateLimitError
+
+    mocks = setup_base_scraper_mocks
+    scraper = mocks["scraper"]
+    page_mock = mocks["page_mock"]
+    listeners = _capture_response_listener(page_mock)
+
+    async def scrape_markets(**kwargs):
+        for handler in listeners:
+            handler(_fake_response(429, "https://www.oddsportal.com/feed/match-event/1-1-xtmHKGT0.dat"))
+        return {"over_under_2_5_market": [{"bookmaker_name": "bet365"}]}
+
+    scraper._dismiss_login_modal = AsyncMock()
+    scraper._hydrate_match_view = AsyncMock()
+    scraper._extract_match_details = AsyncMock(return_value={"home_team": "Arsenal", "away_team": "Leeds"})
+    mocks["market_extractor_mock"].scrape_markets = AsyncMock(side_effect=scrape_markets)
+
+    with pytest.raises(RateLimitError):
+        await scraper._scrape_match_data(
+            page=page_mock,
+            sport="football",
+            match_link="https://www.oddsportal.com/football/h2h/a/b/#xtmHKGT0",
+            markets=["1x2", "over_under_2_5"],
+        )
+
+
+async def test_scrape_match_data_ignores_third_party_429(setup_base_scraper_mocks):
+    """Ad and analytics hosts throttle on their own; only OddsPortal's 429 means the IP is limited."""
+    mocks = setup_base_scraper_mocks
+    scraper = mocks["scraper"]
+    page_mock = mocks["page_mock"]
+    listeners = _capture_response_listener(page_mock)
+
+    async def goto(*args, **kwargs):
+        for handler in listeners:
+            handler(_fake_response(429, "https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"))
+
+    page_mock.goto = AsyncMock(side_effect=goto)
+    scraper._dismiss_login_modal = AsyncMock()
+    scraper._hydrate_match_view = AsyncMock()
+    scraper._extract_match_details = AsyncMock(return_value={"home_team": "Masar", "away_team": "Proxy"})
+
+    result = await scraper._scrape_match_data(
+        page=page_mock, sport="football", match_link="https://www.oddsportal.com/football/h2h/a/b/#YDZojogM"
+    )
+
+    assert result == {"home_team": "Masar", "away_team": "Proxy"}
+    page_mock.remove_listener.assert_called_once()
+
+
+async def test_scrape_match_data_retry_reloads_a_page_already_on_the_match(setup_base_scraper_mocks):
+    """goto to the URL the tab already shows only changes the fragment: the retry would reuse the broken view."""
+    mocks = setup_base_scraper_mocks
+    scraper = mocks["scraper"]
+    page_mock = mocks["page_mock"]
+    _capture_response_listener(page_mock)
+    page_mock.url = "https://www.oddsportal.com/football/h2h/a/b/#YDZojogM:1X2;2"
+    scraper._dismiss_login_modal = AsyncMock()
+    scraper._hydrate_match_view = AsyncMock()
+    scraper._extract_match_details = AsyncMock(return_value={"home_team": "Masar"})
+
+    await scraper._scrape_match_data(
+        page=page_mock, sport="football", match_link="https://www.oddsportal.com/football/h2h/a/b/#YDZojogM"
+    )
+
+    targets = [c.args[0] for c in page_mock.goto.await_args_list]
+    assert targets == ["about:blank", "https://www.oddsportal.com/football/h2h/a/b/#YDZojogM"]
+
+
+async def test_scrape_match_data_fresh_tab_navigates_once(setup_base_scraper_mocks):
+    mocks = setup_base_scraper_mocks
+    scraper = mocks["scraper"]
+    page_mock = mocks["page_mock"]
+    _capture_response_listener(page_mock)
+    page_mock.url = "about:blank"
+    scraper._dismiss_login_modal = AsyncMock()
+    scraper._hydrate_match_view = AsyncMock()
+    scraper._extract_match_details = AsyncMock(return_value={"home_team": "Masar"})
+
+    await scraper._scrape_match_data(
+        page=page_mock, sport="football", match_link="https://www.oddsportal.com/football/h2h/a/b/#YDZojogM"
+    )
+
+    targets = [c.args[0] for c in page_mock.goto.await_args_list]
+    assert targets == ["https://www.oddsportal.com/football/h2h/a/b/#YDZojogM"]
+
+
+async def test_scrape_match_data_loads_a_link_naming_a_market_on_its_event(setup_base_scraper_mocks):
+    """A link copied from a market tab must load on the bare event: OddsPortal serves the default market otherwise."""
+    mocks = setup_base_scraper_mocks
+    scraper = mocks["scraper"]
+    page_mock = mocks["page_mock"]
+    _capture_response_listener(page_mock)
+    page_mock.url = "about:blank"
+    scraper._dismiss_login_modal = AsyncMock()
+    scraper._hydrate_match_view = AsyncMock()
+    scraper._extract_match_details = AsyncMock(
+        return_value={
+            "home_team": "Masar",
+            "match_link": "https://www.oddsportal.com/football/h2h/a/b/#YDZojogM:bts;2",
+        }
+    )
+
+    result = await scraper._scrape_match_data(
+        page=page_mock, sport="football", match_link="https://www.oddsportal.com/football/h2h/a/b/#YDZojogM:bts;2"
+    )
+
+    targets = [c.args[0] for c in page_mock.goto.await_args_list]
+    assert targets == ["https://www.oddsportal.com/football/h2h/a/b/#YDZojogM"]
+    scraper._extract_match_details.assert_called_once_with(
+        page_mock, "https://www.oddsportal.com/football/h2h/a/b/#YDZojogM:bts;2"
+    )
+    assert result["match_link"] == "https://www.oddsportal.com/football/h2h/a/b/#YDZojogM:bts;2"
+
+
+async def test_scrape_match_data_retry_reloads_a_page_already_on_the_bare_event(setup_base_scraper_mocks):
+    """A retry on a page already on the bare event goes through about:blank, then loads the bare event URL again."""
+    mocks = setup_base_scraper_mocks
+    scraper = mocks["scraper"]
+    page_mock = mocks["page_mock"]
+    _capture_response_listener(page_mock)
+    page_mock.url = "https://www.oddsportal.com/football/h2h/a/b/#YDZojogM"
+    scraper._dismiss_login_modal = AsyncMock()
+    scraper._hydrate_match_view = AsyncMock()
+    scraper._extract_match_details = AsyncMock(return_value={"home_team": "Masar"})
+
+    await scraper._scrape_match_data(
+        page=page_mock, sport="football", match_link="https://www.oddsportal.com/football/h2h/a/b/#YDZojogM:bts;2"
+    )
+
+    targets = [c.args[0] for c in page_mock.goto.await_args_list]
+    assert targets == [
+        "about:blank",
+        "https://www.oddsportal.com/football/h2h/a/b/#YDZojogM",
+    ]
+
+
+async def test_scrape_match_data_keeps_a_complete_record_when_only_an_image_got_429(setup_base_scraper_mocks):
+    """Images and chunks are the first to be refused; a view that rendered with every market is a good record."""
+    from unittest.mock import ANY
+
+    mocks = setup_base_scraper_mocks
+    scraper = mocks["scraper"]
+    page_mock = mocks["page_mock"]
+    listeners = _capture_response_listener(page_mock)
+
+    async def goto(*args, **kwargs):
+        for handler in listeners:
+            handler(_fake_response(429, "https://www.oddsportal.com/images/logos/logo.svg", "image"))
+            handler(_fake_response(429, "https://www.oddsportal.com/_next/static/chunks/a.js", "script"))
+
+    page_mock.goto = AsyncMock(side_effect=goto)
+    scraper._dismiss_login_modal = AsyncMock()
+    scraper._hydrate_match_view = AsyncMock()
+    scraper._extract_match_details = AsyncMock(return_value={"home_team": "Masar"})
+
+    result = await scraper._scrape_match_data(
+        page=page_mock, sport="football", match_link="https://www.oddsportal.com/football/h2h/a/b/#YDZojogM"
+    )
+
+    assert result == {"home_team": "Masar"}
+    page_mock.on.assert_called_once_with("response", ANY)
+
+
+async def test_scrape_match_data_reports_rate_limit_when_a_refused_script_blocked_hydration(setup_base_scraper_mocks):
+    from oddsharvester.core.exceptions import H2HFragmentResolutionError, RateLimitError
+
+    mocks = setup_base_scraper_mocks
+    scraper = mocks["scraper"]
+    page_mock = mocks["page_mock"]
+    listeners = _capture_response_listener(page_mock)
+
+    async def goto(*args, **kwargs):
+        for handler in listeners:
+            handler(_fake_response(429, "https://www.oddsportal.com/_next/static/chunks/a.js", "script"))
+
+    page_mock.goto = AsyncMock(side_effect=goto)
+    scraper._dismiss_login_modal = AsyncMock()
+    scraper._hydrate_match_view = AsyncMock(side_effect=H2HFragmentResolutionError("never rendered match content"))
+
+    with pytest.raises(RateLimitError):
+        await scraper._scrape_match_data(
+            page=page_mock, sport="football", match_link="https://www.oddsportal.com/football/h2h/a/b/#YDZojogM"
+        )
+
+    handler = page_mock.on.call_args.args[1]
+    page_mock.remove_listener.assert_called_once_with("response", handler)
+
+
+async def test_scrape_match_data_counts_429_after_a_redirect_to_the_www_host(setup_base_scraper_mocks):
+    """A bare-host --match-link redirects to www; the refused feed is then on www."""
+    from oddsharvester.core.exceptions import RateLimitError
+
+    mocks = setup_base_scraper_mocks
+    scraper = mocks["scraper"]
+    page_mock = mocks["page_mock"]
+    listeners = _capture_response_listener(page_mock)
+
+    async def goto(*args, **kwargs):
+        for handler in listeners:
+            handler(_fake_response(429, "https://www.oddsportal.com/proxy/match-event/1-1-YDZojogM", "fetch"))
+
+    page_mock.goto = AsyncMock(side_effect=goto)
+    scraper._dismiss_login_modal = AsyncMock()
+    scraper._hydrate_match_view = AsyncMock()
+    scraper._extract_match_details = AsyncMock(return_value={"home_team": "Masar"})
+
+    with pytest.raises(RateLimitError):
+        await scraper._scrape_match_data(
+            page=page_mock, sport="football", match_link="https://oddsportal.com/football/h2h/a/b/#YDZojogM"
+        )
+
+
+async def test_scrape_match_data_raises_rate_limit_when_a_refused_script_left_no_match_details(
+    setup_base_scraper_mocks,
+):
+    """A content failure during a 429 keeps the rate-limit delay and proxy penalty, like a failed hydration."""
+    from oddsharvester.core.exceptions import RateLimitError
+
+    mocks = setup_base_scraper_mocks
+    scraper = mocks["scraper"]
+    page_mock = mocks["page_mock"]
+    listeners = _capture_response_listener(page_mock)
+
+    async def goto(*args, **kwargs):
+        for handler in listeners:
+            handler(_fake_response(429, "https://www.oddsportal.com/_next/static/chunks/a.js", "script"))
+
+    page_mock.goto = AsyncMock(side_effect=goto)
+    scraper._dismiss_login_modal = AsyncMock()
+    scraper._hydrate_match_view = AsyncMock()
+    scraper._extract_match_details = AsyncMock(return_value=None)
+
+    with pytest.raises(RateLimitError):
+        await scraper._scrape_match_data(
+            page=page_mock, sport="football", match_link="https://www.oddsportal.com/football/h2h/a/b/#YDZojogM"
+        )
+
+
+async def test_extract_match_odds_retries_a_content_failure_once_and_reports_it(setup_base_scraper_mocks):
+    """B2: the real error reaches the failed list after one retry, and the proxy is not blamed."""
+    from oddsharvester.core.retry import RetryConfig
+    from oddsharvester.core.scrape_result import ErrorType
+
+    mocks = setup_base_scraper_mocks
+    scraper = mocks["scraper"]
+    pm = mocks["playwright_manager_mock"]
+    scraper._hydrate_match_view = AsyncMock()
+    scraper._dismiss_login_modal = AsyncMock()
+    scraper._extract_match_details = AsyncMock(return_value=None)
+
+    result = await scraper.extract_match_odds(
+        sport="football",
+        match_links=["https://www.oddsportal.com/football/h2h/a/b/#WbDmMwm1"],
+        retry_config=RetryConfig(max_attempts=2, base_delay=0, max_delay=0),
+        request_delay=0,
+    )
+
+    assert result.stats.failed == 1
+    failed = result.failed[0]
+    assert failed.attempts == 2
+    assert failed.error_type is ErrorType.HEADER_NOT_FOUND
+    assert "No match details found" in failed.error_message
+    assert failed.is_retryable is True
+    assert scraper._extract_match_details.await_count == 2
+    pm.report_page_result.assert_called_once_with("direct", is_proxy_failure=False)
+
+
+async def test_extract_match_odds_recovers_when_the_retry_reads_the_page(setup_base_scraper_mocks):
+    from oddsharvester.core.retry import RetryConfig
+
+    link = "https://www.oddsportal.com/football/h2h/a/b/#WbDmMwm1"
+    mocks = setup_base_scraper_mocks
+    scraper = mocks["scraper"]
+    scraper._hydrate_match_view = AsyncMock()
+    scraper._dismiss_login_modal = AsyncMock()
+    scraper._extract_match_details = AsyncMock(side_effect=[None, {"match_link": link, "home_team": "A"}])
+
+    result = await scraper.extract_match_odds(
+        sport="football",
+        match_links=[link],
+        retry_config=RetryConfig(max_attempts=2, base_delay=0, max_delay=0),
+        request_delay=0,
+    )
+
+    assert (result.stats.successful, result.stats.failed) == (1, 0)
+    assert result.success == [{"match_link": link, "home_team": "A"}]
+
+
+async def test_scrape_match_data_keeps_the_match_when_a_market_fails(setup_base_scraper_mocks):
+    """Guard: a failing market still gives the partial match the collector relies on."""
+    mocks = setup_base_scraper_mocks
+    scraper = mocks["scraper"]
+    scraper._hydrate_match_view = AsyncMock()
+    scraper._dismiss_login_modal = AsyncMock()
+    scraper._extract_match_details = AsyncMock(
+        return_value={"home_team": "Arsenal", "match_date": "2023-05-01 20:00:00 UTC"}
+    )
+    mocks["market_extractor_mock"].scrape_markets = AsyncMock(side_effect=RuntimeError("tab switch failed"))
+
+    result = await scraper._scrape_match_data(
+        page=mocks["page_mock"],
+        sport="football",
+        match_link="https://www.oddsportal.com/football/h2h/a/b/#WbDmMwm1",
+        markets=["1x2"],
+    )
+
+    assert result == {"home_team": "Arsenal", "match_date": "2023-05-01 20:00:00 UTC"}
+
+
+async def test_a_market_whose_data_never_came_fails_the_match_instead_of_keeping_a_wrong_record(
+    setup_base_scraper_mocks,
+):
+    """A record read past a lost market switch would carry the previous market's odds under the next one's name."""
+    from oddsharvester.core.exceptions import MarketDataError
+    from oddsharvester.core.retry import RetryConfig
+    from oddsharvester.core.scrape_result import ErrorType
+
+    mocks = setup_base_scraper_mocks
+    scraper = mocks["scraper"]
+    scraper._hydrate_match_view = AsyncMock()
+    scraper._dismiss_login_modal = AsyncMock()
+    scraper._extract_match_details = AsyncMock(return_value={"home_team": "Chelsea"})
+    lost = MarketDataError("OddsPortal sent no data for the view 'bts;2' within 5500 ms")
+    mocks["market_extractor_mock"].scrape_markets = AsyncMock(side_effect=lost)
+
+    result = await scraper.extract_match_odds(
+        sport="football",
+        match_links=["https://www.oddsportal.com/football/h2h/a/b/#lMp9YMye"],
+        markets=["1x2", "btts"],
+        retry_config=RetryConfig(max_attempts=2, base_delay=0, max_delay=0),
+        request_delay=0,
+    )
+
+    assert result.success == []
+    [failed] = result.failed
+    assert (failed.error_type, failed.attempts, failed.is_retryable) == (ErrorType.MARKET_EXTRACTION, 2, True)
+    assert "no data for the view 'bts;2'" in failed.error_message
+
+
+async def test_a_market_whose_data_was_refused_with_429_is_a_rate_limit(setup_base_scraper_mocks):
+    """A 429 on the data request of a switch keeps its rate-limit wait (gotchas §23)."""
+    from oddsharvester.core.exceptions import MarketDataError, RateLimitError
+
+    mocks = setup_base_scraper_mocks
+    scraper = mocks["scraper"]
+    page = mocks["page_mock"]
+    listeners = []
+    page.on = MagicMock(side_effect=lambda event, listener: listeners.append(listener))
+    page.remove_listener = MagicMock()
+    scraper._hydrate_match_view = AsyncMock()
+    scraper._dismiss_login_modal = AsyncMock()
+    scraper._extract_match_details = AsyncMock(return_value={"home_team": "Chelsea"})
+    url = "https://www.oddsportal.com/proxy/match-event/1-1-lMp9YMye-13-2-c5.dat"
+
+    async def refused(**_):
+        listeners[0](MagicMock(url=url, status=429, request=MagicMock(resource_type="fetch")))
+        raise MarketDataError("OddsPortal refused the data of the view 'bts;2': HTTP 429")
+
+    mocks["market_extractor_mock"].scrape_markets = AsyncMock(side_effect=refused)
+
+    with pytest.raises(RateLimitError, match="rate limited by OddsPortal: HTTP 429 on 1 request"):
+        await scraper._scrape_match_data(
+            page=page,
+            sport="football",
+            match_link="https://www.oddsportal.com/football/h2h/a/b/#lMp9YMye",
+            markets=["btts"],
+        )
+
+
+def _history_ready_scraper(mocks, details):
+    scraper = mocks["scraper"]
+    scraper._hydrate_match_view = AsyncMock()
+    scraper._dismiss_login_modal = AsyncMock()
+    scraper._extract_match_details = AsyncMock(return_value=details)
+    mocks["market_extractor_mock"].scrape_markets = AsyncMock(return_value={})
+    return scraper
+
+
+async def test_scrape_match_data_passes_the_browser_zone_to_odds_history(setup_base_scraper_mocks):
+    mocks = setup_base_scraper_mocks
+    mocks["playwright_manager_mock"].timezone_id = "Europe/London"
+    scraper = _history_ready_scraper(mocks, {"match_date": "2026-01-04 17:30:00 UTC"})
+
+    await scraper._scrape_match_data(
+        page=mocks["page_mock"],
+        sport="football",
+        match_link="https://www.oddsportal.com/football/h2h/a/b/#lMp9YMye",
+        markets=["1x2"],
+        scrape_odds_history=True,
+    )
+
+    kwargs = mocks["market_extractor_mock"].scrape_markets.await_args.kwargs
+    assert kwargs["history_reference"] == datetime(2026, 1, 4, 17, 30)
+    assert kwargs["history_timezone"] == "Europe/London"
+
+
+@pytest.mark.parametrize(("scrape_odds_history", "expected"), [(True, 1), (False, 0)])
+async def test_odds_history_without_a_kickoff_warns_once_per_match(
+    setup_base_scraper_mocks, caplog, scrape_odds_history, expected
+):
+    mocks = setup_base_scraper_mocks
+    scraper = _history_ready_scraper(mocks, {"home_team": "Arsenal"})
+    link = "https://www.oddsportal.com/football/h2h/a/b/#WbDmMwm1"
+
+    with caplog.at_level(logging.WARNING):
+        await scraper._scrape_match_data(
+            page=mocks["page_mock"],
+            sport="football",
+            match_link=link,
+            markets=["1x2", "over_under_2_5"],
+            scrape_odds_history=scrape_odds_history,
+        )
+
+    warnings = [r.message for r in caplog.records if "current year" in r.message]
+    assert warnings == [f"No kickoff read on {link}: its odds-history timestamps take the current year."] * expected
+
+
+async def test_extract_match_odds_keeps_results_when_closing_a_tab_fails(setup_base_scraper_mocks):
+    """A failed tab close must not escape the batch: retry_scrape would rerun and re-emit every match."""
+    mocks = setup_base_scraper_mocks
+    scraper = mocks["scraper"]
+    mocks["page_mock"].close = AsyncMock(side_effect=Exception("Target page, context or browser has been closed"))
+    scraper._scrape_match_data = AsyncMock(side_effect=[{"match_link": "https://x/a"}, {"match_link": "https://x/b"}])
+
+    result = await scraper.extract_match_odds(
+        sport="football", match_links=["https://x/a", "https://x/b"], request_delay=0
+    )
+
+    assert (result.stats.successful, result.stats.failed) == (2, 0)

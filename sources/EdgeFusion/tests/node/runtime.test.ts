@@ -1,0 +1,31 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { mkdtempSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+const dir=mkdtempSync(join(tmpdir(),'edgefusion-runtime-'));
+process.env.EDGEBOARD_DB=join(dir,'test.sqlite');
+const {db,router,json,requireAuth}=await import('../../runtime/sdk.ts');
+test('database isolation, pagination, CRUD and atomic snapshot upserts',async()=>{
+  const [id]=await db.add('user:a',[{value:1}]);
+  assert.equal((await db.get<any>('user:a',[id]))[0]?.value,1);
+  assert.equal((await db.get('user:b',[id]))[0],null);
+  await db.update('user:a',[{id,record:{value:2}}]);
+  assert.equal((await db.get<any>('user:a',[id]))[0]?.value,2);
+  await db.add('user:a',[{value:3}]);
+  const first=await db.list('user:a',{limit:1});assert.ok(first.nextToken);
+  assert.equal((await db.list('user:a',{limit:1,nextToken:first.nextToken!})).items.length,1);
+  await db.transact([db.tx.update('snapshot',[{id:'index',record:{parts:['p1']}}]),db.tx.update('snapshot',[{id:'p1',record:{value:1}}])]);
+  assert.equal((await db.get<any>('snapshot',['p1']))[0]?.value,1);
+  await assert.rejects(()=>db.transact([db.tx.update('snapshot',[{id:'p1',record:{value:2}}]),db.tx.update('snapshot',[{id:null as any,record:{bad:true}}]) ]));
+  assert.equal((await db.get<any>('snapshot',['p1']))[0]?.value,1);
+  assert.deepEqual(await db.delete('user:a',[id]),[true]);
+});
+test('routing preserves auth middleware, query, body and errors',async()=>{
+  const handler=router({'POST /api/test':[requireAuth(),async ctx=>json({id:ctx.user.userId,body:ctx.body,q:ctx.query.x})]});
+  assert.equal((await handler({method:'POST',path:'/api/test',query:{}})).status,401);
+  const result=await handler({method:'POST',path:'/api/test',query:{x:'yes'},body:{x:1},user:{userId:'owner'}});
+  assert.deepEqual(result.data,{id:'owner',body:{x:1},q:'yes'});
+  assert.equal((await handler({method:'GET',path:'/missing',query:{}})).status,404);
+});
+test.after(()=>rmSync(dir,{recursive:true,force:true}));

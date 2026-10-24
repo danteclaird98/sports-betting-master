@@ -1,0 +1,9 @@
+.git
+node_modules
+dist
+data
+__pycache__
+**/__pycache__
+.env
+.env.*
+upstream

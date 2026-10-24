@@ -1,0 +1,150 @@
+"""
+Scrape result data structures for tracking scraping outcomes.
+
+This module provides dataclasses to encapsulate scraping results with
+detailed error tracking, enabling callers to programmatically handle
+failures and generate reports.
+"""
+
+from dataclasses import dataclass, field
+from datetime import UTC, datetime
+from enum import Enum
+from typing import Any
+
+
+class ErrorType(Enum):
+    """Classification of scraping errors."""
+
+    NAVIGATION = "navigation"  # Timeout, connection errors
+    PARSING = "parsing"  # HTML structure parsing failures
+    MARKET_EXTRACTION = "market_extraction"  # Market data extraction failed
+    HEADER_NOT_FOUND = "header_not_found"  # Match view never rendered, or its header gave no details
+    RATE_LIMITED = "rate_limited"  # Too many requests
+    PAGE_NOT_FOUND = "page_not_found"  # 404 or page unavailable
+    # A listing page that could not be collected. Distinct from a per-match
+    # failure: the matches behind it are never even discovered, so the dataset
+    # is incomplete in a way the caller cannot enumerate or retry per URL.
+    LISTING_PAGE = "listing_page"
+    UNKNOWN = "unknown"  # Unclassified errors
+
+
+@dataclass
+class FailedUrl:
+    """Represents a URL that failed to scrape."""
+
+    url: str
+    error_type: ErrorType
+    error_message: str
+    attempts: int = 1
+    last_attempt: datetime = field(default_factory=lambda: datetime.now(UTC))
+    is_retryable: bool = True
+
+
+LISTING_PAGE_ERROR_MESSAGE = "Failed to collect links from listing page"
+
+
+def listing_page_failures(urls: list[str]) -> list[FailedUrl]:
+    """One LISTING_PAGE failure per listing page that could not be collected."""
+    return [
+        FailedUrl(url=url, error_type=ErrorType.LISTING_PAGE, error_message=LISTING_PAGE_ERROR_MESSAGE) for url in urls
+    ]
+
+
+@dataclass
+class ScrapeStats:
+    """Statistics for a scraping operation."""
+
+    total_urls: int = 0
+    successful: int = 0
+    failed: int = 0
+
+    @property
+    def success_rate(self) -> float:
+        """Calculate success rate as percentage."""
+        if self.total_urls == 0:
+            return 0.0
+        return (self.successful / self.total_urls) * 100
+
+
+@dataclass
+class ScrapeResult:
+    """
+    Complete result of a scraping operation.
+
+    Contains successful results, failed URLs with error details,
+    and overall statistics.
+    """
+
+    success: list[dict[str, Any]] = field(default_factory=list)
+    failed: list[FailedUrl] = field(default_factory=list)
+    stats: ScrapeStats = field(default_factory=ScrapeStats)
+    combo_stats: list[dict[str, Any]] = field(default_factory=list)
+
+    @classmethod
+    def from_links(
+        cls,
+        rows: list[dict[str, Any]],
+        context: dict[str, Any],
+        failed_page_urls: list[str] | None = None,
+    ) -> "ScrapeResult":
+        """Build a links-only result: collected match rows instead of odds data.
+
+        Each row must carry `match_link`. Any other key it holds is appended
+        after the context columns, so the link stays first and per-row extras last.
+        """
+        success = [
+            {"match_link": row["match_link"], **context, **{k: v for k, v in row.items() if k != "match_link"}}
+            for row in rows
+        ]
+        failed = listing_page_failures(failed_page_urls or [])
+        return cls(
+            success=success,
+            failed=failed,
+            stats=ScrapeStats(total_urls=len(success) + len(failed), successful=len(success), failed=len(failed)),
+        )
+
+    def add_failure(self, failure: FailedUrl) -> None:
+        """Count one failure the match scraping itself did not record."""
+        self.failed.append(failure)
+        self.stats.failed += 1
+        self.stats.total_urls += 1
+
+    def add_listing_failures(self, failed_page_urls: list[str]) -> None:
+        """Count listing pages that could not be collected.
+
+        Their matches were never discovered, so they cannot show up as per-match
+        failures; without this a run reports 100% success on an incomplete dataset.
+        """
+        for failure in listing_page_failures(failed_page_urls):
+            self.add_failure(failure)
+
+    def merge(self, other: "ScrapeResult") -> "ScrapeResult":
+        """
+        Merge another ScrapeResult into this one.
+
+        Args:
+            other: Another ScrapeResult to merge.
+
+        Returns:
+            Self for chaining.
+        """
+        self.success.extend(other.success)
+        self.failed.extend(other.failed)
+        self.stats.total_urls += other.stats.total_urls
+        self.stats.successful += other.stats.successful
+        self.stats.failed += other.stats.failed
+        return self
+
+    def get_retryable_urls(self) -> list[str]:
+        """Get list of failed URLs that can be retried."""
+        return [f.url for f in self.failed if f.is_retryable]
+
+    def get_error_breakdown(self) -> dict[str, list[str]]:
+        """Get breakdown of failures by error type."""
+        breakdown: dict[str, list[str]] = {}
+        for failed in self.failed:
+            error_type = failed.error_type.value
+            if error_type not in breakdown:
+                breakdown[error_type] = []
+            breakdown[error_type].append(failed.url)
+        return breakdown

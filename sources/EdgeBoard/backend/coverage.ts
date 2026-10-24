@@ -1,0 +1,120 @@
+export type CoverageConfig = {
+  parlayConfigured: boolean;
+  sharpConfigured: boolean;
+  oddsApiConfigured: boolean;
+  clearSportsConfigured: boolean;
+};
+
+export function getCoverageMatrix(config: CoverageConfig) {
+  return {
+    generatedAt: new Date().toISOString(),
+    standards: {
+      exactMarketMatching: true,
+      exactLineMatching: true,
+      settlementRulesRequired: true,
+      liveFreshnessRequired: true,
+      independentProbabilityRequiredForResearchPass: true,
+      validatedUncertaintyRequiredForResearchPass: true,
+      unsupportedParlayMultiplication: false,
+    },
+    sports: [
+      ['MLB', 'baseball_mlb', 'free pregame props + free pregame moneylines/spreads/totals + optional live/consensus'],
+      ['NFL', 'americanfootball_nfl', 'free pregame props + free pregame moneylines/spreads/totals + existing KYM + optional live/consensus'],
+      ['NCAAF/CFB', 'americanfootball_ncaaf', 'free pregame props + free pregame moneylines/spreads/totals + optional live/consensus'],
+      ['NBA', 'basketball_nba', 'free pregame game lines + seasonal public-board props when offered + optional live/consensus'],
+      ['WNBA', 'basketball_wnba', 'free pregame props and game lines when on board'],
+      ['NHL', 'icehockey_nhl', 'free pregame props/season markets + free pregame moneylines/spreads/totals + optional live/consensus'],
+      ['Tennis', 'tennis', 'free pregame props when on board'],
+      ['MMA', 'mma', 'free pregame props when on board'],
+      ['Soccer', 'soccer', 'public-board support when offered; independent EV model unavailable'],
+      ['PGA', 'golf_pga', 'public-board support when offered; independent EV model unavailable'],
+      ['KBO', 'baseball_kbo', 'public-board support when offered'],
+      ['NPB', 'baseball_npb', 'public-board support when offered'],
+      ['Counter-Strike', 'esports_cs2', 'free pregame props when on board'],
+      ['League of Legends', 'esports_lol', 'free pregame props when on board'],
+      ['Valorant', 'esports_valorant', 'free pregame props when on board'],
+      ['Formula 1 season', 'motorsport_f1', 'season markets may appear without a game start'],
+    ].map(([sport, key, coverage]) => ({ sport, key, coverage })),
+    providers: [
+      {
+        provider: 'Underdog public feed',
+        configured: true,
+        cost: '$0',
+        historical: false,
+        pregame: true,
+        live: false,
+        role: 'Exact pick’em lines, prices, payout multipliers and source identity.',
+      },
+      {
+        provider: 'ESPN public odds',
+        configured: true,
+        cost: '$0',
+        historical: false,
+        pregame: true,
+        live: false,
+        role: 'No-key sportsbook snapshots for MLB/NFL/NCAAF/NBA/WNBA/NHL moneylines, spreads and totals. Provider quote timestamps are not exposed by this adapter.',
+      },
+      {
+        provider: 'Kalshi public API',
+        configured: true,
+        cost: '$0',
+        historical: false,
+        pregame: true,
+        live: true,
+        role: 'Prediction-market context only unless an exact contract can be matched.',
+      },
+      {
+        provider: 'ParlayAPI',
+        configured: config.parlayConfigured,
+        cost: 'optional / credit based',
+        historical: false,
+        pregame: true,
+        live: true,
+        role: 'Authenticated paginated sportsbook prop references implemented. Configured does not mean live verified or entitled. Historical model data not connected; settlement metadata and account availability may be missing.',
+      },
+      {
+        provider: 'SharpAPI',
+        configured: config.sharpConfigured,
+        cost: 'optional',
+        historical: false,
+        pregame: true,
+        live: false,
+        role: 'Optional game-line reference source used by existing modules.',
+      },
+      {
+        provider: 'The Odds API',
+        configured: config.oddsApiConfigured,
+        cost: 'optional',
+        historical: false,
+        pregame: true,
+        live: false,
+        role: 'Optional fallback sportsbook reference.',
+      },
+      {
+        provider: 'ClearSports',
+        configured: config.clearSportsConfigured,
+        cost: 'optional',
+        historical: false,
+        pregame: true,
+        live: false,
+        role: 'Optional context/injury feed.',
+      },
+    ],
+    marketFamilies: [
+      { family: 'player props', status: 'implemented', note: 'Free pregame source; strict research pass still needs an independent validated probability model.' },
+      { family: 'alternate player lines', status: 'implemented for discovery', note: 'Exact line identity is preserved; different thresholds are never treated as equivalent.' },
+      { family: 'moneylines', status: 'implemented for free pregame discovery', note: 'MLB/NFL/NCAAF/NBA/WNBA/NHL via ESPN public sportsbook snapshots. Best exact price is shown, but no EV is claimed without quote timestamps and an independent validated model.' },
+      { family: 'spreads/handicaps', status: 'implemented for free pregame discovery', note: 'Exact selected team and exact spread are preserved across MLB/NFL/NCAAF/NBA/WNBA/NHL. Different lines are never merged.' },
+      { family: 'game totals', status: 'implemented for free pregame discovery', note: 'Exact Over/Under threshold is preserved across MLB/NFL/NCAAF/NBA/WNBA/NHL. Same-book de-vig may be shown only as a benchmark.' },
+      { family: 'team/game props', status: 'source dependent', note: 'Displayed only when an adapter verifies the exact contract and settlement rules.' },
+      { family: 'period/inning/quarter/set markets', status: 'source dependent', note: 'No equivalence is assumed across periods.' },
+      { family: 'futures/outrights', status: 'discovery only', note: 'Season markets can be returned by the free API, but no validated long-horizon EV model is implemented.' },
+      { family: 'parlays/SGP', status: 'abstain', note: 'No joint probability model is validated; marginal multiplication is prohibited.' },
+    ],
+    blockers: [
+      'Authenticated prediction snapshots can now be persisted, but no complete historical odds dataset or frozen train/validation/test corpus has been loaded yet.',
+      'No held-out calibration or validated uncertainty estimator has been fitted.',
+      'The free Underdog endpoint is pregame-only; logged-in live in-play requires a separately authorized source.',
+      'Free multi-sportsbook player-prop consensus is not guaranteed across every sport/market.',    ],
+  };
+}

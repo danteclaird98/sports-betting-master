@@ -1,0 +1,346 @@
+"""Click callback validators for OddsHarvester CLI."""
+
+from datetime import UTC, datetime, timedelta
+import difflib
+import re
+from urllib.parse import urlsplit
+
+import click
+
+from oddsharvester.core.sport_period_registry import SportPeriodRegistry
+from oddsharvester.core.url_builder import URLBuilder
+from oddsharvester.utils.odds_format_enum import OddsFormat
+from oddsharvester.utils.proxy_manager import ProxyManager
+from oddsharvester.utils.sport_league_constants import SPORTS_LEAGUES_URLS_MAPPING
+from oddsharvester.utils.sport_market_constants import UMBRELLA_MARKETS, Sport
+from oddsharvester.utils.utils import get_supported_markets
+
+
+def validate_date(ctx, param, value):
+    """Validate date format (YYYYMMDD) and reject a date that is already past in every timezone."""
+    if value is None:
+        return None
+
+    try:
+        parsed_date = datetime.strptime(value, "%Y%m%d")
+    except ValueError:
+        raise click.BadParameter(f"Invalid date format '{value}'. Expected YYYYMMDD (e.g., 20250227).") from None
+
+    # UTC-12 is the last timezone still on a given date, so its date is the earliest one current anywhere.
+    earliest_current_date = (datetime.now(UTC) - timedelta(hours=12)).date()
+    if parsed_date.date() < earliest_current_date:
+        raise click.BadParameter(f"Date '{value}' is already past in every timezone.")
+
+    return value
+
+
+def _validate_one_season(value: str) -> str:
+    """Validate a single season token (YYYY, YYYY-YYYY, or 'current')."""
+    if value.lower() == "current":
+        return value
+
+    single_year = re.compile(r"^\d{4}$")
+    range_pattern = re.compile(r"^\d{4}-\d{4}$")
+
+    if single_year.match(value):
+        return value
+
+    if range_pattern.match(value):
+        start_year, end_year = map(int, value.split("-"))
+        if end_year != start_year + 1:
+            raise click.BadParameter(
+                f"Invalid season range '{value}'. Second year must be exactly one year after the first."
+            )
+        return value
+
+    raise click.BadParameter(f"Invalid season format '{value}'. Expected YYYY, YYYY-YYYY, or 'current'.")
+
+
+def validate_seasons(ctx, param, value):
+    """Validate a list of seasons, preserving order and dropping duplicates; None when the option is absent."""
+    if value is None:
+        return None
+    if not value:
+        raise click.BadParameter("At least one season must be provided.")
+
+    seen: dict[str, None] = {}
+    for item in value:
+        seen[_validate_one_season(item)] = None
+    return list(seen)
+
+
+def _validate_link_list(links: list[str]) -> list[str]:
+    """Validate a flat list of match links against the OddsPortal URL shape."""
+    url_pattern = re.compile(r"https?://www\.oddsportal\.com/.+")
+    invalid = [link for link in links if not url_pattern.match(link)]
+
+    if invalid:
+        raise click.BadParameter(f"Invalid match link(s): {', '.join(invalid)}")
+
+    return links
+
+
+def validate_match_links(ctx, param, value):
+    """Validate match links; each occurrence may itself be a comma-separated list."""
+    if not value:
+        return None
+
+    return _validate_link_list([link for chunk in value for link in chunk])
+
+
+def validate_match_links_file(ctx, param, value):
+    """Read match links from a file (one URL per line, blank lines ignored) and validate them."""
+    if value is None:
+        return None
+
+    with open(value, encoding="utf-8") as file:
+        links = [line.strip() for line in file if line.strip()]
+
+    return _validate_link_list(links) or None
+
+
+def validate_markets(ctx, param, value):
+    """Validate markets against the selected sport."""
+    if not value:
+        return None
+
+    sport = ctx.params.get("sport")
+    if not sport:
+        return value  # Will be validated later or sport is required
+
+    if isinstance(sport, str):
+        try:
+            sport = Sport(sport.lower())
+        except ValueError:
+            return value
+
+    supported = get_supported_markets(sport)
+    umbrella_tokens = UMBRELLA_MARKETS.get(sport, {})
+    invalid = [m for m in value if m not in supported and m not in umbrella_tokens]
+
+    if invalid:
+        raise click.BadParameter(_bad_markets_message(sport, invalid, supported, list(umbrella_tokens)))
+
+    return value
+
+
+# Correct scores are listed whole, since a range's ends would hide 6:4.
+_LINE_TOKEN_RE = re.compile(r"^(?!correct_score_)(?P<family>.+?_)(?P<line>[-+]?\d+(?:_\d+)?)(?P<axis>_[a-z]+)?$")
+
+
+def _bad_markets_message(sport: Sport, invalid: list[str], supported: list[str], umbrellas: list[str]) -> str:
+    """The closest tokens, the sport's umbrellas, then the supported tokens with each line family cut to its ends."""
+    closest = dict.fromkeys(
+        match for market in invalid for match in difflib.get_close_matches(market, supported + umbrellas, n=3)
+    )
+    singles: list[str] = []
+    families: dict[tuple[str, str], list[tuple[float, str]]] = {}
+    for token in supported:
+        line = _LINE_TOKEN_RE.match(token)
+        if line:
+            key = (line["family"], line["axis"] or "")
+            families.setdefault(key, []).append((float(line["line"].replace("_", ".")), token))
+        else:
+            singles.append(token)
+    ranges = []
+    for lines in families.values():
+        if len(lines) == 1:
+            singles.append(lines[0][1])
+        else:
+            ranges.append(f"{min(lines)[1]} ... {max(lines)[1]} ({len(lines)})")
+
+    lines = [f"Invalid market(s) for {sport.value}: {', '.join(invalid)}."]
+    if closest:
+        lines.append(f"Closest: {', '.join(closest)}.")
+    if umbrellas:
+        lines.append(f"Umbrellas (every line on the page): {', '.join(umbrellas)}.")
+    lines.append("Supported: " + ",\n  ".join(([", ".join(singles)] if singles else []) + ranges) + ".")
+    return "\n".join(lines)
+
+
+def _is_league_path_of(sport: Sport, league: str) -> bool:
+    try:
+        URLBuilder.get_league_url(sport.value, league)
+    except ValueError:
+        return False
+    return True
+
+
+def validate_leagues(ctx, param, value):
+    """Validate leagues against the selected sport."""
+    if not value:
+        return None
+
+    sport = ctx.params.get("sport")
+    if not sport:
+        return value
+
+    if isinstance(sport, str):
+        try:
+            sport = Sport(sport.lower())
+        except ValueError:
+            return value
+
+    if sport not in SPORTS_LEAGUES_URLS_MAPPING:
+        return value
+
+    supported = SPORTS_LEAGUES_URLS_MAPPING[sport]
+    invalid = [lg for lg in value if lg not in supported and not _is_league_path_of(sport, lg)]
+
+    if invalid:
+        raise click.BadParameter(f"Invalid league(s) for {sport.value}: {', '.join(invalid)}")
+
+    return value
+
+
+def validate_period(ctx, param, value):
+    """Validate period against the selected sport."""
+    if value is None:
+        return None
+
+    sport = ctx.params.get("sport")
+    if not sport:
+        return value
+
+    sport_str = sport.value if isinstance(sport, Sport) else sport
+
+    if not SportPeriodRegistry.is_sport_registered(sport_str.lower()):
+        return value
+
+    valid_periods = SportPeriodRegistry.get_all_cli_values(sport_str.lower())
+
+    if value not in valid_periods:
+        raise click.BadParameter(
+            f"Invalid period '{value}' for sport '{sport_str}'. Supported: {', '.join(valid_periods)}"
+        )
+
+    return value
+
+
+def validate_proxy_url(ctx, param, value):
+    """Validate one or more proxy URLs (repeatable option → tuple).
+
+    Each URL may carry embedded credentials: scheme://[user:pass@]host:port.
+    """
+    if not value:
+        return value
+
+    proxy_pattern = re.compile(
+        r"^(?P<scheme>https?|socks5|socks4)://"
+        r"(?:(?P<user>[^:@/#?]+):(?P<pass>[^:@/#?]+)@)?"
+        r"(?P<host>[\w.-]+):(?P<port>\d+)$"
+    )
+
+    for url in value:
+        if not proxy_pattern.match(url):
+            raise click.BadParameter(
+                f"Invalid proxy URL '{ProxyManager._sanitize_url_for_logging(url)}'. Expected format: "
+                "'http[s]://host:port', 'socks5://host:port', or "
+                "'scheme://user:pass@host:port'. Credentials holding ':', '@', '/', '#' or '?' "
+                "go through --proxy-user and --proxy-pass instead."
+            )
+
+    return value
+
+
+def validate_concurrency(ctx, param, value):
+    """Validate concurrency is a positive integer."""
+    if value is not None and value <= 0:
+        raise click.BadParameter("Concurrency must be a positive integer.")
+    return value
+
+
+def validate_max_pages(ctx, param, value):
+    """Validate max_pages is a positive integer."""
+    if value is not None and value <= 0:
+        raise click.BadParameter("Max pages must be a positive integer.")
+    return value
+
+
+def validate_file_path(ctx, param, value):
+    """Validate the output file path: it must not name an existing directory."""
+    if value is None:
+        return None
+
+    from pathlib import Path
+
+    path = Path(value)
+
+    # Reject paths pointing to existing directories
+    if path.exists() and path.is_dir():
+        raise click.BadParameter(f"Output path must not be an existing directory: '{value}'")
+
+    return value
+
+
+def validate_base_url(ctx, param, value):
+    """Validate --base-url: host-only http(s) URL (no path/query/fragment)."""
+    if not value:
+        return None
+
+    normalized = value.rstrip("/")
+    parts = urlsplit(normalized)
+
+    if parts.scheme not in ("http", "https"):
+        raise click.BadParameter(
+            f"Invalid base URL '{value}'. Must start with http:// or https:// (e.g. https://www.centroquote.it)."
+        )
+    if not parts.netloc:
+        raise click.BadParameter(f"Invalid base URL '{value}'. Missing host (e.g. https://www.centroquote.it).")
+    if parts.path or parts.query or parts.fragment:
+        raise click.BadParameter(
+            f"Invalid base URL '{value}'. Provide host only, no path, query, or fragment (e.g. https://www.centroquote.it)."
+        )
+
+    return normalized
+
+
+# Every team id OddsPortal serves is an 8-character token; anything else is a typo.
+_TEAM_ID_RE = re.compile(r"^[A-Za-z0-9]{8}$")
+_TEAM_URL_RE = re.compile(r"https?://[^/]+/[a-z-]+/team/[^/]+/([A-Za-z0-9]{8})/?$")
+
+
+def _to_team_id(value: str) -> str:
+    """Accept a bare team id or a team page URL, and return the id either way."""
+    if _TEAM_ID_RE.match(value):
+        return value
+
+    match = _TEAM_URL_RE.match(value.strip())
+    if match is None:
+        raise click.BadParameter(f"Not a team id (8 characters) or team page URL: {value}")
+
+    return match.group(1)
+
+
+def validate_teams(ctx, param, value):
+    """Validate team references; each occurrence may itself be a comma-separated list."""
+    if not value:
+        return None
+
+    return list(dict.fromkeys(_to_team_id(item) for chunk in value for item in chunk)) or None
+
+
+def validate_teams_file(ctx, param, value):
+    """Read team references from a file (one id or URL per line, blank lines ignored)."""
+    if value is None:
+        return None
+
+    with open(value, encoding="utf-8") as file:
+        entries = [line.strip() for line in file if line.strip()]
+
+    return list(dict.fromkeys(_to_team_id(entry) for entry in entries)) or None
+
+
+def validate_team_id(ctx, param, value):
+    """Validate one team reference, a bare id or a team page URL, and return the id."""
+    return _to_team_id(value) if value else None
+
+
+def warn_ignored_odds_format(ctx, param, value):
+    """--odds-format never reached the scraper: odds are always decimal."""
+    if value is not None and value is not OddsFormat.DECIMAL_ODDS:
+        click.echo(
+            "--odds-format has no effect: odds are always decimal. The option will be removed in a future release.",
+            err=True,
+        )
+    return value

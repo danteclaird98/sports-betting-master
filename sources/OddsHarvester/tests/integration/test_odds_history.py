@@ -1,0 +1,175 @@
+"""
+Integration test for --odds-history, run with the odds_evolution_collector's flags.
+
+The collector pairs odds_history_data with the outcome keys of each bookmaker entry by
+position, so the contract tests pin that shape on top of the golden comparison.
+
+Recapture (live); scripts/capture_all_hars.py holds the command with the collector's flags:
+    uv run python scripts/capture_all_hars.py --only matches --match-id manchester-city-chelsea-lMp9YMye
+"""
+
+from datetime import UTC, datetime, timedelta
+import json
+import re
+from zoneinfo import ZoneInfo
+
+import pytest
+
+from tests.integration.helpers.cli_runner import run_historic
+from tests.integration.helpers.comparison import compare_golden
+from tests.integration.helpers.fixture_files import FIXTURES_DIR, har_path_for, require_file
+
+pytestmark = pytest.mark.integration
+
+MATCH_URL = "https://www.oddsportal.com/football/h2h/chelsea-4fGZN2oK/manchester-city-Wtn9Stg0/#lMp9YMye"
+FIXTURE = (
+    FIXTURES_DIR
+    / "football"
+    / "premier-league"
+    / "manchester-city-chelsea-lMp9YMye"
+    / "1x2_over_under_2_5_full_time_all_odds_history.json"
+)
+MARKETS = ["1x2", "over_under_2_5"]
+COLLECTOR_ARGS = [
+    "--odds-history",
+    "--timezone",
+    "Europe/London",
+    "--locale",
+    "en-GB",
+    "--request-delay",
+    "2",
+    "--concurrency",
+    "3",
+]
+META_KEYS = ("bookmaker_name", "period", "odds_history_data", "submarket_name", "blocked_outcomes")
+NAIVE_ISO = re.compile(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}$")
+MATCH_DATE = re.compile(r"^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2} UTC$")
+
+
+@pytest.fixture(scope="module")
+def run(request, tmp_path_factory):
+    expected = json.loads(require_file(FIXTURE).read_text())
+    output_path = tmp_path_factory.mktemp("odds_history") / "output"
+    exit_code, _stdout, stderr = run_historic(
+        sport="football",
+        match_link=MATCH_URL,
+        markets=MARKETS,
+        output_path=output_path,
+        period="full_time",
+        season="2025-2026",
+        timeout=900,
+        har_path=har_path_for(FIXTURE, request.config.getoption("--live")),
+        extra_args=COLLECTOR_ARGS,
+    )
+    output_file = output_path.with_suffix(".json")
+    actual = json.loads(output_file.read_text()) if output_file.exists() else None
+    live = request.config.getoption("--live")
+    return {"exit_code": exit_code, "stderr": stderr, "actual": actual, "expected": expected, "live": live}
+
+
+def _match(run):
+    if not run["actual"]:
+        pytest.fail(f"No output (exit {run['exit_code']}): {run['stderr'][-2000:]}")
+    return run["actual"][0]
+
+
+def _entries(match):
+    for key, entries in match.items():
+        if key.endswith("_market"):
+            for entry in entries:
+                yield key, entry
+
+
+def _labels(entry):
+    return [key for key in entry if key not in META_KEYS]
+
+
+def _blocks(entry):
+    return entry.get("odds_history_data") or []
+
+
+def _describe(key, entry):
+    return (key, entry.get("bookmaker_name"), entry.get("submarket_name"), len(_labels(entry)), len(_blocks(entry)))
+
+
+def _missing_blocks(match):
+    return [_describe(key, entry) for key, entry in _entries(match) if len(_blocks(entry)) < len(_labels(entry))]
+
+
+def _extra_blocks(match):
+    return [_describe(key, entry) for key, entry in _entries(match) if len(_blocks(entry)) > len(_labels(entry))]
+
+
+def test_run_succeeds(run):
+    assert run["exit_code"] == 0, run["stderr"][-2000:]
+    _match(run)
+
+
+def test_matches_golden(run):
+    result = compare_golden(_match(run), run["expected"][0], live=run["live"])
+    assert result.passed, str(result)
+
+
+def test_no_entry_is_missing_history_blocks(run):
+    missing = _missing_blocks(_match(run))
+    assert not missing, missing
+
+
+def test_no_entry_has_extra_history_blocks(run):
+    extra = _extra_blocks(_match(run))
+    assert not extra, extra
+
+
+def test_history_blocks_have_the_collector_shape(run):
+    for key, entry in _entries(_match(run)):
+        for block in _blocks(entry):
+            assert isinstance(block, dict), (key, entry.get("bookmaker_name"), block)
+            assert "odds_history" in block, (key, entry.get("bookmaker_name"), block)
+            assert "opening_odds" in block, (key, entry.get("bookmaker_name"), block)
+            assert block["odds_history"] or block["opening_odds"], (key, entry.get("bookmaker_name"), block)
+
+
+def test_history_timestamps_are_naive_iso(run):
+    for key, entry in _entries(_match(run)):
+        for block in _blocks(entry):
+            points = list(block.get("odds_history") or [])
+            if block.get("opening_odds"):
+                points.append(block["opening_odds"])
+            for point in points:
+                assert NAIVE_ISO.match(point["timestamp"]), (key, entry.get("bookmaker_name"), point)
+                assert datetime.fromisoformat(point["timestamp"]).tzinfo is None
+
+
+def test_match_date_format(run):
+    assert MATCH_DATE.match(_match(run)["match_date"])
+
+
+def test_history_timestamps_fall_in_the_year_before_kickoff(run):
+    match = _match(run)
+    kickoff = (
+        datetime.strptime(match["match_date"], "%Y-%m-%d %H:%M:%S UTC")
+        .replace(tzinfo=UTC)
+        .astimezone(ZoneInfo("Europe/London"))
+        .replace(tzinfo=None)
+    )
+    for key, entry in _entries(match):
+        for block in _blocks(entry):
+            points = list(block.get("odds_history") or [])
+            if block.get("opening_odds"):
+                points.append(block["opening_odds"])
+            for point in points:
+                timestamp = datetime.fromisoformat(point["timestamp"])
+                assert kickoff - timedelta(days=366) <= timestamp <= kickoff, (key, entry.get("bookmaker_name"), point)
+
+
+def test_outcome_keys_come_before_meta_keys(run):
+    for key, entry in _entries(_match(run)):
+        labels = _labels(entry)
+        assert list(entry)[: len(labels)] == labels, (key, list(entry))
+
+
+def test_missing_block_check_flags_a_dropped_block():
+    match = json.loads(FIXTURE.read_text())[0]
+    assert not _missing_blocks(match)
+    match["1x2_market"][0]["odds_history_data"].pop()
+    assert _missing_blocks(match) == [("1x2_market", "Betclic.fr", "1X2", 3, 2)]

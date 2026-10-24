@@ -1,0 +1,306 @@
+"""Shared Click options for OddsHarvester CLI commands."""
+
+import functools
+
+import click
+
+from oddsharvester.cli.types import BOOKIES_FILTER, COMMA_LIST, ODDS_FORMAT, SPORT, STORAGE_FORMAT, STORAGE_TYPE
+from oddsharvester.cli.validators import (
+    validate_base_url,
+    validate_concurrency,
+    validate_file_path,
+    validate_leagues,
+    validate_markets,
+    validate_match_links,
+    validate_match_links_file,
+    validate_period,
+    validate_proxy_url,
+    warn_ignored_odds_format,
+)
+from oddsharvester.utils.bookies_filter_enum import BookiesFilter
+from oddsharvester.utils.constants import DEFAULT_REQUEST_DELAY_S
+from oddsharvester.utils.odds_format_enum import OddsFormat
+from oddsharvester.utils.period_constants import (
+    AmericanFootballPeriod,
+    BaseballPeriod,
+    BasketballPeriod,
+    CricketPeriod,
+    FootballPeriod,
+    HandballPeriod,
+    IceHockeyPeriod,
+    RugbyLeaguePeriod,
+    RugbyUnionPeriod,
+    TennisPeriod,
+    VolleyballPeriod,
+)
+
+
+def _get_all_periods():
+    """Get all valid period values across all sports."""
+    periods = set()
+    for period_enum in [
+        FootballPeriod,
+        TennisPeriod,
+        BasketballPeriod,
+        RugbyLeaguePeriod,
+        RugbyUnionPeriod,
+        AmericanFootballPeriod,
+        IceHockeyPeriod,
+        BaseballPeriod,
+        HandballPeriod,
+        VolleyballPeriod,
+        CricketPeriod,
+    ]:
+        periods.update(p.value for p in period_enum)
+    return sorted(periods)
+
+
+request_delay_option = click.option(
+    "--request-delay",
+    type=float,
+    default=DEFAULT_REQUEST_DELAY_S,
+    envvar="OH_REQUEST_DELAY",
+    help="Delay in seconds between match pages, between league/season listings, between team pages and between "
+    "search pages (default: 1.0). The result pages of one listing keep their own pause.",
+)
+
+
+OUTPUT_OPTIONS = (
+    click.option(
+        "--storage",
+        type=STORAGE_TYPE,
+        default="local",
+        envvar="OH_STORAGE",
+        help="Storage type: local or remote.",
+    ),
+    click.option(
+        "--format",
+        "-f",
+        "storage_format",
+        type=STORAGE_FORMAT,
+        default="json",
+        envvar="OH_FORMAT",
+        help="Output format: json or csv.",
+    ),
+    click.option(
+        "--output",
+        "-o",
+        "file_path",
+        type=click.Path(),
+        callback=validate_file_path,
+        envvar="OH_FILE_PATH",
+        help="Output file path.",
+    ),
+    click.option(
+        "--append/--no-append",
+        default=False,
+        envvar="OH_APPEND",
+        help="Append to the output file instead of overwriting it (default: overwrite).",
+    ),
+)
+
+BROWSER_OPTIONS = (
+    click.option(
+        "--headless/--no-headless",
+        default=False,
+        envvar="OH_HEADLESS",
+        help="Run browser in headless mode.",
+    ),
+    click.option(
+        "--proxy-url",
+        "proxy_url",
+        multiple=True,
+        callback=validate_proxy_url,
+        envvar="OH_PROXY_URL",
+        help="Proxy URL (repeatable). Format: http[s]://host:port, socks5://host:port, "
+        "or scheme://user:pass@host:port. Repeat to spread load across proxies.",
+    ),
+    click.option(
+        "--proxy-user",
+        "proxy_user",
+        envvar="OH_PROXY_USER",
+        help="Proxy username (optional).",
+    ),
+    click.option(
+        "--proxy-pass",
+        "proxy_pass",
+        envvar="OH_PROXY_PASS",
+        help="Proxy password (optional).",
+    ),
+    click.option(
+        "--user-agent",
+        "browser_user_agent",
+        envvar="OH_USER_AGENT",
+        help="Custom browser user agent.",
+    ),
+    click.option(
+        "--locale",
+        "browser_locale_timezone",
+        envvar="OH_LOCALE",
+        help="Browser locale (e.g., fr-BE).",
+    ),
+    click.option(
+        "--timezone",
+        "browser_timezone_id",
+        envvar="OH_TIMEZONE",
+        help="Browser timezone ID (e.g., Europe/Brussels).",
+    ),
+    click.option(
+        "--base-url",
+        "base_url",
+        callback=validate_base_url,
+        envvar="OH_BASE_URL",
+        help=(
+            "Regional OddsPortal domain to scrape instead of www.oddsportal.com "
+            "(e.g. https://www.centroquote.it). Pair with --locale/--timezone matching the region."
+        ),
+    ),
+)
+
+
+def _apply(func, options):
+    for option in reversed(options):
+        func = option(func)
+    return func
+
+
+def output_options(func):
+    """--storage, --format, --output and --append, as every command that writes records takes them."""
+    return _apply(func, OUTPUT_OPTIONS)
+
+
+def browser_options(func):
+    """--headless and the proxy, user agent, locale, timezone and base URL options of the browser."""
+    return _apply(func, BROWSER_OPTIONS)
+
+
+def merged_match_links(kwargs) -> list[str] | None:
+    """Combine --match-link and --match-links-file values, deduped, flag links first."""
+    merged = list(dict.fromkeys((kwargs.get("match_links") or []) + (kwargs.get("match_links_file") or [])))
+    return merged or None
+
+
+def common_options(func):
+    """Decorator that adds the options upcoming, historic and live share."""
+
+    @click.option(
+        "--sport",
+        "-s",
+        type=SPORT,
+        required=True,
+        envvar="OH_SPORT",
+        # Read first: the --league, --market and --period validators check their value against it.
+        is_eager=True,
+        help="Sport to scrape (football, tennis, basketball, etc.).",
+    )
+    @click.option(
+        "--league",
+        "-l",
+        "leagues",
+        type=COMMA_LIST,
+        callback=validate_leagues,
+        envvar="OH_LEAGUES",
+        help="Comma-separated leagues (e.g., england-premier-league,spain-laliga), or a league path "
+        "for leagues outside the built-in list (e.g., football/bhutan/premier-league).",
+    )
+    @click.option(
+        "--market",
+        "-m",
+        "markets",
+        type=COMMA_LIST,
+        callback=validate_markets,
+        envvar="OH_MARKETS",
+        help="Comma-separated markets (e.g., 1x2,btts,over-under).",
+    )
+    @output_options
+    @click.option(
+        "--links-only/--no-links-only",
+        "links_only",
+        default=False,
+        envvar="OH_LINKS_ONLY",
+        help="Collect match links only, without scraping odds. Market/odds options are ignored.",
+    )
+    @click.option(
+        "--stream-ndjson/--no-stream-ndjson",
+        "stream_ndjson",
+        default=False,
+        envvar="OH_STREAM_NDJSON",
+        help="Emit one NDJSON line per match on stdout as soon as it is scraped, instead of waiting for the "
+        "run to finish. Logs and summaries go to stderr; no result file is written unless --output is given.",
+    )
+    @click.option(
+        "--local-kickoff/--no-local-kickoff",
+        "local_kickoff",
+        default=False,
+        envvar="OH_LOCAL_KICKOFF",
+        help="Add venue-local kickoff time (venue_timezone + match_date_venue_local) to each record. "
+        "match_date stays UTC. Distinct from --timezone, which sets the browser context timezone.",
+    )
+    @click.option(
+        "--concurrency",
+        "-c",
+        "concurrency_tasks",
+        type=int,
+        default=3,
+        callback=validate_concurrency,
+        envvar="OH_CONCURRENCY",
+        help="Number of concurrent scraping tasks.",
+    )
+    @click.option(
+        "--match-link",
+        "match_links",
+        multiple=True,
+        type=COMMA_LIST,
+        callback=validate_match_links,
+        help="Specific match URL(s) to scrape. Comma-separated and/or repeated.",
+    )
+    @click.option(
+        "--match-links-file",
+        "match_links_file",
+        type=click.Path(exists=True, dir_okay=False),
+        callback=validate_match_links_file,
+        help="File with match URLs to scrape, one per line. Combines with --match-link.",
+    )
+    @browser_options
+    @click.option(
+        "--target-bookmaker",
+        help="Filter for a specific bookmaker.",
+    )
+    @click.option(
+        "--odds-history/--no-odds-history",
+        "scrape_odds_history",
+        default=False,
+        help="Scrape historical odds movement.",
+    )
+    @click.option(
+        "--odds-format",
+        type=ODDS_FORMAT,
+        default=OddsFormat.DECIMAL_ODDS.value,
+        hidden=True,
+        callback=warn_ignored_odds_format,
+        help="Odds display format.",
+    )
+    @click.option(
+        "--preview-only/--full-scrape",
+        "preview_submarkets_only",
+        default=False,
+        help="Only scrape visible submarkets (faster, limited data).",
+    )
+    @click.option(
+        "--bookies-filter",
+        type=BOOKIES_FILTER,
+        default=BookiesFilter.ALL.value,
+        help="Bookmaker filter: all, classic, or crypto.",
+    )
+    @click.option(
+        "--period",
+        type=click.Choice(_get_all_periods(), case_sensitive=False),
+        callback=validate_period,
+        help="Match period to scrape (sport-specific).",
+    )
+    @request_delay_option
+    @functools.wraps(func)
+    def wrapper(*args, **kwargs):
+        return func(*args, **kwargs)
+
+    return wrapper

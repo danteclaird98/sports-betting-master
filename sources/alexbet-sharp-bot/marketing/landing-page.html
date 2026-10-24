@@ -1,0 +1,914 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AlexBET Sharp — AI-Powered +EV Sports Betting Scanner | Oddsify Labs</title>
+    <meta name="description" content="Find profitable sports betting edges with AI. Built by Oddsify Labs, a Collins & Collins Technologies company. 5 free scans/day on Telegram.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #0a0a0f;
+            --bg-elevated: #12121a;
+            --bg-card: #1a1a25;
+            --border: #2a2a3a;
+            --text: #e8e8f0;
+            --text-dim: #8a8aa0;
+            --accent: #00e676;
+            --accent-dim: rgba(0,230,118,0.15);
+            --accent-glow: rgba(0,230,118,0.3);
+            --red: #ff5252;
+            --blue: #448aff;
+            --gradient: linear-gradient(135deg, #00e676 0%, #00b0ff 100%);
+            --oddsify: #00e5ff;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            line-height: 1.6;
+            overflow-x: hidden;
+        }
+
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background-image:
+                linear-gradient(rgba(255,255,255,0.02) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255,255,255,0.02) 1px, transparent 1px);
+            background-size: 60px 60px;
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        /* Top bar */
+        .top-bar {
+            background: var(--bg-elevated);
+            border-bottom: 1px solid var(--border);
+            padding: 0.4rem 2rem;
+            text-align: center;
+            font-size: 0.75rem;
+            color: var(--text-dim);
+            position: relative;
+            z-index: 2;
+        }
+        .top-bar a { color: var(--oddsify); text-decoration: none; font-weight: 600; }
+
+        nav {
+            position: sticky;
+            top: 0; left: 0; right: 0;
+            z-index: 100;
+            background: rgba(10,10,15,0.95);
+            backdrop-filter: blur(20px);
+            border-bottom: 1px solid var(--border);
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-weight: 800;
+            font-size: 1.2rem;
+            letter-spacing: -0.5px;
+        }
+        .logo span { color: var(--accent); }
+        .logo .byline {
+            font-size: 0.65rem;
+            color: var(--text-dim);
+            font-weight: 500;
+            margin-left: 0.5rem;
+            padding-left: 0.5rem;
+            border-left: 1px solid var(--border);
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 2rem;
+            align-items: center;
+        }
+        .nav-links a {
+            color: var(--text-dim);
+            text-decoration: none;
+            font-weight: 500;
+            font-size: 0.9rem;
+            transition: color 0.2s;
+        }
+        .nav-links a:hover { color: var(--text); }
+        .nav-cta {
+            background: var(--gradient);
+            color: var(--bg) !important;
+            padding: 0.5rem 1.25rem;
+            border-radius: 8px;
+            font-weight: 700;
+        }
+
+        .hero {
+            position: relative;
+            padding: 6rem 2rem 5rem;
+            text-align: center;
+            max-width: 900px;
+            margin: 0 auto;
+            z-index: 1;
+        }
+
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.4rem 1rem;
+            border-radius: 100px;
+            background: var(--accent-dim);
+            color: var(--accent);
+            font-size: 0.8rem;
+            font-weight: 600;
+            margin-bottom: 1.5rem;
+            border: 1px solid rgba(0,230,118,0.2);
+        }
+        .badge .dot {
+            width: 8px; height: 8px;
+            background: var(--accent);
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+        @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+
+        h1 {
+            font-size: clamp(2.5rem, 6vw, 4.5rem);
+            font-weight: 900;
+            line-height: 1.1;
+            letter-spacing: -1.5px;
+            margin-bottom: 1.5rem;
+        }
+        h1 .gradient-text {
+            background: var(--gradient);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .hero-sub {
+            font-size: clamp(1rem, 2vw, 1.25rem);
+            color: var(--text-dim);
+            max-width: 600px;
+            margin: 0 auto 2.5rem;
+        }
+
+        .hero-ctas {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 1rem 2rem;
+            border-radius: 12px;
+            font-weight: 700;
+            font-size: 1rem;
+            text-decoration: none;
+            transition: all 0.2s;
+            cursor: pointer;
+            border: none;
+        }
+        .btn-primary {
+            background: var(--gradient);
+            color: var(--bg);
+            box-shadow: 0 0 40px var(--accent-glow);
+        }
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 50px var(--accent-glow);
+        }
+        .btn-secondary {
+            background: var(--bg-card);
+            color: var(--text);
+            border: 1px solid var(--border);
+        }
+        .btn-secondary:hover {
+            border-color: var(--accent);
+            background: var(--accent-dim);
+        }
+
+        .hero-trust {
+            margin-top: 3rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 1.5rem;
+            color: var(--text-dim);
+            font-size: 0.85rem;
+            flex-wrap: wrap;
+        }
+        .hero-trust span { display: flex; align-items: center; gap: 0.3rem; }
+
+        .terminal {
+            max-width: 800px;
+            margin: 3rem auto 0;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            overflow: hidden;
+            box-shadow: 0 20px 80px rgba(0,0,0,0.5);
+        }
+        .terminal-header {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 1rem 1.25rem;
+            background: rgba(255,255,255,0.02);
+            border-bottom: 1px solid var(--border);
+        }
+        .terminal-header .dot { width: 12px; height: 12px; border-radius: 50%; }
+        .dot-red { background: #ff5f56; }
+        .dot-yellow { background: #ffbd2e; }
+        .dot-green { background: #27c93f; }
+        .terminal-title {
+            margin-left: 0.5rem;
+            font-size: 0.8rem;
+            color: var(--text-dim);
+            font-family: 'JetBrains Mono', monospace;
+        }
+        .terminal-body {
+            padding: 1.5rem;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.85rem;
+            line-height: 1.8;
+        }
+        .cmd { color: var(--accent); }
+        .output { color: var(--text-dim); }
+        .edge { color: var(--accent); font-weight: 600; }
+        .highlight { background: rgba(0,230,118,0.1); padding: 0 4px; border-radius: 4px; }
+
+        section {
+            position: relative;
+            z-index: 1;
+            padding: 6rem 2rem;
+            max-width: 1100px;
+            margin: 0 auto;
+        }
+
+        .section-header {
+            text-align: center;
+            margin-bottom: 4rem;
+        }
+        .section-header h2 {
+            font-size: clamp(1.8rem, 4vw, 2.8rem);
+            font-weight: 800;
+            letter-spacing: -1px;
+            margin-bottom: 1rem;
+        }
+        .section-header p {
+            color: var(--text-dim);
+            font-size: 1.1rem;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        .features {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1.5rem;
+        }
+        .feature-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 2rem;
+            transition: all 0.3s;
+        }
+        .feature-card:hover {
+            border-color: var(--accent);
+            transform: translateY(-4px);
+            box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+        }
+        .feature-icon {
+            width: 48px; height: 48px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            margin-bottom: 1rem;
+            background: var(--accent-dim);
+        }
+        .feature-card h3 {
+            font-size: 1.1rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+        }
+        .feature-card p {
+            color: var(--text-dim);
+            font-size: 0.9rem;
+            line-height: 1.6;
+        }
+
+        .steps {
+            display: flex;
+            gap: 2rem;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+        .step {
+            flex: 1;
+            min-width: 250px;
+            max-width: 300px;
+            text-align: center;
+        }
+        .step-num {
+            width: 48px; height: 48px;
+            border-radius: 50%;
+            background: var(--gradient);
+            color: var(--bg);
+            font-weight: 900;
+            font-size: 1.2rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 1rem;
+        }
+        .step h3 { font-weight: 700; margin-bottom: 0.5rem; }
+        .step p { color: var(--text-dim); font-size: 0.9rem; }
+
+        .pricing-cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+            gap: 1.5rem;
+            align-items: start;
+        }
+        .pricing-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            padding: 2rem;
+            position: relative;
+            transition: all 0.3s;
+        }
+        .pricing-card.popular {
+            border-color: var(--accent);
+            box-shadow: 0 0 40px rgba(0,230,118,0.1);
+            transform: scale(1.02);
+        }
+        .popular-badge {
+            position: absolute;
+            top: -12px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: var(--gradient);
+            color: var(--bg);
+            padding: 0.3rem 1rem;
+            border-radius: 100px;
+            font-size: 0.75rem;
+            font-weight: 700;
+        }
+        .pricing-card h3 {
+            font-size: 1.2rem;
+            font-weight: 700;
+            margin-bottom: 0.25rem;
+        }
+        .pricing-card .price {
+            font-size: 2.5rem;
+            font-weight: 900;
+            margin: 1rem 0;
+        }
+        .pricing-card .price span {
+            font-size: 1rem;
+            color: var(--text-dim);
+            font-weight: 500;
+        }
+        .pricing-card ul {
+            list-style: none;
+            margin: 1.5rem 0;
+        }
+        .pricing-card ul li {
+            padding: 0.4rem 0;
+            font-size: 0.9rem;
+            color: var(--text-dim);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .pricing-card ul li::before {
+            content: '✓';
+            color: var(--accent);
+            font-weight: 700;
+        }
+        .pricing-card .btn { width: 100%; justify-content: center; }
+
+        .testimonials {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1.5rem;
+        }
+        .testimonial {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 2rem;
+        }
+        .stars { color: #ffc107; margin-bottom: 1rem; }
+        .testimonial-text { font-style: italic; margin-bottom: 1rem; line-height: 1.7; }
+        .testimonial-author {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+        .author-avatar {
+            width: 40px; height: 40px;
+            border-radius: 50%;
+            background: var(--gradient);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            color: var(--bg);
+        }
+        .author-info .name { font-weight: 700; font-size: 0.9rem; }
+        .author-info .title { font-size: 0.8rem; color: var(--text-dim); }
+
+        .faq-item {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            margin-bottom: 1rem;
+            overflow: hidden;
+        }
+        .faq-question {
+            padding: 1.25rem;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: background 0.2s;
+        }
+        .faq-question:hover { background: rgba(255,255,255,0.02); }
+        .faq-answer {
+            padding: 0 1.25rem 1.25rem;
+            color: var(--text-dim);
+            font-size: 0.9rem;
+            line-height: 1.7;
+        }
+
+        .cta-section {
+            text-align: center;
+            background: var(--bg-elevated);
+            border: 1px solid var(--border);
+            border-radius: 24px;
+            padding: 4rem 2rem;
+            margin: 2rem auto;
+            position: relative;
+            overflow: hidden;
+        }
+        .cta-section::before {
+            content: '';
+            position: absolute;
+            top: -50%; left: -50%; width: 200%; height: 200%;
+            background: radial-gradient(circle, var(--accent-glow) 0%, transparent 70%);
+            opacity: 0.3;
+            pointer-events: none;
+        }
+        .cta-section h2 {
+            font-size: clamp(1.8rem, 4vw, 2.5rem);
+            font-weight: 900;
+            margin-bottom: 1rem;
+            position: relative;
+        }
+        .cta-section p {
+            color: var(--text-dim);
+            margin-bottom: 2rem;
+            position: relative;
+        }
+
+        .team-strip {
+            display: flex;
+            justify-content: center;
+            gap: 2rem;
+            flex-wrap: wrap;
+            margin-top: 3rem;
+            padding-top: 3rem;
+            border-top: 1px solid var(--border);
+        }
+        .team-member {
+            text-align: center;
+            opacity: 0.7;
+            transition: opacity 0.2s;
+        }
+        .team-member:hover { opacity: 1; }
+        .team-member .icon {
+            width: 48px; height: 48px;
+            border-radius: 50%;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 0.5rem;
+            font-size: 1.2rem;
+        }
+        .team-member .name {
+            font-size: 0.75rem;
+            font-weight: 700;
+            color: var(--text);
+        }
+        .team-member .role {
+            font-size: 0.65rem;
+            color: var(--text-dim);
+        }
+
+        footer {
+            border-top: 1px solid var(--border);
+            padding: 3rem 2rem;
+            text-align: center;
+            color: var(--text-dim);
+            font-size: 0.85rem;
+        }
+        footer a {
+            color: var(--text-dim);
+            text-decoration: none;
+            margin: 0 1rem;
+        }
+        footer a:hover { color: var(--accent); }
+        .footer-company {
+            margin-bottom: 1.5rem;
+        }
+        .footer-company strong {
+            color: var(--text);
+            font-size: 1rem;
+        }
+        .footer-company p {
+            font-size: 0.8rem;
+            margin-top: 0.25rem;
+        }
+
+        @media (max-width: 768px) {
+            .nav-links { display: none; }
+            .hero { padding-top: 5rem; }
+            .hero-ctas { flex-direction: column; align-items: center; }
+            .btn { width: 100%; max-width: 300px; justify-content: center; }
+            .pricing-card.popular { transform: none; }
+            .steps { flex-direction: column; align-items: center; }
+            .top-bar { font-size: 0.7rem; padding: 0.3rem 1rem; }
+            .logo .byline { display: none; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="top-bar">
+        A Collins & Collins Technologies Company — Built by the Hermes Agent Engine — <a href="https://www.oddsifylabs.com">oddsifylabs.com</a>
+    </div>
+
+    <nav>
+        <div class="logo">
+            <span>🎯</span> AlexBET <span>Sharp</span>
+            <span class="byline">by Oddsify Labs</span>
+        </div>
+        <div class="nav-links">
+            <a href="#features">Features</a>
+            <a href="#pricing">Pricing</a>
+            <a href="#faq">FAQ</a>
+            <a href="https://www.oddsifylabs.com">About Oddsify</a>
+            <a href="https://t.me/AlexBetSharp_v2_Bot" class="nav-cta">Open in Telegram</a>
+        </div>
+    </nav>
+
+    <section class="hero">
+        <div class="badge">
+            <span class="dot"></span>
+            LIVE ON TELEGRAM — 6 SPORTS, REAL-TIME EDGES
+        </div>
+        <h1>
+            Stop Guessing.<br>
+            Start Finding <span class="gradient-text">+EV Edges</span>.
+        </h1>
+        <p class="hero-sub">
+            AI-powered sports betting scanner built by Oddsify Labs.
+            Analyzes NFL, NBA, MLB, NHL, Tennis & Soccer in real-time.
+            Kelly-optimized sizing. CLV tracking. Find the edge before the line moves.
+        </p>
+        <div class="hero-ctas">
+            <a href="https://t.me/AlexBetSharp_v2_Bot" class="btn btn-primary">
+                🚀 Start Free on Telegram
+            </a>
+            <a href="#pricing" class="btn btn-secondary">
+                💎 See Pricing
+            </a>
+        </div>
+        <div class="hero-trust">
+            <span>⚡ 5 Free Scans/Day</span>
+            <span>🤖 Claude AI Analysis</span>
+            <span>📊 Kelly Criterion Sizing</span>
+            <span>📈 CLV Tracking</span>
+        </div>
+
+        <div class="terminal">
+            <div class="terminal-header">
+                <div class="dot dot-red"></div>
+                <div class="dot dot-yellow"></div>
+                <div class="dot dot-green"></div>
+                <span class="terminal-title">AlexBetSharp_v2_Bot — Hermes Engine v2.0</span>
+            </div>
+            <div class="terminal-body">
+                <div><span class="cmd">$ /scan NBA</span></div>
+                <div class="output">Scanning NBA slate... 12 games found.</div>
+                <div class="output">Analyzing odds across 5 sportsbooks... ✓</div>
+                <div class="output">Running Claude AI edge detection... ✓</div>
+                <br>
+                <div><span class="edge">🏀 LAL @ BOS — Spread</span></div>
+                <div class="output">  Book: LAL +6.5 (-110)</div>
+                <div class="output">  True Probability: <span class="highlight">55.2%</span></div>
+                <div class="output">  Implied: 52.4%</div>
+                <div class="output">  <span class="edge">Edge: +2.8%</span> | Kelly: <span class="edge">1.4% unit</span></div>
+                <br>
+                <div><span class="edge">⚾ NYY vs TOR — Total</span></div>
+                <div class="output">  Book: Over 8.5 (-105)</div>
+                <div class="output">  True Probability: <span class="highlight">53.8%</span></div>
+                <div class="output">  <span class="edge">Edge: +2.1%</span> | Kelly: <span class="edge">1.1% unit</span></div>
+                <br>
+                <div class="output">2 +EV gems found. <span class="edge">CLV: +2.45 avg</span></div>
+                <div><span class="cmd">$ _</span><span class="output" style="animation: pulse 1s infinite;">▌</span></div>
+            </div>
+        </div>
+    </section>
+
+    <section id="features">
+        <div class="section-header">
+            <h2>Built for <span class="gradient-text">Sharp Bettors</span></h2>
+            <p>Every feature designed to give you the mathematical edge the books don't want you to have. Engineered in Queen Creek, AZ.</p>
+        </div>
+        <div class="features">
+            <div class="feature-card">
+                <div class="feature-icon">🔍</div>
+                <h3>Real-Time +EV Scanning</h3>
+                <p>Scan 6 sports instantly — NFL, NBA, MLB, NHL, ATP Tennis, EPL Soccer. Moneyline, Spread, and Totals across major sportsbooks.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">🤖</div>
+                <h3>Claude AI Analysis</h3>
+                <p>Don't trust your gut. Our Hermes-powered AI calculates true probabilities, factors injuries, rest days, and weather — finding edges spreadsheets miss.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">💰</div>
+                <h3>Kelly Criterion Sizing</h3>
+                <p>Automatic bankroll-optimized stake recommendations. Never over-bet an edge, never under-bet a crusher.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">📈</div>
+                <h3>CLV Tracking</h3>
+                <p>Track your Closing Line Value over time. Prove you're beating the market, not just getting lucky.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">📥</div>
+                <h3>Data Export</h3>
+                <p>Download every scan as CSV, JSON, or PDF. Build your own models. Own your edge.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">⚡</div>
+                <h3>Player & Team Props</h3>
+                <p>Premium tiers unlock prop markets — where recreational money creates the biggest edges for sharp players.</p>
+            </div>
+        </div>
+    </section>
+
+    <section>
+        <div class="section-header">
+            <h2>How It <span class="gradient-text">Works</span></h2>
+            <p>From scan to bet in under 30 seconds.</p>
+        </div>
+        <div class="steps">
+            <div class="step">
+                <div class="step-num">1</div>
+                <h3>Set Your Bankroll</h3>
+                <p>Tell the bot your betting bankroll once. It remembers. All Kelly sizing is customized to YOU.</p>
+            </div>
+            <div class="step">
+                <div class="step-num">2</div>
+                <h3>Run /scan</h3>
+                <p>Type one command. The bot scans 6 sports, pulls live odds, and runs AI analysis in seconds.</p>
+            </div>
+            <div class="step">
+                <div class="step-num">3</div>
+                <h3>Bet the Edge</h3>
+                <p>Get clear +EV plays with exact unit sizing. Track results with /stats and watch your CLV grow.</p>
+            </div>
+        </div>
+    </section>
+
+    <section id="pricing">
+        <div class="section-header">
+            <h2>Simple <span class="gradient-text">Pricing</span></h2>
+            <p>Start free. Upgrade when you're ready to scale. No hidden fees. Cancel anytime.</p>
+        </div>
+        <div class="pricing-cards">
+            <div class="pricing-card">
+                <h3>🟢 Free</h3>
+                <div class="price">$0<span>/mo</span></div>
+                <ul>
+                    <li>5 scans per day</li>
+                    <li>All 6 sports</li>
+                    <li>ML, Spread, Totals</li>
+                    <li>Kelly sizing & EV calc</li>
+                    <li>7-day data retention</li>
+                    <li>Email support</li>
+                </ul>
+                <a href="https://t.me/AlexBetSharp_v2_Bot" class="btn btn-secondary">Get Started</a>
+            </div>
+            <div class="pricing-card popular">
+                <div class="popular-badge">MOST POPULAR</div>
+                <h3>🟡 Sharp</h3>
+                <div class="price">$49<span>/mo</span></div>
+                <ul>
+                    <li>100 scans per day</li>
+                    <li>Claude AI analysis (Haiku)</li>
+                    <li>Player props access</li>
+                    <li>Custom probability filters</li>
+                    <li>Export CSV & JSON</li>
+                    <li>90-day data retention</li>
+                    <li>Priority support (4-8h)</li>
+                </ul>
+                <a href="https://t.me/AlexBetSharp_v2_Bot" class="btn btn-primary">Start 7-Day Trial</a>
+            </div>
+            <div class="pricing-card">
+                <h3>🔵 Elite</h3>
+                <div class="price">$99<span>/mo</span></div>
+                <ul>
+                    <li>Unlimited scans</li>
+                    <li>Claude AI (Sonnet tier)</li>
+                    <li>Team props + Ask Alex</li>
+                    <li>Export CSV, JSON, PDF</li>
+                    <li>1-year data retention</li>
+                    <li>API access (1,000 req/hr)</li>
+                    <li>24/7 priority support</li>
+                    <li>Up to 5 team members</li>
+                </ul>
+                <a href="https://t.me/AlexBetSharp_v2_Bot" class="btn btn-secondary">Go Elite</a>
+            </div>
+        </div>
+        <p style="text-align:center; margin-top:2rem; color:var(--text-dim); font-size:0.9rem;">
+            🏢 <strong>Enterprise</strong> plans available — custom integrations, white-label, dedicated account manager.
+            <a href="mailto:enterprise@alexbet.io" style="color:var(--accent);">Contact sales</a>
+        </p>
+    </section>
+
+    <section>
+        <div class="section-header">
+            <h2>What <span class="gradient-text">Bettors Say</span></h2>
+            <p>Real users. Real edges. Real results.</p>
+        </div>
+        <div class="testimonials">
+            <div class="testimonial">
+                <div class="stars">★★★★★</div>
+                <p class="testimonial-text">"I was paying $200/month for picks from a capper who went 12-18. AlexBET found 47 +EV plays last month and I was up $890. The Kelly sizing alone is worth the subscription."</p>
+                <div class="testimonial-author">
+                    <div class="author-avatar">JM</div>
+                    <div class="author-info">
+                        <div class="name">Jason M.</div>
+                        <div class="title">Sharp Member — 4 months</div>
+                    </div>
+                </div>
+            </div>
+            <div class="testimonial">
+                <div class="stars">★★★★★</div>
+                <p class="testimonial-text">"The CLV tracking changed how I think about betting. I'm consistently getting 2+ points of closing line value. That's not luck — that's skill backed by data."</p>
+                <div class="testimonial-author">
+                    <div class="author-avatar">DK</div>
+                    <div class="author-info">
+                        <div class="name">David K.</div>
+                        <div class="title">Elite Member — 8 months</div>
+                    </div>
+                </div>
+            </div>
+            <div class="testimonial">
+                <div class="stars">★★★★★</div>
+                <p class="testimonial-text">"Started on the free tier. Hit my 5-scan limit every day for a week. Upgraded to Sharp and the AI analysis found a 4.2% edge on a tennis prop I never would've seen."</p>
+                <div class="testimonial-author">
+                    <div class="author-avatar">RT</div>
+                    <div class="author-info">
+                        <div class="name">Rachel T.</div>
+                        <div class="title">Sharp Member — 2 months</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section id="faq">
+        <div class="section-header">
+            <h2>Got <span class="gradient-text">Questions?</span></h2>
+            <p>Everything you need to know before you start.</p>
+        </div>
+        <div class="faq-list">
+            <div class="faq-item">
+                <div class="faq-question">Is this legal? <span>+</span></div>
+                <div class="faq-answer">Yes. AlexBET Sharp is an analytics and data tool. We don't place bets for you. We scan public odds data, run mathematical analysis, and present +EV opportunities. You decide what to bet and where. Always check your local regulations.</div>
+            </div>
+            <div class="faq-item">
+                <div class="faq-question">How is this different from a tout / picks service? <span>+</span></div>
+                <div class="faq-answer">Touts sell you their opinion. We sell you the TOOL that finds edges. You see the math — implied probability, true probability, edge percentage, and Kelly sizing. No "locks of the century." Just data-driven +EV plays you can verify yourself.</div>
+            </div>
+            <div class="faq-item">
+                <div class="faq-question">What sportsbooks do you scan? <span>+</span></div>
+                <div class="faq-answer">We pull odds data from major markets via The Odds API. The bot shows you the edge — you shop for the best line at your preferred sportsbook (DraftKings, FanDuel, BetMGM, Caesars, etc.). Line shopping is part of the edge.</div>
+            </div>
+            <div class="faq-item">
+                <div class="faq-question">Can I cancel anytime? <span>+</span></div>
+                <div class="faq-answer">Absolutely. No contracts, no penalties. Cancel in one click and keep your free tier access. Pro-rated refunds available for unused time on annual plans.</div>
+            </div>
+            <div class="faq-item">
+                <div class="faq-question">Who built this? <span>+</span></div>
+                <div class="faq-answer">AlexBET Sharp is built by Oddsify Labs, a sports betting technology company based in Queen Creek, Arizona. We're a Collins & Collins Technologies company, powered by the Hermes Agent Engine — a multi-agent AI system that codes, designs, writes, and markets our products.</div>
+            </div>
+            <div class="faq-item">
+                <div class="faq-question">Do you guarantee wins? <span>+</span></div>
+                <div class="faq-answer">No. No one can guarantee wins in sports betting. What we guarantee is this: every play we surface has positive expected value. Over a large sample size, +EV betting wins. But variance is real — bankroll management matters.</div>
+            </div>
+        </div>
+    </section>
+
+    <section>
+        <div class="cta-section">
+            <h2>Ready to Stop Guessing?</h2>
+            <p>Join thousands of bettors using AI to find edges the books can't hide.<br>5 free scans. No credit card required.</p>
+            <div class="hero-ctas" style="justify-content:center;">
+                <a href="https://t.me/AlexBetSharp_v2_Bot" class="btn btn-primary">
+                    🚀 Open AlexBET Sharp in Telegram
+                </a>
+            </div>
+            <p style="margin-top:1.5rem; font-size:0.85rem; color:var(--text-dim);">
+                Free forever. Upgrade when you're ready to scale.
+            </p>
+        </div>
+
+        <div class="team-strip">
+            <div class="team-member">
+                <div class="icon">💻</div>
+                <div class="name">Miah Hermes</div>
+                <div class="role">Software Engineer</div>
+            </div>
+            <div class="team-member">
+                <div class="icon">📱</div>
+                <div class="name">Markus Hermes</div>
+                <div class="role">Social Media</div>
+            </div>
+            <div class="team-member">
+                <div class="icon">🎨</div>
+                <div class="name">Ruth Hermes</div>
+                <div class="role">Web Developer</div>
+            </div>
+            <div class="team-member">
+                <div class="icon">✍️</div>
+                <div class="name">Octavia Hermes</div>
+                <div class="role">Writer & Research</div>
+            </div>
+            <div class="team-member">
+                <div class="icon">💼</div>
+                <div class="name">Mitch Hermes</div>
+                <div class="role">Sales & Marketing</div>
+            </div>
+        </div>
+    </section>
+
+    <footer>
+        <div class="footer-company">
+            <strong>AlexBET Sharp</strong> by <strong>Oddsify Labs</strong>
+            <p>A Collins & Collins Technologies Company — Queen Creek, AZ</p>
+            <p style="margin-top:0.5rem; font-size:0.75rem;">Powered by the Hermes Agent Engine</p>
+        </div>
+        <div style="margin-bottom:1rem;">
+            <a href="https://t.me/AlexBetSharp_v2_Bot">Telegram Bot</a>
+            <a href="https://alexbet-lite.netlify.app">Lite Tracker</a>
+            <a href="https://www.oddsifylabs.com">Oddsify Labs</a>
+            <a href="mailto:support@alexbet.io">Support</a>
+            <a href="#pricing">Pricing</a>
+        </div>
+        <p style="font-size:0.75rem; opacity:0.6;">
+            © 2026 Oddsify Labs, a Collins & Collins Technologies company. All rights reserved.<br>
+            AlexBET Sharp is an analytics tool for entertainment purposes. Please gamble responsibly.
+        </p>
+    </footer>
+
+    <script>
+        document.querySelectorAll('.faq-question').forEach(q => {
+            q.addEventListener('click', () => {
+                const answer = q.nextElementSibling;
+                const isOpen = answer.style.display === 'block';
+                answer.style.display = isOpen ? 'none' : 'block';
+                q.querySelector('span').textContent = isOpen ? '+' : '−';
+            });
+            q.nextElementSibling.style.display = 'none';
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,46 @@
+.propVerification {
+  border-top: 1px solid #34465d;
+  margin-top: 16px;
+  padding-top: 16px;
+  min-width: 0;
+}
+.propVerification p {
+  font-size: 0.9rem;
+  line-height: 1.55;
+  margin: 10px 0;
+  overflow-wrap: anywhere;
+}
+.propVerification summary {
+  cursor: pointer;
+  padding: 12px 0;
+  color: #c2dcff;
+  font-weight: 600;
+  line-height: 1.5;
+}
+.propVerification ul {
+  padding-left: 20px;
+  margin: 0;
+}
+.propVerification li {
+  margin: 14px 0;
+  line-height: 1.5;
+}
+.propVerification li strong {
+  color: #e0ecff;
+  font-size: 0.9rem;
+}
+.propVerification a {
+  color: #93d8ff;
+  text-decoration: underline;
+}
+.propVerification small {
+  color: #afc1d9;
+}
+.propVerification button {
+  min-height: 44px;
+  white-space: normal;
+}
+.propVerification :focus-visible {
+  outline: 3px solid #93d8ff;
+  outline-offset: 3px;
+}

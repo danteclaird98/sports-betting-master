@@ -1,0 +1,776 @@
+{
+  "source": "danteclaird98/EdgeBoard",
+  "commit": "04612cba1552a07447059099b8683e51be852385",
+  "files": [
+    {
+      "path": "apps/edgeboard/backend/accountSlipAudit.ts",
+      "source_path": "backend/accountSlipAudit.ts",
+      "source_sha256": "85a57d34f3715b977e939577175254285ed29e5b43123d070034c572ffc8ef84",
+      "migrated_sha256": "85a57d34f3715b977e939577175254285ed29e5b43123d070034c572ffc8ef84",
+      "changed": false
+    },
+    {
+      "path": "apps/edgeboard/backend/allSportsReport.ts",
+      "source_path": "backend/allSportsReport.ts",
+      "source_sha256": "6e48366743f3f58067e6776bd02f940e14a53d0c6f08e2da8a01584c5e1d1fa7",
+      "migrated_sha256": "6e48366743f3f58067e6776bd02f940e14a53d0c6f08e2da8a01584c5e1d1fa7",
+      "changed": false
+    },
+    {
+      "path": "apps/edgeboard/backend/altOdds.ts",
+      "source_path": "backend/altOdds.ts",
+      "source_sha256": "4402e29b929fe4fd77635b521c543b1f730a9e2fb64490a3b04496118c2b3773",
+      "migrated_sha256": "eb0adfa9ae07aeac88a334cfa71c94337e259361d547e8f0b4b808a9a72ec2d0",
+      "changed": true
+    },
+    {
+      "path": "apps/edgeboard/backend/assistantReport.ts",
+      "source_path": "backend/assistantReport.ts",
+      "source_sha256": "e5c0a260f9921eaa3278aea00432e7675becf7cf46a09b1c38cab93df868f874",
+      "migrated_sha256": "e5c0a260f9921eaa3278aea00432e7675becf7cf46a09b1c38cab93df868f874",
+      "changed": false
+    },
+    {
+      "path": "apps/edgeboard/backend/blockerAudit.ts",
+      "source_path": "backend/blockerAudit.ts",
+      "source_sha256": "45fbaba8424c504dedaa8404e1b7549dc0d48c1059d4b5e1214c145663e78d03",
+      "migrated_sha256": "45fbaba8424c504dedaa8404e1b7549dc0d48c1059d4b5e1214c145663e78d03",
+      "changed": false
+    },
+    {
+      "path": "apps/edgeboard/backend/caesarsFeed.ts",
+      "source_path": "backend/caesarsFeed.ts",
+      "source_sha256": "3974ea38665b385d64e396dc594ea32e072747453863c6ff532b978d79a9468c",
+      "migrated_sha256": "36f2f9ee2015dda4b085fbfc7787130394e5809c437f91a83b3efa077b55b351",
+      "changed": true
+    },
+    {
+      "path": "apps/edgeboard/backend/caesarsRules.ts",
+      "source_path": "backend/caesarsRules.ts",
+      "source_sha256": "b02a3806afb591f51b559d34b86191074ddc650b39055a0fa7b5e833a44f03a1",
+      "migrated_sha256": "b02a3806afb591f51b559d34b86191074ddc650b39055a0fa7b5e833a44f03a1",
+      "changed": false
+    },
+    {
+      "path": "apps/edgeboard/backend/context.ts",
+      "source_path": "backend/context.ts",
+      "source_sha256": "60adb7424f9d70fb29ec412e0b7da9d747ff36c59b62ae582bfa678166075b26",
+      "migrated_sha256": "ab612115b3a72772a4ad70f6f09289f083e17435ec3a260ac25576eca4433cc5",
+      "changed": true
+    },
+    {
+      "path": "apps/edgeboard/backend/correctedReceiving.ts",
+      "source_path": "backend/correctedReceiving.ts",
+      "source_sha256": "778f2433915b84409c4422690bddc267eecf7ec3aa08adab8de83feab9cfa18a",
+      "migrated_sha256": "778f2433915b84409c4422690bddc267eecf7ec3aa08adab8de83feab9cfa18a",
+      "changed": false
+    },
+    {
+      "path": "apps/edgeboard/backend/correctedReceivingArtifact.json",
+      "source_path": "backend/correctedReceivingArtifact.json",
+      "source_sha256": "9ef7dee9e2df9a75be1d7faeece0132e101d5d5acb876c5a3e6352141964b0c1",
+      "migrated_sha256": "9ef7dee9e2df9a75be1d7faeece0132e101d5d5acb876c5a3e6352141964b0c1",
+      "changed": false
+    },
+    {
+      "path": "apps/edgeboard/backend/correctedReceivingManifest.json",
+      "source_path": "backend/correctedReceivingManifest.json",
+      "source_sha256": "ccff246c6f304c71d86436b27409d5b7a3b4b2d6500b2179f9401a2ad466c7ff",
+      "migrated_sha256": "ccff246c6f304c71d86436b27409d5b7a3b4b2d6500b2179f9401a2ad466c7ff",
+      "changed": false
+    },
+    {
+      "path": "apps/edgeboard/backend/correctedReceivingReport.json",
+      "source_path": "backend/correctedReceivingReport.json",
+      "source_sha256": "c8802905e0c29d2416d692b5b4d523540604e0b273cf2e8d30272f0a970a5b43",
+      "migrated_sha256": "c8802905e0c29d2416d692b5b4d523540604e0b273cf2e8d30272f0a970a5b43",
+      "changed": false
+    },
+    {
+      "path": "apps/edgeboard/backend/coverage.ts",
+      "source_path": "backend/coverage.ts",
+      "source_sha256": "d026199dd5aac28aca8c5831100cc14638de19dc7b6acec0696a5a6029d3b1a2",
+      "migrated_sha256": "d026199dd5aac28aca8c5831100cc14638de19dc7b6acec0696a5a6029d3b1a2",
+      "changed": false
+    },
+    {
+      "path": "apps/edgeboard/backend/edgePolicy.ts",
+      "source_path": "backend/edgePolicy.ts",
+      "source_sha256": "6e62bf66a7172b97df0427f6f8b5a763cf42f307c4767dd394f088f8cfb07b23",
+      "migrated_sha256": "6e62bf66a7172b97df0427f6f8b5a763cf42f307c4767dd394f088f8cfb07b23",
+      "changed": false
+    },
+    {
+      "path": "apps/edgeboard/backend/engine.ts",
+      "source_path": "backend/engine.ts",
+      "source_sha256": "80cde23ddbfe4a99bcb5a9255c643ebbb402bdbc22f9d5f00cc04391bcfa5393",
+      "migrated_sha256": "ed9f77471614bcdd4a284b297170fc00fe2d0518d0c905aa7fb5cc9de1676417",
+      "changed": true
+    },
+    {
+      "path": "apps/edgeboard/backend/executionEvidence.ts",
+      "source_path": "backend/executionEvidence.ts",
+      "source_sha256": "4bb19a6b442b4fd9d810a3efda661df9fc05e14a50be8cb6ac62e4c4fc975bff",
+      "migrated_sha256": "b6c3750cc373a7e0ca9dcc96356423874a944c9f4f25b6c930c9505e86c8a6db",
+      "changed": true
+    },
+    {
+      "path": "apps/edgeboard/backend/freeGameOdds.ts",
+      "source_path": "backend/freeGameOdds.ts",
+      "source_sha256": "cfef1bd20003bbac817cbf89ae58c7d684f3bd16680c1afd8f47d9c29a6ed248",
+      "migrated_sha256": "cfef1bd20003bbac817cbf89ae58c7d684f3bd16680c1afd8f47d9c29a6ed248",
+      "changed": false
+    },
+    {
+      "path": "apps/edgeboard/backend/freeUnderdog.ts",
+      "source_path": "backend/freeUnderdog.ts",
+      "source_sha256": "10d5e8c12dc2c1de199a7ac7e9f6193e479d2accc43140292572c9cd2d83a3fe",
+      "migrated_sha256": "10d5e8c12dc2c1de199a7ac7e9f6193e479d2accc43140292572c9cd2d83a3fe",
+      "changed": false
+    },
+    {
+      "path": "apps/edgeboard/backend/gameLines.ts",
+      "source_path": "backend/gameLines.ts",
+      "source_sha256": "7d6cec051ba10e1a3ad9d9650d4b271b96fb2066b5ba45178e0509f8c1489d6f",
+      "migrated_sha256": "903c7e72d2165d8c6628b45bb601cbba62bf7f2e58b5bb786965a1b40ee88a3c",
+      "changed": true
+    },
+    {
+      "path": "apps/edgeboard/backend/halftimeOutlook.ts",
+      "source_path": "backend/halftimeOutlook.ts",
+      "source_sha256": "e8e11ce7dbce85f47d1f91817560abe5e75bfc238598a015558968e6f3178c86",
+      "migrated_sha256": "e8e11ce7dbce85f47d1f91817560abe5e75bfc238598a015558968e6f3178c86",
+      "changed": false
+    },
+    {
+      "path": "apps/edgeboard/backend/halftime_model.json",
+      "source_path": "backend/halftime_model.json",
+      "source_sha256": "2f934837a771f4ff981708a67427d592066d5699046a4422da6172c63069fc1c",
+      "migrated_sha256": "2f934837a771f4ff981708a67427d592066d5699046a4422da6172c63069fc1c",
+      "changed": false
+    },
+    {
+      "path": "apps/edgeboard/backend/halftime_validation.json",
+      "source_path": "backend/halftime_validation.json",
+      "source_sha256": "a76127ac2b0ae45c32dd023cbac537145498d4f8e3fada1631e40b71c0a3e689",
+      "migrated_sha256": "a76127ac2b0ae45c32dd023cbac537145498d4f8e3fada1631e40b71c0a3e689",
+      "changed": false
+    },
+    {
+      "path": "apps/edgeboard/backend/historicalNfl.ts",
+      "source_path": "backend/historicalNfl.ts",
+      "source_sha256": "3177e6a2674b9970b6127614d23d27194486b950bb2e04104043d3b88baaea49",
+      "migrated_sha256": "3177e6a2674b9970b6127614d23d27194486b950bb2e04104043d3b88baaea49",
+      "changed": false
+    },
+    {
+      "path": "apps/edgeboard/backend/historicalNflOddsV4.ts",
+      "source_path": "backend/historicalNflOddsV4.ts",
+      "source_sha256": "3d6dee61f9d4a4f4ce85e0f110c15664578a4d1f7eaf06c9908fe6ed0b9c300f",
+      "migrated_sha256": "3d6dee61f9d4a4f4ce85e0f110c15664578a4d1f7eaf06c9908fe6ed0b9c300f",
+      "changed": false
+    },
+    {
+      "path": "apps/edgeboard/backend/historicalStatPolicy.ts",
+      "source_path": "backend/historicalStatPolicy.ts",
+      "source_sha256": "45fa04c1d5ed13117c7abb7d0817bbd8e879b11962e09942bb2f23e1d5e03704",
+      "migrated_sha256": "45fa04c1d5ed13117c7abb7d0817bbd8e879b11962e09942bb2f23e1d5e03704",
+      "changed": false
+    },
+    {
+      "path": "apps/edgeboard/backend/independentReceptionArtifact.json",
+      "source_path": "backend/independentReceptionArtifact.json",
+      "source_sha256": "b6c5f3dfb74c9e6e33d787bf233aaeb1f957e3038cfb7d0019cc550798ab5e35",
+      "migrated_sha256": "b6c5f3dfb74c9e6e33d787bf233aaeb1f957e3038cfb7d0019cc550798ab5e35",
+      "changed": false
+    },
+    {
+      "path": "apps/edgeboard/backend/independentReceptionValidation.json",
+      "source_path": "backend/independentReceptionValidation.json",
+      "source_sha256": "844c0753dca7cd0d1351cc30cc3d4cee5d2946d807915eb17416370ac64cc4f2",
+      "migrated_sha256": "844c0753dca7cd0d1351cc30cc3d4cee5d2946d807915eb17416370ac64cc4f2",
+      "changed": false
+    },
+    {
+      "path": "apps/edgeboard/backend/independentReceptions.ts",
+      "source_path": "backend/independentReceptions.ts",
+      "source_sha256": "91f539fb92f03d1f1a36d909651a2dd5c0730cf1d203ba3a1b29f17e857d5c62",
+      "migrated_sha256": "91f539fb92f03d1f1a36d909651a2dd5c0730cf1d203ba3a1b29f17e857d5c62",
+      "changed": false
+    },
+    {
+      "path": "apps/edgeboard/backend/index.ts",
+      "source_path": "backend/index.ts",
+      "source_sha256": "b5e09a59818234aad3f13fc25227d0ce2e16481575df8298742fe22bf2312257",
+      "migrated_sha256": "2b8dd365ea57d4fa4d4e8d07aebc8061dd39fe2483a2a17608712a3f40735558",
+      "changed": true
+    },
+    {
+      "path": "apps/edgeboard/backend/integrationTests.ts",
+      "source_path": "backend/integrationTests.ts",
+      "source_sha256": "7a98e5efb55689915c8e80271f5b524ebe5efa981449ede78011588276dff666",
+      "migrated_sha256": "cbc8de013653d06e14750c7cae45f781ef7a5e2f32855ce6a55246b19da26be2",
+      "changed": true
+    },
+    {
+      "path": "apps/edgeboard/backend/lineAwareNfl.ts",
+      "source_path": "backend/lineAwareNfl.ts",
+      "source_sha256": "978a02b6cfc26ec482ce58cda65ed9b2631f6949720666e9ebd4d1e60a052e4e",
+      "migrated_sha256": "978a02b6cfc26ec482ce58cda65ed9b2631f6949720666e9ebd4d1e60a052e4e",
+      "changed": false
+    },
+    {
+      "path": "apps/edgeboard/backend/liveGames.ts",
+      "source_path": "backend/liveGames.ts",
+      "source_sha256": "09fa0f0af72850948714748b2127ee5940c42822a533c2475399fabaa1902a64",
+      "migrated_sha256": "09fa0f0af72850948714748b2127ee5940c42822a533c2475399fabaa1902a64",
+      "changed": false
+    },
+    {
+      "path": "apps/edgeboard/backend/liveOdds.ts",
+      "source_path": "backend/liveOdds.ts",
+      "source_sha256": "77c0806debacd61e0be565960972f98babd0f49cd4722e24493de4217dc48c43",
+      "migrated_sha256": "16bc8f3d96a7f18cb6a572978b79913873923b5c987fc6e97908dd165e14e104",
+      "changed": true
+    },
+    {
+      "path": "apps/edgeboard/backend/liveQuoteStorage.ts",
+      "source_path": "backend/liveQuoteStorage.ts",
+      "source_sha256": "35ad8211a3792e9d06472c6b4a480adc5eeb2e8b56372777c49a987efa6dd614",
+      "migrated_sha256": "9572ad40ab6cf85dd5bf1088b5b54aba981e6ec2744ad462b292707ef60e4b11",
+      "changed": true
+    },
+    {
+      "path": "apps/edgeboard/backend/liveResearch.ts",
+      "source_path": "backend/liveResearch.ts",
+      "source_sha256": "09f7c3d38b33d70c04548ee408c60d46012514026f3ea065c741e58c4dd65951",
+      "migrated_sha256": "09f7c3d38b33d70c04548ee408c60d46012514026f3ea065c741e58c4dd65951",
+      "changed": false
+    },
+    {
+      "path": "apps/edgeboard/backend/liveSlip.ts",
+      "source_path": "backend/liveSlip.ts",
+      "source_sha256": "796efb33c4c5c87b0fa616f8e0c53a893c84fbe1ed76157c3abcf5d936c6ebcb",
+      "migrated_sha256": "796efb33c4c5c87b0fa616f8e0c53a893c84fbe1ed76157c3abcf5d936c6ebcb",
+      "changed": false
+    },
+    {
+      "path": "apps/edgeboard/backend/liveTypes.ts",
+      "source_path": "backend/liveTypes.ts",
+      "source_sha256": "dad66d7033e1a9274e39325997d4876a3133ed6798cf75ec7d319ad8fa59eedc",
+      "migrated_sha256": "dad66d7033e1a9274e39325997d4876a3133ed6798cf75ec7d319ad8fa59eedc",
+      "changed": false
+    },
+    {
+      "path": "apps/edgeboard/backend/mlbBaselineReport.json",
+      "source_path": "backend/mlbBaselineReport.json",
+      "source_sha256": "6be5a51a2a1aeb8e043b363785c42c11d1ee92e44bc72c8daf18bbecb58fa16a",
+      "migrated_sha256": "6be5a51a2a1aeb8e043b363785c42c11d1ee92e44bc72c8daf18bbecb58fa16a",
+      "changed": false
+    },
+    {
+      "path": "apps/edgeboard/backend/modelLab.ts",
+      "source_path": "backend/modelLab.ts",
+      "source_sha256": "52be1e7c3d060e62b5d4564a1d64daf4d0e0b456fbca290cfa112152d11b62cd",
+      "migrated_sha256": "52be1e7c3d060e62b5d4564a1d64daf4d0e0b456fbca290cfa112152d11b62cd",
+      "changed": false
+    },
+    {
+      "path": "apps/edgeboard/backend/nflBaselineReport.json",
+      "source_path": "backend/nflBaselineReport.json",
+      "source_sha256": "37ab055e9b9a72489400f7bef61025d942d8d73b47ab7910d67dbfb3bfe53390",
+      "migrated_sha256": "37ab055e9b9a72489400f7bef61025d942d8d73b47ab7910d67dbfb3bfe53390",
+      "changed": false
+    },
+    {
+      "path": "apps/edgeboard/backend/nflCalibration.ts",
+      "source_path": "backend/nflCalibration.ts",
+      "source_sha256": "f8cdc4ec91fbbb7bb9b18e722cb4f177a903feaeb8f76adb3c26bbc86ea137b9",
+      "migrated_sha256": "f8cdc4ec91fbbb7bb9b18e722cb4f177a903feaeb8f76adb3c26bbc86ea137b9",
+      "changed": false
+    },
+    {
+      "path": "apps/edgeboard/backend/nflContext.ts",
+      "source_path": "backend/nflContext.ts",
+      "source_sha256": "f62567ac54d15a76c7a59960caf7915ed760b6abef790fafb619ed50f30a3fbf",
+      "migrated_sha256": "fcb95dac44e5e594534d155a4c49696ebd52661d4f1c0e28ef495f3b70022c03",
+      "changed": true
+    },
+    {
+      "path": "apps/edgeboard/backend/nflHistoricalQuoteAudit.ts",
+      "source_path": "backend/nflHistoricalQuoteAudit.ts",
+      "source_sha256": "cee3f26a5903c4eb3a14f3666de52f7f4ac92a32b9bab9e93b4f1ec3b547042d",
+      "migrated_sha256": "cee3f26a5903c4eb3a14f3666de52f7f4ac92a32b9bab9e93b4f1ec3b547042d",
+      "changed": false
+    },
+    {
+      "path": "apps/edgeboard/backend/nflInjuryContext.ts",
+      "source_path": "backend/nflInjuryContext.ts",
+      "source_sha256": "d50449e199210a02a355c89b1b29608c4f75231f330c279d138b2c5897bd078f",
+      "migrated_sha256": "d50449e199210a02a355c89b1b29608c4f75231f330c279d138b2c5897bd078f",
+      "changed": false
+    },
+    {
+      "path": "apps/edgeboard/backend/nflPropBacktest.ts",
+      "source_path": "backend/nflPropBacktest.ts",
+      "source_sha256": "d9c2f22927dafeb0361e973de0cbcb532f1d1048cd26f3c0323dd8f19ecbab19",
+      "migrated_sha256": "d9c2f22927dafeb0361e973de0cbcb532f1d1048cd26f3c0323dd8f19ecbab19",
+      "changed": false
+    },
+    {
+      "path": "apps/edgeboard/backend/nflPropCalibration.ts",
+      "source_path": "backend/nflPropCalibration.ts",
+      "source_sha256": "edbf3f1e99f2261feb33bf8b6f77306419463638700776bf8752718f3cecc1fb",
+      "migrated_sha256": "edbf3f1e99f2261feb33bf8b6f77306419463638700776bf8752718f3cecc1fb",
+      "changed": false
+    },
+    {
+      "path": "apps/edgeboard/backend/nflPropReadiness.ts",
+      "source_path": "backend/nflPropReadiness.ts",
+      "source_sha256": "44471e53f7ad16c7b5b30bc52f06bf25491bfa2d76e16b77cd98300edd8d1381",
+      "migrated_sha256": "44471e53f7ad16c7b5b30bc52f06bf25491bfa2d76e16b77cd98300edd8d1381",
+      "changed": false
+    },
+    {
+      "path": "apps/edgeboard/backend/nhlHistoricalOdds.ts",
+      "source_path": "backend/nhlHistoricalOdds.ts",
+      "source_sha256": "2f1983b5ae09f373c9aa627ee55243bedab664bd6fe5c64801c078821fc96664",
+      "migrated_sha256": "0961617c53ca5b9f4f20e4acd139fe898bef1151213a17ecbb54f782eb52c425",
+      "changed": true
+    },
+    {
+      "path": "apps/edgeboard/backend/nhlLeagueBacktest.ts",
+      "source_path": "backend/nhlLeagueBacktest.ts",
+      "source_sha256": "438de3a4cf3815316be36f5a68795f02272b3631de55007e8b073bfb68fa493a",
+      "migrated_sha256": "438de3a4cf3815316be36f5a68795f02272b3631de55007e8b073bfb68fa493a",
+      "changed": false
+    },
+    {
+      "path": "apps/edgeboard/backend/nhlShotsBacktest.ts",
+      "source_path": "backend/nhlShotsBacktest.ts",
+      "source_sha256": "0ea4d6b54a0e01d95b227f2489853dae14d85b3b49ca7a4babf2cbe0c0f696fa",
+      "migrated_sha256": "0ea4d6b54a0e01d95b227f2489853dae14d85b3b49ca7a4babf2cbe0c0f696fa",
+      "changed": false
+    },
+    {
+      "path": "apps/edgeboard/backend/parlayAudit.ts",
+      "source_path": "backend/parlayAudit.ts",
+      "source_sha256": "ba484eb502ad0d793fb75fa9bb538a9de57da2f37fbd26a9ec61f0747c6c60ef",
+      "migrated_sha256": "ba484eb502ad0d793fb75fa9bb538a9de57da2f37fbd26a9ec61f0747c6c60ef",
+      "changed": false
+    },
+    {
+      "path": "apps/edgeboard/backend/predictionLedger.ts",
+      "source_path": "backend/predictionLedger.ts",
+      "source_sha256": "d12196c618759c24f8faef8bcbb6c6ed7ca873e67040105aae9e4303cb02b326",
+      "migrated_sha256": "77168e31777c9d28827c6b613eb09010a421a7a719bae68ba8178380c831e431",
+      "changed": true
+    },
+    {
+      "path": "apps/edgeboard/backend/probabilityPrice.ts",
+      "source_path": "backend/probabilityPrice.ts",
+      "source_sha256": "f9d7f34248f1b70eb6f5926b31f9ae41f8b11700dfabde8159d95886c036fe93",
+      "migrated_sha256": "f9d7f34248f1b70eb6f5926b31f9ae41f8b11700dfabde8159d95886c036fe93",
+      "changed": false
+    },
+    {
+      "path": "apps/edgeboard/backend/propEventEvidence.ts",
+      "source_path": "backend/propEventEvidence.ts",
+      "source_sha256": "8087d022fabc9e1561dde1dffc7076386a5d76c5aad51ba68825cc8d6bbb30fe",
+      "migrated_sha256": "8087d022fabc9e1561dde1dffc7076386a5d76c5aad51ba68825cc8d6bbb30fe",
+      "changed": false
+    },
+    {
+      "path": "apps/edgeboard/backend/propReferences.ts",
+      "source_path": "backend/propReferences.ts",
+      "source_sha256": "9cfa4b32160fe2d771cbe60e70df209779631800b9faa8949b4fc4f2f4f9b8c1",
+      "migrated_sha256": "f4e1234554eca76c2ad72a9232a4271c5b3dc43b262df8fa5b50d2248d7c677a",
+      "changed": true
+    },
+    {
+      "path": "apps/edgeboard/backend/quoteArchive.ts",
+      "source_path": "backend/quoteArchive.ts",
+      "source_sha256": "79a7ca352ece5f612b5380833162ede607a0f60014d3ef16bdff13573a99e88d",
+      "migrated_sha256": "aeaab6c13c5352473efda1be05a4abaca3676281f2e7b1360407c74ed67966e0",
+      "changed": true
+    },
+    {
+      "path": "apps/edgeboard/backend/receiverMatchup.ts",
+      "source_path": "backend/receiverMatchup.ts",
+      "source_sha256": "17c1a00032fc82b2f697ebca41d1d74bea5d643be5c3b43f7efa00b018322190",
+      "migrated_sha256": "17c1a00032fc82b2f697ebca41d1d74bea5d643be5c3b43f7efa00b018322190",
+      "changed": false
+    },
+    {
+      "path": "apps/edgeboard/backend/receptionFeatures.ts",
+      "source_path": "backend/receptionFeatures.ts",
+      "source_sha256": "349e9b75eb843bd1f1cc166bb5da7ad7c4ee458b4042a0994b0c81f2ed009e3f",
+      "migrated_sha256": "349e9b75eb843bd1f1cc166bb5da7ad7c4ee458b4042a0994b0c81f2ed009e3f",
+      "changed": false
+    },
+    {
+      "path": "apps/edgeboard/backend/researchControls.ts",
+      "source_path": "backend/researchControls.ts",
+      "source_sha256": "9fd6182c3ffbd765799a2874c8d29eb5c058c82f5b6ab520a91d65647e694a00",
+      "migrated_sha256": "9fd6182c3ffbd765799a2874c8d29eb5c058c82f5b6ab520a91d65647e694a00",
+      "changed": false
+    },
+    {
+      "path": "apps/edgeboard/backend/researchPipeline.ts",
+      "source_path": "backend/researchPipeline.ts",
+      "source_sha256": "fe89e19042f88a2a241aa686a252af39710a7333655400fee3862c6387e8fb66",
+      "migrated_sha256": "fe89e19042f88a2a241aa686a252af39710a7333655400fee3862c6387e8fb66",
+      "changed": false
+    },
+    {
+      "path": "apps/edgeboard/backend/settlementSupport.ts",
+      "source_path": "backend/settlementSupport.ts",
+      "source_sha256": "73c010deb70441a935487dccd15916c35fc13073fd06b4282d618f59e74c48df",
+      "migrated_sha256": "73c010deb70441a935487dccd15916c35fc13073fd06b4282d618f59e74c48df",
+      "changed": false
+    },
+    {
+      "path": "apps/edgeboard/backend/tnfUnderdogDeepDive.ts",
+      "source_path": "backend/tnfUnderdogDeepDive.ts",
+      "source_sha256": "cd302125ab8190d0fe0435aa397606b8298e35c8baf965e31837753b45528233",
+      "migrated_sha256": "cd302125ab8190d0fe0435aa397606b8298e35c8baf965e31837753b45528233",
+      "changed": false
+    },
+    {
+      "path": "apps/edgeboard/backend/verifyProp.ts",
+      "source_path": "backend/verifyProp.ts",
+      "source_sha256": "4b76130f51e3ff44b74021afec9bc92aa43fea3cb040f5a8808bebe05e0ad4ca",
+      "migrated_sha256": "4b76130f51e3ff44b74021afec9bc92aa43fea3cb040f5a8808bebe05e0ad4ca",
+      "changed": false
+    },
+    {
+      "path": "apps/edgeboard/backend/wagerLedger.ts",
+      "source_path": "backend/wagerLedger.ts",
+      "source_sha256": "48be2f086b707e9a8c1e2b6d12c1b95009837455335df914c3db778913f42207",
+      "migrated_sha256": "1f6ba96e9d6550a652620c046c00f0e5cbab2ece2633facad492a131e26cd26a",
+      "changed": true
+    },
+    {
+      "path": "apps/edgeboard/index.html",
+      "source_path": "index.html",
+      "source_sha256": "e029ded4d5ddec7b5610076b630b4e90248ff6cea7b2438476ba060ba3266524",
+      "migrated_sha256": "e029ded4d5ddec7b5610076b630b4e90248ff6cea7b2438476ba060ba3266524",
+      "changed": false
+    },
+    {
+      "path": "apps/edgeboard/postcss.config.js",
+      "source_path": "postcss.config.js",
+      "source_sha256": "e32657baf631d7c5f4dc67b4b2ee0ec8e7d5b3c41860e09cddce7c0377cd80bc",
+      "migrated_sha256": "22deac54f92ab3e3b53ef11abef72a006f58a61fdae697de6815e384623dc28b",
+      "changed": true
+    },
+    {
+      "path": "apps/edgeboard/research/receiving60/pipeline.py",
+      "source_path": "research/receiving60/pipeline.py",
+      "source_sha256": "db9f2a52a35cde8e6c92bc61d0bae2a2dca5c34dbf17c091cc6d7d23d99f2402",
+      "migrated_sha256": "db9f2a52a35cde8e6c92bc61d0bae2a2dca5c34dbf17c091cc6d7d23d99f2402",
+      "changed": false
+    },
+    {
+      "path": "apps/edgeboard/research/receiving60/test_pipeline.py",
+      "source_path": "research/receiving60/test_pipeline.py",
+      "source_sha256": "aed4b674ddb15fa6f566de8a6a8111b9bd663ba0aec5d29e52c3ea86a6116a9d",
+      "migrated_sha256": "aed4b674ddb15fa6f566de8a6a8111b9bd663ba0aec5d29e52c3ea86a6116a9d",
+      "changed": false
+    },
+    {
+      "path": "apps/edgeboard/shared/accountSlip.ts",
+      "source_path": "shared/accountSlip.ts",
+      "source_sha256": "787b9454e984e573954d9166859f8cc310e3b86c563ffef086cb6ab926651f8f",
+      "migrated_sha256": "787b9454e984e573954d9166859f8cc310e3b86c563ffef086cb6ab926651f8f",
+      "changed": false
+    },
+    {
+      "path": "apps/edgeboard/shared/propEvidence.ts",
+      "source_path": "shared/propEvidence.ts",
+      "source_sha256": "21137f29dbf55e489489752e74f5dcf5a1a99998a9c2b9ac25046d07c0b6d053",
+      "migrated_sha256": "21137f29dbf55e489489752e74f5dcf5a1a99998a9c2b9ac25046d07c0b6d053",
+      "changed": false
+    },
+    {
+      "path": "apps/edgeboard/src/AccountSlipWorkspace.tsx",
+      "source_path": "src/AccountSlipWorkspace.tsx",
+      "source_sha256": "28edace7314cf2678afad8148ea3aded1ed28e3ca8b24913a5224d1f231a5a0d",
+      "migrated_sha256": "55d8458acc6533674100312dc82b5dbdc49063907d9de373a299a59209c47790",
+      "changed": true
+    },
+    {
+      "path": "apps/edgeboard/src/AllSportsReport.tsx",
+      "source_path": "src/AllSportsReport.tsx",
+      "source_sha256": "87bfe57ec18730c4acf72dc04f3f34a4b95891f71ec5450baf1edc54758bbaa3",
+      "migrated_sha256": "57beffbb82972a405cebb330e8af0dabbfa7dce170abadffa87c3227cf2c616e",
+      "changed": true
+    },
+    {
+      "path": "apps/edgeboard/src/App.tsx",
+      "source_path": "src/App.tsx",
+      "source_sha256": "2418f8dea76b6fecb855b57de272f882ab394422518535e9649e468d09b197c7",
+      "migrated_sha256": "de80ffb1f1461647c80d37f862ced45193622ca8a1d29bcc8c2bc412a10926e1",
+      "changed": true
+    },
+    {
+      "path": "apps/edgeboard/src/AssistantReport.tsx",
+      "source_path": "src/AssistantReport.tsx",
+      "source_sha256": "ce2119c1326557b64ee02f778b42c466bf64199635a1e31ed693a020c3cd9758",
+      "migrated_sha256": "d37d9057f6fbcf7a1cf2212f296475f1a90b49dbcfb37370bc25e8229f9b4a45",
+      "changed": true
+    },
+    {
+      "path": "apps/edgeboard/src/BlockerAudit.tsx",
+      "source_path": "src/BlockerAudit.tsx",
+      "source_sha256": "6a4671cc22a936c30166df83ed94128c7a1a4dd96e9f835c520cfb3e90b52c71",
+      "migrated_sha256": "c7a234753bad24aca455e6f5e81fed3829bc7f68b5eb424b21c62d9e6dd705d6",
+      "changed": true
+    },
+    {
+      "path": "apps/edgeboard/src/CaesarsEvidence.tsx",
+      "source_path": "src/CaesarsEvidence.tsx",
+      "source_sha256": "e7974a4749dcdc992d9574f4d178b8d2acb54c5147fbbb43066ee98e21e18b18",
+      "migrated_sha256": "5507e47a3427720a38962b92c7c16bcc4dd32d40a83fdbdfdc9e243e8a6469cf",
+      "changed": true
+    },
+    {
+      "path": "apps/edgeboard/src/CaesarsFeed.tsx",
+      "source_path": "src/CaesarsFeed.tsx",
+      "source_sha256": "bdf71379cb5d958f94294855ce79410a11467cfcc66e89c2ffe092b470867a76",
+      "migrated_sha256": "b144e4e28668deae61d0430fea6ea235d05636380f969f7e8d7eb0ada2b526e6",
+      "changed": true
+    },
+    {
+      "path": "apps/edgeboard/src/CorrectedReceivingLab.tsx",
+      "source_path": "src/CorrectedReceivingLab.tsx",
+      "source_sha256": "cb175cf8068f4f4ce68777ac5dd9e4c6226e83fd07dd68a7a982135662bb4542",
+      "migrated_sha256": "17ead421db5ef051460d55d1393ac6302454f8b3bf383f6e372a0c99b18f7966",
+      "changed": true
+    },
+    {
+      "path": "apps/edgeboard/src/DailyDashboard.tsx",
+      "source_path": "src/DailyDashboard.tsx",
+      "source_sha256": "e238cf44a40929355b98d98136db6497ca618eb0be007798735d09e4e2c94516",
+      "migrated_sha256": "e32ab8b821f2ae8a0dfa13e8347e1d02fb170498b5ff5ee9a2e340773dfa2e58",
+      "changed": true
+    },
+    {
+      "path": "apps/edgeboard/src/DataHealthPanel.tsx",
+      "source_path": "src/DataHealthPanel.tsx",
+      "source_sha256": "f433433af4c67f1755afc5b31c0190aed1922ccc3bc9609de683c150e8785240",
+      "migrated_sha256": "0bfbf54c00400fe741ec01cc325d7dc7ee93e66ed7428a622200b12888519191",
+      "changed": true
+    },
+    {
+      "path": "apps/edgeboard/src/EdgeScanner.tsx",
+      "source_path": "src/EdgeScanner.tsx",
+      "source_sha256": "7e2f8db55d6841a5d5e693a66fe45bd5bf7d84de7920d3de2d3b94dc7b154f07",
+      "migrated_sha256": "ef83930327dda81cfd94d762e7260fe7247170d7a419afbc25eb95a3ed94d77c",
+      "changed": true
+    },
+    {
+      "path": "apps/edgeboard/src/GameMarketBoard.tsx",
+      "source_path": "src/GameMarketBoard.tsx",
+      "source_sha256": "e46f79ee2df82e4d29473c356398768d1263ad4aeccdb7b2607403acd8df195f",
+      "migrated_sha256": "7b0965a08d0997b5fcd76b755a569272ada87f3931f5886f6080fb0ef7d7a369",
+      "changed": true
+    },
+    {
+      "path": "apps/edgeboard/src/HistoricalCalibration.tsx",
+      "source_path": "src/HistoricalCalibration.tsx",
+      "source_sha256": "3929f4b38d3851d79e58e84289391fc37056951a64d1e7c178f8e60119060ef8",
+      "migrated_sha256": "8ab5a4277686843d11b0d7594afaf5dd922ec88e39958e4bdbf1c95f50ae7f64",
+      "changed": true
+    },
+    {
+      "path": "apps/edgeboard/src/HistoricalNflOddsV4Panel.tsx",
+      "source_path": "src/HistoricalNflOddsV4Panel.tsx",
+      "source_sha256": "59f48ec35adb079b60bcf3f31ed8a425c13f90525b1192bf43c11929b6d16543",
+      "migrated_sha256": "0398ec27269da14d95476f9fbad64333207d4ebbdafd6a9be5ebfe187edbaa86",
+      "changed": true
+    },
+    {
+      "path": "apps/edgeboard/src/HistoricalPropPriceAudit.tsx",
+      "source_path": "src/HistoricalPropPriceAudit.tsx",
+      "source_sha256": "b795eee8512ed002116356717fcf975aa98f3eae1eceaa19b44f28756eb37cf9",
+      "migrated_sha256": "5a77b0b60e827e650e4f4f52974658beb1ba610b59a1b9dcda7d51826830a45c",
+      "changed": true
+    },
+    {
+      "path": "apps/edgeboard/src/IntegrationDiagnostics.tsx",
+      "source_path": "src/IntegrationDiagnostics.tsx",
+      "source_sha256": "64a016543bca14cda239fb07942a83e80541cfedf364124a4da72588d4d5faf2",
+      "migrated_sha256": "1521e85a564f8df8d9624a061384fba0060bebc3d749f495ab9259a41d4317af",
+      "changed": true
+    },
+    {
+      "path": "apps/edgeboard/src/KymGameLines.tsx",
+      "source_path": "src/KymGameLines.tsx",
+      "source_sha256": "8604cce2e2f0c2172e56d171fb45b8cdb566bbfcd14c6415c73bb07fdd5b4c74",
+      "migrated_sha256": "d08acd31e588f949b91b0228c156b475ad9aca699d61ec00508982f1fa9ac3cf",
+      "changed": true
+    },
+    {
+      "path": "apps/edgeboard/src/LineAwarePropLab.tsx",
+      "source_path": "src/LineAwarePropLab.tsx",
+      "source_sha256": "30c8bc85d62c9e43379dfad5003a60b5ea24c99cdf7ed6d9f3801e631201ec9c",
+      "migrated_sha256": "34a9240f8ce4fd6a30d3747dad0c7b80615eb167c12060a1168ac44f59f96d98",
+      "changed": true
+    },
+    {
+      "path": "apps/edgeboard/src/LiveResearchPage.tsx",
+      "source_path": "src/LiveResearchPage.tsx",
+      "source_sha256": "1933dc48e25b9657dc6dc84518d5a42d067b37c55de86c22b6c4afb11ca51a11",
+      "migrated_sha256": "839fd5d7d83f12d7bc7418532d986c09253078a2189ff966d7033c16f5826176",
+      "changed": true
+    },
+    {
+      "path": "apps/edgeboard/src/NflPropLab.tsx",
+      "source_path": "src/NflPropLab.tsx",
+      "source_sha256": "18e0661df847d931add5ea6f3dcd76e4d58524de2828a210ffb4e9aec053f237",
+      "migrated_sha256": "4c2e714913d91281f94b9f33ec3e96116d78b99bd46be929528a114c7f9d2149",
+      "changed": true
+    },
+    {
+      "path": "apps/edgeboard/src/NhlLeagueBacktest.tsx",
+      "source_path": "src/NhlLeagueBacktest.tsx",
+      "source_sha256": "9b9743b9e027c9a72eba0db1793c7cbf8ba147d59f46ecc60c8a697c08600e0a",
+      "migrated_sha256": "a53f664645473571aa8b5fb8cb6d7ed815de33c76c7373105f93b3203e2da2a2",
+      "changed": true
+    },
+    {
+      "path": "apps/edgeboard/src/NhlOddsAudit.tsx",
+      "source_path": "src/NhlOddsAudit.tsx",
+      "source_sha256": "d2f861b76b56b23ea1f03fb34cdf35940a6059a11a5664409a9ca006972d8b6d",
+      "migrated_sha256": "ad587c8bedf930e01a705a1bfde632c310cbf071dd0097ba03bc944e657c4c38",
+      "changed": true
+    },
+    {
+      "path": "apps/edgeboard/src/NhlShotsBacktest.tsx",
+      "source_path": "src/NhlShotsBacktest.tsx",
+      "source_sha256": "91ac72f1507764ca4af7df57d585f5ea5977d10b0ad45998a9a6cddc6f0f7bbb",
+      "migrated_sha256": "7e31c612411cde3b866530c0ab5baa52fd56bc30a909407dcb4474e81fd5d291",
+      "changed": true
+    },
+    {
+      "path": "apps/edgeboard/src/ParlayAudit.tsx",
+      "source_path": "src/ParlayAudit.tsx",
+      "source_sha256": "3aec754bf58d3200bcde323e6db7dee53adeb666a66b22f25f81c6a76e009c5a",
+      "migrated_sha256": "b50209942cf17cba013c7465d5f2c99cd7b3ad61c6932c7760dfd6e888892d42",
+      "changed": true
+    },
+    {
+      "path": "apps/edgeboard/src/PlayerBacktest.tsx",
+      "source_path": "src/PlayerBacktest.tsx",
+      "source_sha256": "b3502a275ec414000efedc1358bdc5a962376b6506a1388f8bb7eb310b4f0147",
+      "migrated_sha256": "a2b73f1ca36c1ddb15142c293cb6285a0f04d377e6cfeaa8c2c42def33d94835",
+      "changed": true
+    },
+    {
+      "path": "apps/edgeboard/src/PropVerification.css",
+      "source_path": "src/PropVerification.css",
+      "source_sha256": "2bf6ec1685050b8a544f41f926d20ff02df9a0091dfafbba8dc14e6c53f6c078",
+      "migrated_sha256": "2bf6ec1685050b8a544f41f926d20ff02df9a0091dfafbba8dc14e6c53f6c078",
+      "changed": false
+    },
+    {
+      "path": "apps/edgeboard/src/PropVerification.tsx",
+      "source_path": "src/PropVerification.tsx",
+      "source_sha256": "1d710c58dc23a6afd6e0d8a4eac88742ae46100116e7a7b0fd8fbfbf78b64e69",
+      "migrated_sha256": "5f541636db0f10a9410ef24adfa35f089db1812227bbc3b3b4f46e87a7191a25",
+      "changed": true
+    },
+    {
+      "path": "apps/edgeboard/src/ReceiverMatchupLab.tsx",
+      "source_path": "src/ReceiverMatchupLab.tsx",
+      "source_sha256": "54d53d41cda157fdf88b8dbbcd69d55d1d264cc2b673a63b7493eefc97baadba",
+      "migrated_sha256": "fe710445c614cb06d0ba4416950dbc09ba0a4d188bafea9ef17d2579d5a42c0a",
+      "changed": true
+    },
+    {
+      "path": "apps/edgeboard/src/ResearchLedger.tsx",
+      "source_path": "src/ResearchLedger.tsx",
+      "source_sha256": "068ab304221986a7eb0640712f78863b6988f88124a97e5c92496c977d45f6c3",
+      "migrated_sha256": "4859751071f3302a24207d85c7608c663e46e0a8ebb7b5d78edfd000af8b73dc",
+      "changed": true
+    },
+    {
+      "path": "apps/edgeboard/src/ResearchPipeline.tsx",
+      "source_path": "src/ResearchPipeline.tsx",
+      "source_sha256": "e759a2e5819af4e4e8051f89cd88eeda66d9add0a30c32cca4be67a9783973f8",
+      "migrated_sha256": "3521a605aa5292cbeba2ada02440ccfb32d169afd0754123637665450b7ac107",
+      "changed": true
+    },
+    {
+      "path": "apps/edgeboard/src/ResearchSetup.tsx",
+      "source_path": "src/ResearchSetup.tsx",
+      "source_sha256": "5ac4f907a2f3a4e7debccdcdeb636e6901846948deb1d4bfb1b18ea2f478818b",
+      "migrated_sha256": "3cf053c65a172a2ec1ff219e9d3edd0e14801d0e869ef6e26b2a609319cef2a6",
+      "changed": true
+    },
+    {
+      "path": "apps/edgeboard/src/TnfUnderdogDeepDive.tsx",
+      "source_path": "src/TnfUnderdogDeepDive.tsx",
+      "source_sha256": "d73f2f8219a3b866831ef12062fcf8fbaa40f93b7ca3684d24acfb63950776d7",
+      "migrated_sha256": "39b73308d79a04384fcd483a13a3bec8fbe7575deb3bcd1fa23af77b715dbfa8",
+      "changed": true
+    },
+    {
+      "path": "apps/edgeboard/src/WagerTracker.tsx",
+      "source_path": "src/WagerTracker.tsx",
+      "source_sha256": "864b43b4a35f30879f032f3271c8ef0b02fde0b5b5e3746d655569a3aacfcb23",
+      "migrated_sha256": "2069d5379edcee1c1a23fde3f8bebedbe8204b9d6c386cad0c4d45c237188ea3",
+      "changed": true
+    },
+    {
+      "path": "apps/edgeboard/src/index.css",
+      "source_path": "src/index.css",
+      "source_sha256": "4f51852c9bc3c9882e26617db10788496bd0b4ae95e36859b7e84fcfe820af48",
+      "migrated_sha256": "4f51852c9bc3c9882e26617db10788496bd0b4ae95e36859b7e84fcfe820af48",
+      "changed": false
+    },
+    {
+      "path": "apps/edgeboard/src/main.tsx",
+      "source_path": "src/main.tsx",
+      "source_sha256": "4a61bfe25f4b731c1ad59ca594045042eeddbfe3602e1f2cf9e4027f4faaa4ec",
+      "migrated_sha256": "4a61bfe25f4b731c1ad59ca594045042eeddbfe3602e1f2cf9e4027f4faaa4ec",
+      "changed": false
+    },
+    {
+      "path": "apps/edgeboard/tailwind.config.js",
+      "source_path": "tailwind.config.js",
+      "source_sha256": "2602482ccb36064bc55ccfd0b12486eddc74213fc945694210fdef0a66f9c00e",
+      "migrated_sha256": "db0e3720de02d4a337778ea51879f25ab8cfd79454c7cf3702c286e05bc78b44",
+      "changed": true
+    },
+    {
+      "path": "apps/edgeboard/tests/correctedReceiving.test.ts",
+      "source_path": "tests/correctedReceiving.test.ts",
+      "source_sha256": "65c3acc8f9e864d9fd1328130ff60e83a137bc36578b785e7803f9ab4054fc56",
+      "migrated_sha256": "65c3acc8f9e864d9fd1328130ff60e83a137bc36578b785e7803f9ab4054fc56",
+      "changed": false
+    },
+    {
+      "path": "apps/edgeboard/tests/historicalCohort.test.ts",
+      "source_path": "tests/historicalCohort.test.ts",
+      "source_sha256": "c0ab5a13b1d39d8fcb8569fbb80a6d006c6476a3c9421898b81ccbb153cd4474",
+      "migrated_sha256": "c0ab5a13b1d39d8fcb8569fbb80a6d006c6476a3c9421898b81ccbb153cd4474",
+      "changed": false
+    },
+    {
+      "path": "apps/edgeboard/tests/tests.json",
+      "source_path": "tests/tests.json",
+      "source_sha256": "75aa8228e5be2ae5577c5d3e7ec6f77d43d111c9449bf5c21ee8373ea9338b42",
+      "migrated_sha256": "75aa8228e5be2ae5577c5d3e7ec6f77d43d111c9449bf5c21ee8373ea9338b42",
+      "changed": false
+    },
+    {
+      "path": "apps/edgeboard/vite.config.ts",
+      "source_path": "vite.config.ts",
+      "source_sha256": "0bd82ef0023f0ea5c25dc1334f7fd3fb1cdb9bf4413e604b8083ce7fa81df3a3",
+      "migrated_sha256": "a4fdc594ca24b11519d634af4a7e472751da8e3bf47194454655e7467ea8edbe",
+      "changed": true
+    }
+  ]
+}

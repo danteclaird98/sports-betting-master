@@ -1,0 +1,34 @@
+{
+  "agent": "identity-guardian",
+  "task_id": "event-identity-001",
+  "base_sha": "0a2b7e7f449a67d835c6916ce46a8a97c32da88b",
+  "head_sha": "286dc484e32f6af4e32de3981ed64b61d1851892",
+  "changed_paths": [
+    "edgeodds/identity.py",
+    "edgeodds/tests/test_identity.py"
+  ],
+  "changed_contracts": [
+    "canonical-event"
+  ],
+  "tests_run": [
+    "python -m unittest discover -s edgeodds/tests -v"
+  ],
+  "live_data_used": false,
+  "claims": [
+    {
+      "claim": "Provider-supplied venue and neutral-site evidence must match canonical event evidence",
+      "evidence": "test_provider_venue_evidence_must_match; test_neutral_site_evidence_must_match_when_supplied"
+    },
+    {
+      "claim": "Missing venue evidence does not resolve otherwise ambiguous event instances",
+      "evidence": "test_missing_venue_evidence_does_not_guess_between_candidates"
+    },
+    {
+      "claim": "Material start-time changes require reconciliation rather than automatic matching",
+      "evidence": "test_material_reschedule_requires_reconciliation"
+    }
+  ],
+  "blockers": [
+    "Provider adapters must actually supply verified venue/neutral-site identifiers before these fields can disambiguate live data."
+  ]
+}

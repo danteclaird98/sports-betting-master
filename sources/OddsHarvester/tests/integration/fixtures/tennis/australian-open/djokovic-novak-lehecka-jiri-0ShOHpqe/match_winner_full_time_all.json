@@ -1,0 +1,48 @@
+[
+    {
+        "scraped_date": "2026-09-02 13:04:10 UTC",
+        "match_date": "2025-01-19 08:15:00 UTC",
+        "season": null,
+        "match_link": "https://www.oddsportal.com/tennis/h2h/djokovic-novak-AZg49Et9/lehecka-jiri-6PlgfXKR/#0ShOHpqe",
+        "home_team": "Djokovic N.",
+        "away_team": "Lehecka J.",
+        "league_name": "ATP Australian Open 2025",
+        "home_score": "3",
+        "away_score": "0",
+        "partial_results": "(6:3, 6:4, 7:6 4)",
+        "venue": "Rod Laver Arena",
+        "venue_town": "Melbourne",
+        "venue_country": "Australia",
+        "match_info": null,
+        "match_winner_market": [
+            {
+                "player_1": "1.19",
+                "player_2": "4.30",
+                "bookmaker_name": "Betclic.fr",
+                "period": "FullTime",
+                "submarket_name": "Home/Away"
+            },
+            {
+                "player_1": "1.25",
+                "player_2": "4.00",
+                "bookmaker_name": "bwin.fr",
+                "period": "FullTime",
+                "submarket_name": "Home/Away"
+            },
+            {
+                "player_1": "1.25",
+                "player_2": "4.05",
+                "bookmaker_name": "Unibet.fr",
+                "period": "FullTime",
+                "submarket_name": "Home/Away"
+            },
+            {
+                "player_1": "1.23",
+                "player_2": "4.30",
+                "bookmaker_name": "Winamax",
+                "period": "FullTime",
+                "submarket_name": "Home/Away"
+            }
+        ]
+    }
+]

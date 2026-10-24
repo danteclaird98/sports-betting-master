@@ -1,0 +1,48 @@
+[
+    {
+        "scraped_date": "2026-09-02 13:05:56 UTC",
+        "match_date": "2025-01-19 07:10:00 UTC",
+        "season": null,
+        "match_link": "https://www.oddsportal.com/tennis/h2h/humbert-ugo-O4ywE5Ah/zverev-alexander-dGbUhw9m/#MssXFOD7",
+        "home_team": "Humbert U.",
+        "away_team": "Zverev A.",
+        "league_name": "ATP Australian Open 2025",
+        "home_score": "1",
+        "away_score": "3",
+        "partial_results": "(1:6, 6:2, 3:6, 2:6)",
+        "venue": "John Cain Arena",
+        "venue_town": "Melbourne",
+        "venue_country": "Australia",
+        "match_info": null,
+        "match_winner_market": [
+            {
+                "player_1": "5.20",
+                "player_2": "1.14",
+                "bookmaker_name": "Betclic.fr",
+                "period": "FullTime",
+                "submarket_name": "Home/Away"
+            },
+            {
+                "player_1": "5.25",
+                "player_2": "1.17",
+                "bookmaker_name": "bwin.fr",
+                "period": "FullTime",
+                "submarket_name": "Home/Away"
+            },
+            {
+                "player_1": "5.10",
+                "player_2": "1.17",
+                "bookmaker_name": "Unibet.fr",
+                "period": "FullTime",
+                "submarket_name": "Home/Away"
+            },
+            {
+                "player_1": "5.30",
+                "player_2": "1.17",
+                "bookmaker_name": "Winamax",
+                "period": "FullTime",
+                "submarket_name": "Home/Away"
+            }
+        ]
+    }
+]

@@ -1,0 +1,68 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+
+# C extensions
+*.so
+
+# Distribution / packaging
+bin/
+build/
+develop-eggs/
+dist/
+eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Node.js / Serverless Framework (unused but keep ignored)
+node_modules/
+package.json
+package-lock.json
+.serverless/
+
+# Installer logs
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Unit test / coverage reports
+.tox/
+.coverage
+.cache
+nosetests.xml
+coverage.xml
+
+# Secrets
+.env
+.env.yml
+
+# Conda
+conda_packages.txt
+
+# VSCode
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json
+
+# Ignore Lambda Layer Artifacts
+lambda_layer.zip
+python/
+
+# Cursor
+*.cursor
+
+# Claude Code
+.claude/
+docs/superpowers/
+docs/plans/
+docs/specs/
+
+# Scraper output files
+scraped_data.json
+scraped_data.csv
+_docker_out/

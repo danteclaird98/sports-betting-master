@@ -1,0 +1,12 @@
+# Verification and audit record
+
+- Baseline recovered package: 11 unit tests passed before edits. No trained model or operational integrations present.
+- Updated candidate: 31 unit/API workflow tests passed. Original cases cover odds/EV, payout scenarios, identity, freshness, snapshots, duplicate imports, missing/nonfinite input, combination-leg requirements, no unsupported probabilities, currency/mode separation, provisional exposure, settlement corrections, reconciliation, drawdown, limits, live disconnect/out-of-order updates, HTTP token authentication/user isolation and denied execution, historical leakage rejection and comparable CLV. Nine new regressions cover superseding suspension, same-time provider conflicts, malformed booleans/identifiers, zero-rounded stake, provisional limits, re-import after settlement, boolean revisions, pregame/live separation and concurrent limit entry.
+- HTTP workflow starts the actual application on an ephemeral loopback port, loads its HTML, rejects bad credentials, creates a paper wager, settles it, reconciles profit and checks another user cannot retrieve it.
+- Python compilation and JavaScript syntax checks passed.
+- Browser interaction test previously attempted with the available Playwright runner: BLOCKED because the Chromium executable is absent. The continuation's browser-verification skill requires agent-browser, which is also absent from PATH. No browser/device rendering or click-flow pass is claimed. API behavior is tested separately.
+- Node minimal-DOM logic harness passed: field entry, JSON round-trip, provisional checkbox, live-state mode and sign-out clearing. This runs the actual ui.js against a small mock DOM; it is not a browser and does not test layout, native form behavior, CSP enforcement or rendering.
+- Existing EdgeBoard Lab production: NOT MODIFIED / NOT VERIFIED. Fresh AppDeploy get_app_status and src_glob for edgeboard-lab-o28tdu each returned Unauthorized. This does not establish that the app is down.
+- Providers, quotas, live coverage, automated feed recovery/alerts, account availability and book settlement reconciliation: NOT VERIFIED / UNAVAILABLE.
+- Historical model calibration, held-out returns, model improvement and profitability: NOT EVALUATED; no dataset/model provided.
+- This is a runnable local research/tracking candidate with explicit missing capabilities, not completion of universal operational coverage or a production security sign-off.

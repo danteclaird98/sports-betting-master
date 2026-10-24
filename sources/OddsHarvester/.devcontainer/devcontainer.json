@@ -1,0 +1,31 @@
+{
+  "name": "OddsHarvester",
+  "build": {
+    "context": "..",
+    "dockerfile": "../Dockerfile"
+  },
+  "runArgs": [
+    "--net",
+    "host",
+    "-e",
+    "DISPLAY",
+    "-v",
+    "/tmp/.X11-unix:/tmp/.X11-unix"
+  ],
+  "customizations": {
+    "vscode": {
+      "settings": {
+        "terminal.integrated.shell.linux": "/bin/bash",
+        "python.defaultInterpreterPath": "/app/.venv/bin/python"
+      },
+      "extensions": [
+        "ms-python.python",
+        "ms-python.debugpy",
+        "ms-playwright.playwright",
+        "ms-azuretools.vscode-docker",
+        "oderwat.indent-rainbow",
+        "esbenp.prettier-vscode"
+      ]
+    }
+  }
+}

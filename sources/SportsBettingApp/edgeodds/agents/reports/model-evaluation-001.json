@@ -1,0 +1,38 @@
+{
+  "agent": "model-evaluation",
+  "task_id": "model-evaluation-001",
+  "base_sha": "1b402159f9f75ca74845cb6d9e7d8fbe7004a075",
+  "head_sha": "45a3af11b282b1de663c2cb83af41ca2eca1365e",
+  "changed_paths": [
+    "edgeodds/evaluation/__init__.py",
+    "edgeodds/evaluation/history.py",
+    "edgeodds/tests/test_evaluation_boundary.py",
+    "docs/evaluation/README.md"
+  ],
+  "changed_contracts": [],
+  "tests_run": [
+    "python -m unittest discover -s edgeodds/tests -v"
+  ],
+  "live_data_used": false,
+  "claims": [
+    {
+      "claim": "Historical features and market benchmarks observed after decision time are rejected",
+      "evidence": "test_future_feature_rejected; test_future_market_observation_rejected"
+    },
+    {
+      "claim": "Events cannot cross chronological partitions and train/validation labels must be available by their boundaries",
+      "evidence": "test_event_cannot_span_partitions; test_training_label_must_be_available_by_boundary; test_validation_label_must_be_available_by_boundary"
+    },
+    {
+      "claim": "Model and market baseline metrics remain separate and missing model probabilities stay missing",
+      "evidence": "test_metrics_and_market_baseline_are_separate; test_missing_model_is_coverage_not_fabricated_probability"
+    },
+    {
+      "claim": "The evaluation boundary never automatically promotes a model",
+      "evidence": "test_evaluation_never_auto_promotes"
+    }
+  ],
+  "blockers": [
+    "No genuine historical EdgeOdds prediction dataset is connected yet; held-out improvement remains unestablished."
+  ]
+}

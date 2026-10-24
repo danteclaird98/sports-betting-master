@@ -1,0 +1,31 @@
+{
+  "schema_version": 1,
+  "baseline": {
+    "name": "EdgeOdds v0.4",
+    "main_sha": "2e7d67bce715609dadfab8fd59314d4048ed34c7"
+  },
+  "release_authority": "orchestrator",
+  "workers": [
+    {"id":"source-scout","branch":"agents/source-scout","task":"Maintain provider capability, timestamp, quota, and licensing evidence. No runtime promotion."},
+    {"id":"provider-builder","branch":"agents/provider-sportradar","task":"Provider adapter hardening and future provider adapters. Preserve normalized contract."},
+    {"id":"identity-guardian","branch":"agents/event-identity","task":"Canonical team/event identity, reschedules, doubleheaders, neutral-site handling, ambiguity rejection."},
+    {"id":"market-rules","branch":"agents/market-rules","task":"Settlement rules, periods, void/push semantics, provider/book rule versions."},
+    {"id":"price-intelligence","branch":"agents/price-intelligence","task":"Market completeness, best price, no-vig, line movement, closing-price and CLV primitives."},
+    {"id":"model-evaluation","branch":"agents/model-evaluation","task":"Chronological evaluation, calibration, Brier/log loss, leakage checks, abstention evidence."},
+    {"id":"reliability-security","branch":"agents/reliability-security","task":"Concurrency, idempotency, malformed/stale data, auth/secrets, adversarial release tests."},
+    {"id":"edgeboard-integration","branch":"agents/edgeboard-integration","task":"Read-only EdgeBoard compatibility contract and dashboard integration boundary."}
+  ],
+  "serialized_resources": [
+    "edgeodds/models.py",
+    "edgeodds/identity.py",
+    "edgeodds/ingestion.py",
+    "edgeodds/store.py",
+    "database migrations",
+    "main branch merges",
+    "LIVE_VERIFIED promotion"
+  ],
+  "required_report_fields": [
+    "agent","task_id","base_sha","head_sha","changed_paths","changed_contracts",
+    "tests_run","live_data_used","claims","blockers"
+  ]
+}

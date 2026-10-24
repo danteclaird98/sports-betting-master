@@ -1,0 +1,44 @@
+[
+  {
+    "repository": "https://github.com/danteclaird98/SportsBettingApp",
+    "commit": "2da4740bb889d5d217ecf79e4142b00b39063f2c",
+    "choice": "Integrated core",
+    "note": "Original EdgeOdds and research.py retained; versioned EdgeBoard output can now import into the board."
+  },
+  {
+    "repository": "https://github.com/danteclaird98/EdgeBoard",
+    "commit": "04612cba1552a07447059099b8683e51be852385",
+    "choice": "Migrated application",
+    "note": "All src/backend/shared modules plus model tests and receiving60 pipeline copied into apps/edgeboard. Runtime SDK/client replaced; hard-coded report URL migrated to same origin. Original model states preserved."
+  },
+  {
+    "repository": "https://github.com/danteclaird98/edgeboard-appdeploy",
+    "commit": "e6d6ae3ac913fb3b6d028849c372008618ab9f35",
+    "choice": "Compared duplicate export",
+    "note": "Compared backend export against EdgeBoard. The EdgeBoard revision includes newer research fixes and corrected receiving artifacts; older duplicate modules not substituted."
+  },
+  {
+    "repository": "https://github.com/danteclaird98/OddsHarvester",
+    "commit": "b401809986762f0690d2a976c1d63a6b12e3e60e",
+    "choice": "Integrated export adapter",
+    "note": "Supported home/away, 1X2 and totals JSON import. Real upstream first-quarter fixture tested. Missing provider timestamps remain null; blocked outcomes suspended. Scraper itself is not launched."
+  },
+  {
+    "repository": "https://github.com/danteclaird98/alexbet-sharp-bot",
+    "commit": "aa1ba4a2aebcbc699543ec9abcafd8a5138e552b",
+    "choice": "Integrated converter and feed import",
+    "note": "Original odds-conversion module copied unchanged as CJS, validated by gateway and used by hosted calculator. The Odds API responses import directly. Telegram/subscriptions not launched."
+  },
+  {
+    "repository": "https://github.com/danteclaird98/live-odds-tracker",
+    "commit": "e6e55acba89e07cad8297a5a2ac4263b30150ba7",
+    "choice": "Integrated movement workflow",
+    "note": "SportsGameOdds native snapshot shape imports; significant source price/line movement detected with timestamp conflict rejection and zero-line support. No outbound webhooks or unattended polling."
+  },
+  {
+    "repository": "https://github.com/danteclaird98/sports-odds-api-python",
+    "commit": "e1e244b820f5830530470584c36eab8f8ab575b3",
+    "choice": "Integrated official SDK",
+    "note": "Pinned user-repository commit installed in Docker. On-demand bounded event fetch feeds the SportsGameOdds adapter. Actual SDK model serialization tested; no live provider request verified."
+  }
+]

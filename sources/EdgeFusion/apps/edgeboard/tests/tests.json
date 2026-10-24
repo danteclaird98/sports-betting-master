@@ -1,0 +1,218 @@
+[
+  {
+    "name": "Exact account slip retains contracts and values bonus separately",
+    "sanity": true,
+    "viewport": "mobile",
+    "covers": [
+      "Check my slip navigation",
+      "POST /api/account-slip-check",
+      "exact market and threshold retention",
+      "bonus cash value sensitivity",
+      "maximum payout disclosure",
+      "draft persistence and reconfirmation",
+      "GET /api/v1/underdog full-board player search and snapshot paging",
+      "public source cache disclosure",
+      "My Wagers top-level tab",
+      "WagerTracker existing ledger",
+      "actual versus paper wagers",
+      "bankroll limits",
+      "confirmation of settlements",
+      "no automatic bets",
+      "local ledger preservation"
+    ],
+    "description": "Checks account-entered contracts, bonus-aware requirements and searchable public quotes without claiming a verified bet.",
+    "steps": [
+      "Open Check my slip. In Selection 1 enter Alperen Sengun, event Rockets vs Spurs, Assists, threshold 5.5, Higher and Full game. In Selection 2 enter Austin Reaves, event Clippers vs Lakers, Assists, threshold 5.5, Lower and Full game. Confirm both account selection checkboxes.",
+      "Enter unboosted combined return 2.87 and displayed boosted return 3.33; leave 25 percent Profit boost, Bonus funds, bonus value 0 and maximum payout checked. Click Check exact entry.",
+      "Verify HOLD and recommended stake $0. Cash return per $1 is $2.870 and bonus return is $0.460. Break-even is 34.84 percent and +3 percent EV requirement is 35.89 percent. Both entered Assists 5.5 selections remain unchanged, regardless of public quote availability; unknown models and maximum payout are blockers.",
+      "Change bonus value assumption to 1. The previous checked result disappears. Check again: break-even is 30.03 percent and +3 percent requirement is 30.93 percent. Neither value is described as a predicted hit rate.",
+      "Change Selection 1 to Points + Rebounds at 19.5 and check again; result must preserve that market rather than Points + Rebounds + Assists. Refresh, reopen Check my slip and confirm draft fields persist while account confirmations must be checked again.",
+      "Search public props for an NBA player using Search player and Search public props. Expect matching full-name markets, an empty state or visible source error, never qualified bets. Clear player filter and search. If Next page is available, inspect the next range or a visible snapshot-changed error requiring a new search. Public availability, price timestamp and unknown periods remain unverified.",
+      "Click My Wagers in the top navigation.",
+      "Confirm the tracker includes manual actual and paper wager tabs, not a place-bet function.",
+      "Inspect any previously tracked records if available; avoid creating fake actual wagers.",
+      "Confirm private sync needs sign-in and only confirmed settlement changes result tracking.",
+      "Switch back to Today's Board and confirm the ledger is not lost."
+    ],
+    "expected": "Account lines are preserved, bonus credit is valued explicitly, edits invalidate previous results, and no unverified wager is approved."
+  },
+  {
+    "name": "One-tap Today's Board keeps unverified prices separate from bets",
+    "sanity": false,
+    "viewport": "mobile",
+    "covers": [
+      "Today's Board default",
+      "GET /api/all-sports-report eight-sport no-credit scan",
+      "research-only WATCH cards",
+      "no approved +EV claim",
+      "HOLD decision and zero stake",
+      "sport filter",
+      "copy research",
+      "Live & 2H navigation",
+      "GET /api/live-board",
+      "GET /api/live-public-lines",
+      "GET /api/independent-reception-model",
+      "live game score clock and receiving usage",
+      "automatic free refresh without provider credits",
+      "GET /api/halftime-outlook independent of quotes",
+      "explicit halftime status with absent clock",
+      "per-player model readiness diagnostics",
+      "no invented model thresholds as sportsbook lines",
+      "POST /api/verify-prop automatic per-card evidence checks",
+      "exact public quote repricing and missing period",
+      "independent ESPN event and current-season roster",
+      "CFB TD model unsupported does not use NFL receptions",
+      "full rushing and receiving touchdown label"
+    ],
+    "description": "Default mobile screen is simple, does not call paid providers, and never presents a price observation as an approved bet.",
+    "steps": [
+      "Open the app and verify Today's Board is initially selected with Scan today's games visible and Advanced Research accessible.",
+      "Click Scan today's games and wait for market coverage or a plainly displayed upstream error.",
+      "When the scan returns, confirm the decision identifies HOLD or requires additional verification; a $0 stake is shown.",
+      "Inspect a WATCH card and confirm exact book/source and price are labeled observations with EV unavailable; filter to NFL and back to All sports.",
+      "For a visible public player prop, wait for the automatic verification summary, expand View verification evidence and missing requirements, and inspect the twelve separate checks. Current public selection and independent event/roster may be confirmed; account offer, bookmaker timestamp, game-day availability, equivalent rules, two reference books, approved model and EV must remain missing unless supported. Confirm HOLD and stake $0.",
+      "If a Rushing + Receiving Touchdowns card is shown, confirm the full market label and that a college-football prop cannot inherit the NFL reception model. Use Refresh evidence and verify a newly checked report or a visible source failure. No paid provider request may be made.",
+      "Click Copy research when available; ensure no wager was submitted.",
+      "Open Live & 2H and wait for the real scoreboard or an explicit source error. Verify returned games have score, phase and clock, and first-half or second-half progress is not labeled halftime.",
+      "Inspect the second-half-only filter and source counts; missing 2H offers must not be relabeled full-game offers. Confirm the independent full-game and halftime model scores are visible and both remain research-only.",
+      "Inspect Independent halftime outlook. Before halftime, show automatic waiting; after second-half play starts, show the closed forecast window. At confirmed halftime, show independent threshold probabilities or a specific player-data reason even when quotes are empty. Thresholds must be labeled research questions, not offered lines."
+    ],
+    "expected": "The everyday dashboard remains usable on mobile. Zero provider credits are used and no fake live price, model EV, account availability, or placed wager is claimed."
+  },
+  {
+    "name": "Advanced markets and historical model tools remain available",
+    "viewport": "desktop",
+    "covers": [
+      "Advanced Research navigation",
+      "Markets & props subtab",
+      "full existing EdgeScanner",
+      "ResearchPipeline audit",
+      "GET /api/nfl-receiver-injuries",
+      "AssistantReport copy and export",
+      "TnfUnderdogDeepDive archived module",
+      "free market scanner",
+      "Models & history subtab",
+      "GET /api/nfl-prop-calibration-selftest",
+      "GET /api/nfl-prop-backtest",
+      "GET /api/nfl-historical-quote-selftest",
+      "POST /api/nfl-historical-quote-validate",
+      "NHL model validation",
+      "blocker audit",
+      "GET /api/nfl-line-aware-selftest",
+      "GET /api/nfl-line-aware-backtest",
+      "GET /api/nfl-historical-v4-selftest",
+      "POST /api/nfl-historical-v4-import",
+      "2024-only model-selection and calibration windows",
+      "line-specific reused2025 diagnostics",
+      "corrected receiving60 frozen report",
+      "retained negative-yard cohort and warmup counts",
+      "POST /api/corrected-receiving-score input abstention",
+      "artifact receipt and reused-holdout disclosure"
+    ],
+    "description": "The existing market research and historical model workflows remain available with their research-only safeguards.",
+    "steps": [
+      "Click Advanced Research from the main navigation.",
+      "Confirm Markets & props is selected and AllSportsReport, ResearchPipeline and AssistantReport are present.",
+      "Scroll to the existing EdgeScanner; check NFL game-line/player-prop controls remain available.",
+      "In receiver-versus-cornerback research review the ESPN injury observations; absence of a listing must not imply healthy status or a confirmed shadow assignment.",
+      "Expand Archived targeted game research to confirm the old TNF deep-dive tool was not deleted.",
+      "Click Advanced Research and then Models & history.",
+      "Confirm NFL history model, historical odds JSON validator, NHL models and blocker audit are present.",
+      "Use the synthetic calibration and quote selftests; inspect PASS or a clear unavailable message.",
+      "Run NFL line-specific probability research on the Receptions market; inspect the actual reused2025 diagnostic Brier/log loss versus baseline and the explicit missing-bookmaker-benchmark warning.",
+      "Run the threshold math selftest and verify that a higher requested line does not increase an over probability.",
+      "Run the raw historical v4 snapshot pairing selftest; verify missing provider authentication, NFLverse identity joins, and historical ROI stay blocked.",
+      "Verify historical diagnostic results remain research-only and no player-prop wager is automatically approved.",
+      "Navigate back to Markets & props to confirm tab switching works.",
+      "In Models & history, open Corrected receiving 60+ model and click Inspect frozen receiving model. Verify train13,344, selection2,419, calibration2,490 and reused2025 diagnostic5,064;299 retained negative-yard rows and2,780 corrected warmup rows. Confirm HOLD, raw/calibrated/baseline metrics and explicit calibration deterioration notice.",
+      "Expand Score supplied player history. Enter malformed JSON and calculate; confirm a visible validation error and no probability. Replace it with {} and calculate; confirm HOLD, no probability and INVALID_REQUEST_SCHEMA. Edit input and confirm prior result disappears. Do not use this flow to place or record a wager."
+    ],
+    "expected": "Original market tools and historical models remain accessible without approving unvalidated wagers. Corrected receiving model is inspectable while malformed or unsupported histories abstain; no new untouched2025 or liveEV claim is made."
+  },
+  {
+    "name": "Bookmaker tools remain opt-in and expose missing verification",
+    "viewport": "desktop",
+    "covers": [
+      "Bookmakers & diagnostics subtab",
+      "IntegrationDiagnostics",
+      "ResearchSetup",
+      "CaesarsEvidence",
+      "ParlayAudit",
+      "gated paid sportsbook requests",
+      "non-executable price disclosure",
+      "GET /api/live-provider-health zero-credit authentication check",
+      "POST /api/live-prices signed-in credit-budget gate",
+      "POST /api/live-slip-audit",
+      "promotion expiry and payout math",
+      "0.5 percent parlay 3 percent game and 5 percent daily caps",
+      "Prepare 2H one-shot signed-in player-props retrieval",
+      "3-credit budget and server phase recheck",
+      "cancel queued request on game change or navigation",
+      "all-books visibility after provider retrieval"
+    ],
+    "description": "Existing feed checks, signed-in sportsbook comparisons and parlay diagnostics remain available without automatic paid requests.",
+    "steps": [
+      "Click Advanced Research and select Bookmakers & diagnostics.",
+      "Confirm IntegrationDiagnostics, Model & sportsbook references, Caesars evidence and ParlayAudit are visible.",
+      "Inspect provider statuses without manually authorizing a paid quote refresh.",
+      "Confirm signed-in provider-credit requests retain their opt-in controls and that missing accepted account prices do not create EV claims.",
+      "Return to Today's Board.",
+      "Open Live & 2H. Use Check connection \u00b7 0 credits and inspect the authentication or configuration result without loading any credit-consuming markets.",
+      "Verify provider price buttons cannot be used before sign-in and unavailable provider setup is stated clearly. Do not spend credits during this test.",
+      "Inspect the slip and boost form: actual combined payout, latest bankroll, exposure, profit-versus-return boost, stake limit and expiry inputs must be present. The Evaluate selected 2H slip button stays disabled with fewer than two selections.",
+      "Use Find 2H research draft. If the live data does not support a draft, require an explicit HOLD explanation. No selection can be promoted to a BET from an unvalidated joint probability.",
+      "Inspect Prepare 2H: the one-shot maximum 3-credit cost and open-visible-page requirement must be visible. It must be unavailable outside the first half or halftime. Do not trigger sign-in or spend credits in QA."
+    ],
+    "expected": "The expert sportsbook/diagnostic toolset is preserved, credentials are not exposed and ordinary navigation spends no provider credits."
+  },
+  {
+    "name": "Public source failures retain drafts and allow retry",
+    "viewport": "mobile",
+    "covers": [
+      "GET /api/live-board failure",
+      "live workflow retry",
+      "no fabricated score or slip",
+      "GET /api/v1/underdog source failure",
+      "search retry",
+      "account draft preservation",
+      "POST /api/verify-prop error and retry without fabricated evidence"
+    ],
+    "description": "Public board and scoreboard failures are visible, retryable and never replaced with invented evidence.",
+    "qa_faults": [
+      {
+        "method": "GET",
+        "path": "/api/live-board",
+        "status": 502,
+        "body_json": {
+          "error": "Live source temporarily unavailable for QA"
+        }
+      },
+      {
+        "method": "GET",
+        "path": "/api/v1/underdog",
+        "status": 502,
+        "body_json": {
+          "error": "Public board temporarily unavailable for QA"
+        }
+      },
+      {
+        "method": "POST",
+        "path": "/api/verify-prop",
+        "status": 502,
+        "body_json": {
+          "error": "Prop evidence source temporarily unavailable for QA"
+        }
+      }
+    ],
+    "steps": [
+      "Open Check my slip and enter Draft Player in Selection 1 Player and 5.5 in its account threshold.",
+      "Click Search public props. Confirm a source error and retry instructions appear.",
+      "Verify Draft Player and 5.5 remain in the account entry and Refresh public source remains available; no quote or probability is invented.",
+      "Open Live & 2H from the main navigation.",
+      "Verify the injected source failure is displayed as an error and the Refresh live game control remains available.",
+      "Confirm no synthetic matchup, score, probability or bet is displayed as live data.",
+      "Return to Today's Board, scan today's games and inspect a visible player-prop card. When a prop is available, its injected verification failure must be shown with Verify evidence retry available, while WATCH and HOLD remain. If no props are returned, retain the explicit empty/source-unavailable state; do not fabricate a test prop."
+    ],
+    "expected": "The live source error is visible, retry remains available and no wager or fake live evidence is generated."
+  }
+]

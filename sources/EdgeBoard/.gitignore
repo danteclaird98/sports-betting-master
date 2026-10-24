@@ -1,0 +1,5 @@
+node_modules/
+dist/
+__pycache__/
+research/receiving60/raw/
+research/receiving60/output/

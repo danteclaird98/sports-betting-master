@@ -1,0 +1,15 @@
+__pycache__/
+*.py[cod]
+data/
+*.sqlite*
+.env
+.env.*
+!.env.example
+node_modules/
+dist/
+*.log
+*.har
+*.zip
+.venv/
+build/
+*.egg-info/

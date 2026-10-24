@@ -1,0 +1,21 @@
+{
+    "match_id": "hYV97ShC",
+    "match_url": "https://www.oddsportal.com/football/h2h/barcelona-SKbpVP5K/leganes-Mi0rXQg7/#hYV97ShC",
+    "sport": "football",
+    "league": "laliga",
+    "home_team": "Barcelona",
+    "away_team": "Leganes",
+    "final_score": {
+        "home": "2",
+        "away": "0"
+    },
+    "match_date": "2020-06-16 20:00:00 UTC",
+    "league_name": "LaLiga",
+    "partial_results": "(1:0, 1:0)",
+    "notes": "PR #54 regression case. The URL fragment #hYV97ShC disambiguates a 2019/2020 LaLiga match. The HAR's react-event-header JSON contains the most-recent (2024/2025) match data: Leganes 0-1 Barcelona on 2025-04-12. The DOM (rendered client-side from the fragment) shows the actual 2019/2020 match: Barcelona 2-0 Leganes on 2020-06-16. Asserting on the DOM values verifies that match-details extraction reads from the DOM, not the stale JSON.",
+    "captured_at": "2026-09-02T13:02:17.850942+00:00",
+    "oddsharvester_version": "0.11.0",
+    "available_fixtures": [
+        "1x2_full_time_all.json"
+    ]
+}

@@ -1,0 +1,53 @@
+[
+    {
+        "scraped_date": "2026-09-02 13:03:40 UTC",
+        "match_date": "2025-01-12 19:00:00 UTC",
+        "season": null,
+        "match_link": "https://www.oddsportal.com/football/h2h/barcelona-SKbpVP5K/real-madrid-W8mj7MDD/#bZrHkILa",
+        "home_team": "Real Madrid",
+        "away_team": "Barcelona",
+        "league_name": "Super Cup 2025",
+        "home_score": "2",
+        "away_score": "5",
+        "partial_results": "(1:4, 1:1)",
+        "venue": null,
+        "venue_town": null,
+        "venue_country": null,
+        "match_info": null,
+        "1x2_market": [
+            {
+                "1": "2.33",
+                "X": "3.83",
+                "2": "2.63",
+                "bookmaker_name": "Betclic.fr",
+                "period": "FullTime",
+                "submarket_name": "1X2"
+            },
+            {
+                "1": "2.46",
+                "X": "4.00",
+                "2": "2.60",
+                "bookmaker_name": "Unibet.fr",
+                "period": "FullTime",
+                "submarket_name": "1X2"
+            },
+            {
+                "1": "2.40",
+                "X": "3.95",
+                "2": "2.65",
+                "bookmaker_name": "Winamax",
+                "period": "FullTime",
+                "submarket_name": "1X2"
+            }
+        ],
+        "btts_market": [
+            {
+                "btts_yes": "1.29",
+                "btts_no": "3.05",
+                "bookmaker_name": "Betclic.fr",
+                "period": "FullTime",
+                "submarket_name": "Both Teams to Score"
+            }
+        ]
+    }
+]

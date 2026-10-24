@@ -1,0 +1,52 @@
+[
+    {
+        "scraped_date": "2026-09-02 13:02:11 UTC",
+        "match_date": "2020-06-16 20:00:00 UTC",
+        "season": null,
+        "match_link": "https://www.oddsportal.com/football/h2h/barcelona-SKbpVP5K/leganes-Mi0rXQg7/#hYV97ShC",
+        "home_team": "Barcelona",
+        "away_team": "Leganes",
+        "league_name": "LaLiga",
+        "home_score": "2",
+        "away_score": "0",
+        "partial_results": "(1:0, 1:0)",
+        "venue": null,
+        "venue_town": null,
+        "venue_country": null,
+        "match_info": null,
+        "1x2_market": [
+            {
+                "1": "1.18",
+                "X": "7.50",
+                "2": "18.00",
+                "bookmaker_name": "Betclic.fr",
+                "period": "FullTime",
+                "submarket_name": "1X2"
+            },
+            {
+                "1": "1.20",
+                "X": "6.75",
+                "2": "15.00",
+                "bookmaker_name": "bwin.fr",
+                "period": "FullTime",
+                "submarket_name": "1X2"
+            },
+            {
+                "1": "1.20",
+                "X": "7.50",
+                "2": "18.00",
+                "bookmaker_name": "Unibet.fr",
+                "period": "FullTime",
+                "submarket_name": "1X2"
+            },
+            {
+                "1": "1.20",
+                "X": "7.50",
+                "2": "18.00",
+                "bookmaker_name": "Winamax",
+                "period": "FullTime",
+                "submarket_name": "1X2"
+            }
+        ]
+    }
+]

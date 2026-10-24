@@ -1,0 +1,148 @@
+from collections.abc import Sequence
+import logging
+from typing import Any
+
+from bs4 import BeautifulSoup
+from playwright.async_api import Page
+
+from oddsharvester.core.odds_portal_selectors import OddsPortalSelectors
+
+
+def _find_line_rows(soup: BeautifulSoup) -> list:
+    """Leaf <tr> rows for collapsed submarket lines, marked by their expand arrow."""
+    root = OddsPortalSelectors.content_root(soup)
+    return [tr for tr in root.select(OddsPortalSelectors.SUBMARKET_LINE_ROW_CSS) if tr.find("tr") is None]
+
+
+class SubmarketExtractor:
+    """Handles extraction of visible submarkets in passive mode."""
+
+    def __init__(self):
+        self.logger = logging.getLogger(self.__class__.__name__)
+
+    async def extract_visible_submarkets_passive(
+        self, page: Page, main_market: str, period: str, odds_labels: Sequence[str] | None = None
+    ) -> list[dict[str, Any]]:
+        """
+        Extracts all visible submarkets from the current page without clicking to load more.
+
+        Args:
+            page (Page): The Playwright page instance.
+            main_market (str): The main market name (e.g., "Over/Under", "European Handicap").
+            period (str): The match period (e.g., "FullTime").
+            odds_labels (Sequence[str], optional): Labels corresponding to odds values. If None, defaults to
+            ["odds_over", "odds_under"].
+
+        Returns:
+            list[dict]: A list of dictionaries containing submarket data with odds.
+        """
+        self.logger.info(f"Extracting visible submarkets for {main_market} in passive mode")
+
+        try:
+            html_content = await page.content()
+            if not isinstance(html_content, str):
+                html_content = ""
+            soup = BeautifulSoup(html_content, "html.parser")
+
+            line_rows = _find_line_rows(soup)
+
+            if not line_rows:
+                self.logger.warning("No submarket rows found in passive mode")
+                return []
+
+            submarkets_data = []
+
+            for row in line_rows:
+                try:
+                    submarket_name = self._extract_submarket_name(row, main_market)
+
+                    if not submarket_name:
+                        continue
+
+                    self.logger.debug(f"Extracted submarket name: '{submarket_name}'")
+
+                    odds_containers = row.select(OddsPortalSelectors.ODD_CELL_CSS)
+
+                    # Use provided odds_labels or determine based on market type
+                    if odds_labels is None:
+                        # Default to Over/Under labels, but adjust for single-odds markets
+                        if "correct score" in main_market.lower():
+                            odds_labels = ["correct_score"]
+                            min_odds_required = 1
+                        else:
+                            odds_labels = ["odds_over", "odds_under"]
+                            min_odds_required = 2
+                    else:
+                        min_odds_required = len(odds_labels)
+
+                    if len(odds_containers) < min_odds_required:
+                        self.logger.debug(
+                            f"Skipping row with {len(odds_containers)} odds, need at least {min_odds_required} "
+                            f"for {main_market}"
+                        )
+                        continue
+
+                    # Extract odds values
+                    odds_values = []
+                    for container in odds_containers:
+                        odds_text = container.get_text(strip=True)
+                        if odds_text:
+                            odds_values.append(odds_text)
+
+                    if len(odds_values) >= min_odds_required:
+                        submarket_data = {
+                            "submarket_name": submarket_name,
+                            "period": period,
+                            "market_type": main_market,
+                            "extraction_mode": "passive",
+                        }
+
+                        # Add odds with appropriate labels
+                        for i, label in enumerate(odds_labels):
+                            if i < len(odds_values):
+                                submarket_data[label] = odds_values[i]
+
+                        # Add any additional odds beyond the expected labels
+                        if len(odds_values) > len(odds_labels):
+                            for i, odds_value in enumerate(odds_values[len(odds_labels) :], start=len(odds_labels)):
+                                submarket_data[f"odds_option_{i + 1}"] = odds_value
+
+                        submarkets_data.append(submarket_data)
+
+                except Exception as e:
+                    self.logger.warning(f"Error processing submarket row: {e}")
+                    continue
+
+            self.logger.info(f"Successfully extracted {len(submarkets_data)} visible submarkets in passive mode")
+            return submarkets_data
+
+        except Exception as e:
+            self.logger.error(f"Error in passive submarket extraction: {e}")
+            return []
+
+    def _extract_submarket_name(self, row, main_market: str) -> str | None:
+        """Extract submarket name from a line row.
+
+        Strategy 1: the clean-name element (`max-sm:hidden` class) carrying the
+        full label (the short form sits in a sibling `sm:hidden` element).
+        Strategy 2: first span/p text outside the odds cells that is neither a
+        percentage nor a bare number (covers Correct Score '1:0' labels).
+        """
+        clean = row.find(["span", "p"], class_=OddsPortalSelectors.SUBMARKET_CLEAN_NAME_CLASS)
+        if clean:
+            text = clean.get_text(strip=True)
+            if text:
+                return text
+
+        odds_columns = row.select(OddsPortalSelectors.ODD_COLUMN_CELL_CSS)
+        for el in row.find_all(["span", "p"]):
+            if el.find_parent("td") in odds_columns:
+                continue
+            text = el.get_text(strip=True)
+            if not text or text.endswith("%"):
+                continue
+            if text.replace(".", "").isdigit():
+                continue
+            return text
+
+        return None

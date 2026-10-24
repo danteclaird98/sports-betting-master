@@ -1,0 +1,33 @@
+{
+  "agent": "provider-builder",
+  "task_id": "provider-sportradar-001",
+  "base_sha": "8a7f7137d427bfc7fb6e487129c640259ff0ff26",
+  "head_sha": "867166cf41c233fbc624b3cb221f0785d384167d",
+  "changed_paths": [
+    "edgeodds/sportradar.py",
+    "edgeodds/tests/test_ingestion.py"
+  ],
+  "changed_contracts": [],
+  "tests_run": [
+    "python -m unittest discover -s edgeodds/tests -v"
+  ],
+  "live_data_used": false,
+  "claims": [
+    {
+      "claim": "Sportradar list responses cannot silently treat incomplete or contradictory pagination headers as complete",
+      "evidence": "test_pagination_metadata_detects_next_page; test_partial_pagination_headers_fail_closed; test_pagination_offset_mismatch_fails_closed; test_stalled_pagination_fails_closed"
+    },
+    {
+      "claim": "Observed Sportradar access tier is recorded from X-Origin-Id rather than assumed",
+      "evidence": "test_origin_tier_is_observed_not_assumed"
+    },
+    {
+      "claim": "Cache TTL is parsed from response cache-control metadata without being promoted to quote-update time",
+      "evidence": "test_pagination_metadata_detects_next_page"
+    }
+  ],
+  "blockers": [
+    "No authorized Sportradar credential is available, so response metadata is fixture-tested only.",
+    "Current prematch event-market schema still does not establish a guaranteed per-outcome quote-update timestamp."
+  ]
+}

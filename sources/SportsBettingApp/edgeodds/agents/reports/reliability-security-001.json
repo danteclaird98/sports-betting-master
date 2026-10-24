@@ -1,0 +1,32 @@
+{
+  "agent": "reliability-security",
+  "task_id": "reliability-security-001",
+  "base_sha": "0a2b7e7f449a67d835c6916ce46a8a97c32da88b",
+  "head_sha": "9d7d94ad7276f488fc8efc1bfc2c08df10eb2759",
+  "changed_paths": [
+    "edgeodds/tests/test_red_team.py",
+    "docs/security/RED_TEAM.md"
+  ],
+  "changed_contracts": [],
+  "tests_run": [
+    "python -m unittest discover -s edgeodds/tests -v"
+  ],
+  "live_data_used": false,
+  "claims": [
+    {
+      "claim": "Fresh retrieval time cannot revive stale provider quotes",
+      "evidence": "test_fresh_retrieval_cannot_revive_stale_provider_quote"
+    },
+    {
+      "claim": "Mismatched settlement rules or alternate thresholds fail closed before no-vig comparison",
+      "evidence": "test_cross_rule_best_price_is_rejected_even_if_selection_matches; test_alternate_spreads_cannot_form_one_two_way_market; test_total_threshold_mismatch_cannot_be_devigged"
+    },
+    {
+      "claim": "Closing-price selection requires an actual pre-start provider quote timestamp",
+      "evidence": "test_missing_quote_clock_blocks_closing_quote; test_post_start_quote_cannot_be_selected_as_close"
+    }
+  ],
+  "blockers": [
+    "Live provider/adversarial network behavior remains credential-blocked; this report uses deterministic synthetic inputs."
+  ]
+}

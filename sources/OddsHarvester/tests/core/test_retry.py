@@ -1,0 +1,462 @@
+"""Tests for retry module."""
+
+from unittest.mock import AsyncMock, patch
+
+import pytest
+
+from oddsharvester.core.retry import (
+    PROXY_ATTRIBUTABLE_ERROR_TYPES,
+    RequestPacer,
+    RetryConfig,
+    classify_error,
+    is_proxy_attributable_error,
+    is_retryable_error,
+    retry_with_backoff,
+)
+from oddsharvester.core.scrape_result import ErrorType
+from oddsharvester.utils.constants import REQUEST_DELAY_JITTER_FACTOR
+
+
+class TestRetryConfig:
+    """Tests for RetryConfig dataclass."""
+
+    def test_default_config(self):
+        """Test default configuration values."""
+        config = RetryConfig()
+        assert config.max_attempts == 3
+        assert config.base_delay == 2.0
+        assert config.max_delay == 30.0
+        assert config.exponential_base == 2.0
+        assert config.jitter_factor == 0.1
+
+    def test_custom_config(self):
+        """Test custom configuration values."""
+        config = RetryConfig(max_attempts=5, base_delay=1.0, max_delay=60.0)
+        assert config.max_attempts == 5
+        assert config.base_delay == 1.0
+        assert config.max_delay == 60.0
+
+
+class TestIsRetryableError:
+    """Tests for is_retryable_error function."""
+
+    @pytest.mark.parametrize(
+        "error_message",
+        [
+            "ERR_CONNECTION_RESET",
+            "ERR_CONNECTION_TIMED_OUT",
+            "ERR_NAME_NOT_RESOLVED",
+            "ERR_PROXY_CONNECTION_FAILED",
+            "Timeout waiting for element",
+            "Navigation timeout of 30000ms exceeded",
+            "TimeoutError: Waiting failed",
+            "net::ERR_FAILED",
+            "Target closed",
+        ],
+    )
+    def test_retryable_errors(self, error_message):
+        """Test that transient errors are marked as retryable."""
+        assert is_retryable_error(error_message) is True
+
+    @pytest.mark.parametrize(
+        "error_message",
+        [
+            "Element not found",
+            "Invalid selector",
+            "JSON parse error",
+            "Unexpected token",
+            "",
+        ],
+    )
+    def test_non_retryable_errors(self, error_message):
+        """Test that non-transient errors are not retryable."""
+        assert is_retryable_error(error_message) is False
+
+
+class TestClassifyError:
+    """Tests for classify_error function."""
+
+    def test_navigation_errors(self):
+        """Test classification of navigation errors."""
+        assert classify_error("Connection timeout") == ErrorType.NAVIGATION
+        assert classify_error("Navigation failed") == ErrorType.NAVIGATION
+        assert classify_error("Network error occurred") == ErrorType.NAVIGATION
+        assert classify_error("Proxy connection failed") == ErrorType.NAVIGATION
+
+    def test_header_not_found_errors(self):
+        """Test classification of header not found errors."""
+        assert classify_error("react-event-header not found") == ErrorType.HEADER_NOT_FOUND
+        assert classify_error("Header element missing") == ErrorType.HEADER_NOT_FOUND
+        assert classify_error("Selector not found on page") == ErrorType.HEADER_NOT_FOUND
+
+    def test_parsing_errors(self):
+        """Test classification of parsing errors."""
+        assert classify_error("JSON decode error") == ErrorType.PARSING
+        assert classify_error("Failed to parse HTML") == ErrorType.PARSING
+        assert classify_error("lxml parsing failed") == ErrorType.PARSING
+
+    def test_market_extraction_errors(self):
+        """Test classification of market extraction errors."""
+        assert classify_error("Market extraction failed") == ErrorType.MARKET_EXTRACTION
+        assert classify_error("Failed to extract odds from market") == ErrorType.MARKET_EXTRACTION
+
+    @pytest.mark.parametrize(
+        "message",
+        [
+            "429 Too Many Requests",
+            "Rate limit exceeded",
+            "rate-limit reached for this IP",
+            "ratelimit hit",
+            "You are being rate limited",
+            "rate limiting in effect",
+            "HTTP 429",
+            "status=429",
+            "Too many requests, slow down",
+            "rate limited by OddsPortal: HTTP 429 on listing https://www.oddsportal.com/football/england/premier-league/",
+        ],
+    )
+    def test_rate_limit_errors(self, message):
+        """Test classification of rate limit errors."""
+        assert classify_error(message) == ErrorType.RATE_LIMITED
+
+    @pytest.mark.parametrize(
+        "message",
+        [
+            "Could not separate the score chunks",
+            "Failed to generate the record",
+            "limit of 3 retries exceeded",
+            "moderate delay applied",
+            "event 14290 has no odds",
+            "4290 rows collected",
+        ],
+    )
+    def test_words_that_only_contain_rate_or_limit_are_not_rate_limits(self, message):
+        """B9: a bare 'rate', 'limit' or '429' inside another word or number is no rate limit."""
+        assert classify_error(message) == ErrorType.UNKNOWN
+
+    @pytest.mark.parametrize(
+        ("message", "expected"),
+        [
+            ("HTTP 500 on https://www.oddsportal.com/proxy/match-event/1-1-AbCdEf-1-2-yj1f2.dat", ErrorType.UNKNOWN),
+            ("could not read /proxy/match-event/1-1-AbCdEf-1-2-yj1f2.dat", ErrorType.UNKNOWN),
+            (
+                "rate limited by OddsPortal: HTTP 429 on 1 request(s), first https://www.oddsportal.com/proxy/x.dat",
+                ErrorType.RATE_LIMITED,
+            ),
+            ("net::ERR_PROXY_CONNECTION_FAILED at https://www.oddsportal.com/", ErrorType.NAVIGATION),
+            (
+                'Timeout 30000ms exceeded navigating to "https://www.oddsportal.com/football/h2h/a/b/"',
+                ErrorType.NAVIGATION,
+            ),
+            ("could not read cache/proxy/x.json", ErrorType.UNKNOWN),
+            ("could not read data/timeout.json", ErrorType.UNKNOWN),
+            ("could not open C:\\Users\\me\\proxy\\x.har", ErrorType.UNKNOWN),
+            ("could not open \\\\server\\proxy\\x.har", ErrorType.UNKNOWN),
+            ("connection reset while reading cache/x.json", ErrorType.NAVIGATION),
+        ],
+    )
+    def test_keywords_inside_a_url_or_path_do_not_count(self, message, expected):
+        """A '/proxy/' path quoted in a message is no proxy failure and must not count against the proxy."""
+        assert classify_error(message) == expected
+
+    def test_navigation_words_still_win_over_a_rate_limit(self):
+        """The groups keep their order: a proxy failure that mentions 429 stays a navigation error."""
+        assert classify_error("proxy answered 429 Too Many Requests") == ErrorType.NAVIGATION
+
+    def test_page_not_found_errors(self):
+        """Test classification of page not found errors."""
+        assert classify_error("404 Not Found") == ErrorType.PAGE_NOT_FOUND
+        assert classify_error("Page unavailable") == ErrorType.PAGE_NOT_FOUND
+
+    def test_unknown_errors(self):
+        """Test classification of unknown errors."""
+        assert classify_error("Some random error") == ErrorType.UNKNOWN
+        assert classify_error(None) == ErrorType.UNKNOWN
+        assert classify_error("") == ErrorType.UNKNOWN
+
+
+class TestRetryWithBackoff:
+    """Tests for retry_with_backoff function."""
+
+    async def test_successful_first_attempt(self):
+        """Test successful execution on first attempt."""
+
+        async def successful_func():
+            return "success"
+
+        result = await retry_with_backoff(successful_func)
+
+        assert result.success is True
+        assert result.result == "success"
+        assert result.attempts == 1
+        assert result.last_error is None
+        assert result.error_type is None
+
+    async def test_retry_on_transient_error(self):
+        """Test retry behavior on transient errors."""
+        call_count = 0
+
+        async def flaky_func():
+            nonlocal call_count
+            call_count += 1
+            if call_count < 2:
+                raise Exception("ERR_CONNECTION_RESET")
+            return "success after retry"
+
+        config = RetryConfig(max_attempts=3, base_delay=0.01)  # Fast delay for tests
+        result = await retry_with_backoff(flaky_func, config=config)
+
+        assert result.success is True
+        assert result.result == "success after retry"
+        assert result.attempts == 2
+        assert call_count == 2
+
+    async def test_no_retry_on_permanent_error(self):
+        """Test that permanent errors are not retried."""
+        call_count = 0
+
+        async def permanent_error_func():
+            nonlocal call_count
+            call_count += 1
+            raise Exception("Element not found - not retryable")
+
+        config = RetryConfig(max_attempts=3, base_delay=0.01)
+        result = await retry_with_backoff(permanent_error_func, config=config)
+
+        assert result.success is False
+        assert result.attempts == 1
+        assert call_count == 1
+        assert "not retryable" in result.last_error
+
+    async def test_max_retries_exceeded(self):
+        """Test behavior when max retries are exceeded."""
+        call_count = 0
+
+        async def always_fails():
+            nonlocal call_count
+            call_count += 1
+            raise Exception("ERR_CONNECTION_TIMED_OUT")
+
+        config = RetryConfig(max_attempts=3, base_delay=0.01)
+        result = await retry_with_backoff(always_fails, config=config)
+
+        assert result.success is False
+        assert result.attempts == 3
+        assert call_count == 3
+        assert "TIMED_OUT" in result.last_error
+
+    async def test_function_with_arguments(self):
+        """Test retry with function that takes arguments."""
+
+        async def add_numbers(a, b, multiplier=1):
+            return (a + b) * multiplier
+
+        result = await retry_with_backoff(add_numbers, 2, 3, multiplier=2)
+
+        assert result.success is True
+        assert result.result == 10
+
+    async def test_error_type_classification(self):
+        """Test that error type is correctly classified."""
+
+        async def nav_error():
+            raise Exception("Navigation timeout")
+
+        config = RetryConfig(max_attempts=1)
+        result = await retry_with_backoff(nav_error, config=config)
+
+        assert result.success is False
+        assert result.error_type == ErrorType.NAVIGATION
+
+
+class TestProxyAttributableError:
+    def test_navigation_is_proxy_attributable(self):
+        assert is_proxy_attributable_error(ErrorType.NAVIGATION) is True
+
+    def test_rate_limited_is_proxy_attributable(self):
+        assert is_proxy_attributable_error(ErrorType.RATE_LIMITED) is True
+
+    def test_parsing_is_not_proxy_attributable(self):
+        assert is_proxy_attributable_error(ErrorType.PARSING) is False
+
+    def test_page_not_found_is_not_proxy_attributable(self):
+        assert is_proxy_attributable_error(ErrorType.PAGE_NOT_FOUND) is False
+
+    def test_none_is_not_proxy_attributable(self):
+        assert is_proxy_attributable_error(None) is False
+
+
+async def test_retry_honours_scraper_error_is_retryable():
+    """A ScraperError marked retryable must be retried even though its message
+    matches no TRANSIENT_ERROR_KEYWORDS entry."""
+    from oddsharvester.core.exceptions import H2HFragmentResolutionError
+    from oddsharvester.core.scrape_result import ErrorType
+
+    calls = []
+
+    async def always_fails():
+        calls.append(1)
+        raise H2HFragmentResolutionError("page never updated eventData.id to match the fragment")
+
+    result = await retry_with_backoff(
+        always_fails,
+        config=RetryConfig(max_attempts=3, base_delay=0, max_delay=0),
+    )
+
+    assert len(calls) == 3
+    assert result.success is False
+    assert result.attempts == 3
+    assert result.is_retryable is True
+    assert result.error_type is ErrorType.HEADER_NOT_FOUND
+
+
+async def test_retry_honours_scraper_error_non_retryable():
+    """A ScraperError marked non-retryable must stop after the first attempt."""
+    from oddsharvester.core.exceptions import ParsingError
+
+    calls = []
+
+    async def always_fails():
+        calls.append(1)
+        raise ParsingError("structure changed", url="https://x/")
+
+    result = await retry_with_backoff(
+        always_fails,
+        config=RetryConfig(max_attempts=3, base_delay=0, max_delay=0),
+    )
+
+    assert len(calls) == 1
+    assert result.attempts == 1
+    assert result.is_retryable is False
+
+
+async def test_retry_plain_exception_still_uses_message_classification():
+    """Regression guard: non-ScraperError paths keep the string-sniffing behaviour."""
+    calls = []
+
+    async def always_fails():
+        calls.append(1)
+        raise Exception("Page.goto: Timeout 15000ms exceeded.")
+
+    result = await retry_with_backoff(
+        always_fails,
+        config=RetryConfig(max_attempts=2, base_delay=0, max_delay=0),
+    )
+
+    assert len(calls) == 2
+    assert result.is_retryable is True
+
+
+async def test_retry_success_reports_not_retryable():
+    async def succeeds():
+        return {"ok": True}
+
+    result = await retry_with_backoff(succeeds, config=RetryConfig(max_attempts=2))
+
+    assert result.success is True
+    assert result.is_retryable is False
+
+
+def test_classify_error_hydration_failure_is_header_not_found():
+    """The redesign's hydration failure must keep the proxy-neutral typing
+    (HEADER_NOT_FOUND is absent from PROXY_ATTRIBUTABLE_ERROR_TYPES)."""
+    error_type = classify_error("match view hydration failed: https://x/h2h/a/b/#id1 never rendered match content")
+    assert error_type == ErrorType.HEADER_NOT_FOUND
+    assert error_type not in PROXY_ATTRIBUTABLE_ERROR_TYPES
+
+
+class TestRequestPacer:
+    @patch("oddsharvester.core.retry.asyncio.sleep", new_callable=AsyncMock)
+    async def test_first_request_is_not_delayed(self, mock_sleep):
+        pacer = RequestPacer(request_delay=2.0)
+
+        await pacer.wait()
+
+        mock_sleep.assert_not_awaited()
+
+    @patch("oddsharvester.core.retry.asyncio.sleep", new_callable=AsyncMock)
+    async def test_later_requests_wait_delay_plus_jitter(self, mock_sleep):
+        pacer = RequestPacer(request_delay=2.0)
+
+        await pacer.wait()
+        await pacer.wait()
+        await pacer.wait()
+
+        assert mock_sleep.await_count == 2
+        for call in mock_sleep.await_args_list:
+            assert 2.0 <= call.args[0] <= 2.0 * (1 + REQUEST_DELAY_JITTER_FACTOR)
+
+    @patch("oddsharvester.core.retry.asyncio.sleep", new_callable=AsyncMock)
+    async def test_zero_delay_never_sleeps(self, mock_sleep):
+        pacer = RequestPacer(request_delay=0)
+
+        await pacer.wait()
+        await pacer.wait()
+
+        mock_sleep.assert_not_awaited()
+
+
+async def test_retry_waits_the_rate_limit_delay_before_retrying():
+    """OddsPortal sends no Retry-After; a 2 s backoff lands inside the same throttling window."""
+    from oddsharvester.core.exceptions import RateLimitError
+
+    calls = []
+
+    async def limited_once():
+        calls.append(1)
+        if len(calls) == 1:
+            raise RateLimitError("rate limited by oddsportal (HTTP 429)", url="u", retry_after=30)
+        return "ok"
+
+    with patch("oddsharvester.core.retry.asyncio.sleep", new=AsyncMock()) as sleep:
+        result = await retry_with_backoff(limited_once, config=RetryConfig(max_attempts=2, base_delay=2, max_delay=30))
+
+    assert result.success is True
+    assert sleep.await_args.args[0] >= 30
+
+
+def test_rate_limit_error_is_typed_rate_limited_and_attributed_to_the_ip():
+    from oddsharvester.core.exceptions import RateLimitError
+
+    error = RateLimitError("rate limited by oddsportal (HTTP 429)", url="u")
+
+    assert error.error_type is ErrorType.RATE_LIMITED
+    assert is_proxy_attributable_error(error.error_type)
+
+
+async def test_retry_result_keeps_the_last_exception():
+    error = ValueError("structure changed")
+
+    async def always_fails():
+        raise error
+
+    result = await retry_with_backoff(always_fails, config=RetryConfig(max_attempts=2, base_delay=0, max_delay=0))
+
+    assert result.success is False
+    assert result.exception is error
+
+
+async def test_retry_result_keeps_the_exception_of_the_last_attempt():
+    errors = [Exception("ERR_CONNECTION_RESET first"), Exception("ERR_CONNECTION_RESET second")]
+
+    async def always_fails():
+        raise errors.pop(0)
+
+    result = await retry_with_backoff(always_fails, config=RetryConfig(max_attempts=2, base_delay=0, max_delay=0))
+
+    assert str(result.exception) == "ERR_CONNECTION_RESET second"
+
+
+async def test_retry_success_has_no_exception():
+    async def succeeds():
+        return "ok"
+
+    result = await retry_with_backoff(succeeds)
+
+    assert result.exception is None
+
+
+@pytest.mark.parametrize("attempts", [0, -1])
+def test_retry_config_needs_at_least_one_attempt(attempts):
+    with pytest.raises(ValueError, match="max_attempts"):
+        RetryConfig(max_attempts=attempts)

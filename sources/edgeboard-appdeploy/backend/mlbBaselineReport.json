@@ -1,0 +1,1022 @@
+{
+  "status": "RETROSPECTIVE_BASELINE_EVALUATED",
+  "liveApproved": false,
+  "runtime": {
+    "python": "3.12.14",
+    "numpy": "2.3.5",
+    "scikitLearn": "1.8.0"
+  },
+  "scope": "MLB full-game home/away winner, completed regular season and postseason; not live, props, totals or parlays",
+  "source": {
+    "name": "MLB official Stats API final-result snapshots",
+    "snapshots": [
+      {
+        "season": 2014,
+        "url": "https://statsapi.mlb.com/api/v1/schedule?sportId=1&startDate=2014-01-01&endDate=2014-12-31&gameTypes=R,F,D,L,W",
+        "sha256": "7e23804afa548ef0112c0dcd64bd119b2587f02e1f15436fcf92a539d6f4f57c",
+        "retrievedAt": "2026-10-07T21:19:04.361322+00:00",
+        "rows": 2504
+      },
+      {
+        "season": 2015,
+        "url": "https://statsapi.mlb.com/api/v1/schedule?sportId=1&startDate=2015-01-01&endDate=2015-12-31&gameTypes=R,F,D,L,W",
+        "sha256": "73a2e30fe0c962a7c67bbb50091d2d4bc278409aed70c8ab3e5f2a02d10e84e6",
+        "retrievedAt": "2026-10-07T21:19:04.108814+00:00",
+        "rows": 2507
+      },
+      {
+        "season": 2016,
+        "url": "https://statsapi.mlb.com/api/v1/schedule?sportId=1&startDate=2016-01-01&endDate=2016-12-31&gameTypes=R,F,D,L,W",
+        "sha256": "cbc867043c0820385d5846c831d06d4f4a8e6b2ec5ccee12e7934de53d41f26e",
+        "retrievedAt": "2026-10-07T21:19:04.777845+00:00",
+        "rows": 2493
+      },
+      {
+        "season": 2017,
+        "url": "https://statsapi.mlb.com/api/v1/schedule?sportId=1&startDate=2017-01-01&endDate=2017-12-31&gameTypes=R,F,D,L,W",
+        "sha256": "8a714e90d7831758e152943bdd7e1d56306394a8b112287537d006f16a9b60a2",
+        "retrievedAt": "2026-10-07T21:19:12.177971+00:00",
+        "rows": 2508
+      },
+      {
+        "season": 2018,
+        "url": "https://statsapi.mlb.com/api/v1/schedule?sportId=1&startDate=2018-01-01&endDate=2018-12-31&gameTypes=R,F,D,L,W",
+        "sha256": "156d309d68df065c55cf5aebb6912dc2ebec8fbccf1bbb245adc94c5b84c3b46",
+        "retrievedAt": "2026-10-07T21:19:12.605520+00:00",
+        "rows": 2520
+      },
+      {
+        "season": 2019,
+        "url": "https://statsapi.mlb.com/api/v1/schedule?sportId=1&startDate=2019-01-01&endDate=2019-12-31&gameTypes=R,F,D,L,W",
+        "sha256": "43f5116af28f6fedf21e8b93b4f9d6ac3b18579306dfd26399cc57c462f4f7c5",
+        "retrievedAt": "2026-10-07T21:19:12.150826+00:00",
+        "rows": 2510
+      },
+      {
+        "season": 2020,
+        "url": "https://statsapi.mlb.com/api/v1/schedule?sportId=1&startDate=2020-01-01&endDate=2020-12-31&gameTypes=R,F,D,L,W",
+        "sha256": "0d2f4ba2a6a259f1624359c2c100aabd5f11940898a71a29957a0e1912075a4c",
+        "retrievedAt": "2026-10-07T21:19:21.442555+00:00",
+        "rows": 1027
+      },
+      {
+        "season": 2021,
+        "url": "https://statsapi.mlb.com/api/v1/schedule?sportId=1&startDate=2021-01-01&endDate=2021-12-31&gameTypes=R,F,D,L,W",
+        "sha256": "48e81e55efa61bdb898d3e4b815ca928a6a55bd439742400202db36f038037bd",
+        "retrievedAt": "2026-10-07T21:19:22.073468+00:00",
+        "rows": 2550
+      },
+      {
+        "season": 2022,
+        "url": "https://statsapi.mlb.com/api/v1/schedule?sportId=1&startDate=2022-01-01&endDate=2022-12-31&gameTypes=R,F,D,L,W",
+        "sha256": "4b72ff9f69273809166b43c759bd669fa6412364dc13dd4e98e245888e81a69a",
+        "retrievedAt": "2026-10-07T21:19:22.178925+00:00",
+        "rows": 2522
+      },
+      {
+        "season": 2023,
+        "url": "https://statsapi.mlb.com/api/v1/schedule?sportId=1&startDate=2023-01-01&endDate=2023-12-31&gameTypes=R,F,D,L,W",
+        "sha256": "a99e56abb5318b268aa4754b096509b373b9c4db705d423ffcf066020fe4bd2e",
+        "retrievedAt": "2026-10-07T21:19:29.787015+00:00",
+        "rows": 2517
+      },
+      {
+        "season": 2024,
+        "url": "https://statsapi.mlb.com/api/v1/schedule?sportId=1&startDate=2024-01-01&endDate=2024-12-31&gameTypes=R,F,D,L,W",
+        "sha256": "c50996cf37533e3210a9d17f0179f53e7e73d4a37c81736d251872c59555a73e",
+        "retrievedAt": "2026-10-07T21:19:30.074612+00:00",
+        "rows": 2512
+      },
+      {
+        "season": 2025,
+        "url": "https://statsapi.mlb.com/api/v1/schedule?sportId=1&startDate=2025-01-01&endDate=2025-12-31&gameTypes=R,F,D,L,W",
+        "sha256": "076826146f4357a7bb504b0f86cb70b1c0a8b8029d2f9792650278d158a8914d",
+        "retrievedAt": "2026-10-07T21:19:29.715612+00:00",
+        "rows": 2511
+      }
+    ],
+    "historyVintageVerified": false,
+    "rows": 28681
+  },
+  "model": {
+    "version": "mlb-independent-outcome-baseline-v1",
+    "family": "regularized binary logistic regression",
+    "features": [
+      "prior_twenty_run_margin_difference",
+      "prior_twenty_win_rate_difference"
+    ],
+    "weights": [
+      0.20705027059442732,
+      0.008995556056488205
+    ],
+    "intercept": 0.14153254712656446,
+    "means": [
+      -0.024394933273015118,
+      -0.004071477041393353
+    ],
+    "scales": [
+      1.764604071503529,
+      0.1872923495652443
+    ],
+    "C": 1,
+    "trainBaseRate": 0.5348661892197513
+  },
+  "splits": [
+    {
+      "name": "train",
+      "seasons": [
+        2015,
+        2020
+      ],
+      "n": 13263,
+      "from": "2015-04-05",
+      "to": "2020-10-27"
+    },
+    {
+      "name": "validation",
+      "seasons": [
+        2021,
+        2022
+      ],
+      "n": 4927,
+      "from": "2021-04-01",
+      "to": "2022-11-05"
+    },
+    {
+      "name": "held-out test",
+      "seasons": [
+        2023,
+        2025
+      ],
+      "n": 7406,
+      "from": "2023-03-30",
+      "to": "2025-11-01"
+    }
+  ],
+  "test": {
+    "n": 7406,
+    "brier": 0.24632889552820642,
+    "logLoss": 0.6857478190304128,
+    "calibration": [
+      {
+        "bin": 0,
+        "n": 0,
+        "predicted": null,
+        "observed": null
+      },
+      {
+        "bin": 1,
+        "n": 0,
+        "predicted": null,
+        "observed": null
+      },
+      {
+        "bin": 2,
+        "n": 0,
+        "predicted": null,
+        "observed": null
+      },
+      {
+        "bin": 3,
+        "n": 50,
+        "predicted": 0.3813913251690096,
+        "observed": 0.2
+      },
+      {
+        "bin": 4,
+        "n": 1812,
+        "predicted": 0.4707294849827455,
+        "observed": 0.47902869757174393
+      },
+      {
+        "bin": 5,
+        "n": 4688,
+        "predicted": 0.5470395877129226,
+        "observed": 0.5330631399317406
+      },
+      {
+        "bin": 6,
+        "n": 849,
+        "predicted": 0.6236999782671905,
+        "observed": 0.6183745583038869
+      },
+      {
+        "bin": 7,
+        "n": 7,
+        "predicted": 0.7089108905479995,
+        "observed": 0.8571428571428571
+      },
+      {
+        "bin": 8,
+        "n": 0,
+        "predicted": null,
+        "observed": null
+      },
+      {
+        "bin": 9,
+        "n": 0,
+        "predicted": null,
+        "observed": null
+      }
+    ],
+    "ece": 0.012852853359830626
+  },
+  "baseRate": {
+    "n": 7406,
+    "brier": 0.24928544083743479,
+    "logLoss": 0.6917177171459516,
+    "calibration": [
+      {
+        "bin": 0,
+        "n": 0,
+        "predicted": null,
+        "observed": null
+      },
+      {
+        "bin": 1,
+        "n": 0,
+        "predicted": null,
+        "observed": null
+      },
+      {
+        "bin": 2,
+        "n": 0,
+        "predicted": null,
+        "observed": null
+      },
+      {
+        "bin": 3,
+        "n": 0,
+        "predicted": null,
+        "observed": null
+      },
+      {
+        "bin": 4,
+        "n": 0,
+        "predicted": null,
+        "observed": null
+      },
+      {
+        "bin": 5,
+        "n": 7406,
+        "predicted": 0.5348661892197512,
+        "observed": 0.5276802592492573
+      },
+      {
+        "bin": 6,
+        "n": 0,
+        "predicted": null,
+        "observed": null
+      },
+      {
+        "bin": 7,
+        "n": 0,
+        "predicted": null,
+        "observed": null
+      },
+      {
+        "bin": 8,
+        "n": 0,
+        "predicted": null,
+        "observed": null
+      },
+      {
+        "bin": 9,
+        "n": 0,
+        "predicted": null,
+        "observed": null
+      }
+    ],
+    "ece": 0.007185929970493832
+  },
+  "validation": {
+    "n": 4927,
+    "brier": 0.24409837804225165,
+    "logLoss": 0.6812738463032403,
+    "calibration": [
+      {
+        "bin": 0,
+        "n": 0,
+        "predicted": null,
+        "observed": null
+      },
+      {
+        "bin": 1,
+        "n": 0,
+        "predicted": null,
+        "observed": null
+      },
+      {
+        "bin": 2,
+        "n": 0,
+        "predicted": null,
+        "observed": null
+      },
+      {
+        "bin": 3,
+        "n": 35,
+        "predicted": 0.3725424914106153,
+        "observed": 0.4
+      },
+      {
+        "bin": 4,
+        "n": 1231,
+        "predicted": 0.4666238915899285,
+        "observed": 0.44679122664500404
+      },
+      {
+        "bin": 5,
+        "n": 3057,
+        "predicted": 0.545684023094128,
+        "observed": 0.5534838076545633
+      },
+      {
+        "bin": 6,
+        "n": 597,
+        "predicted": 0.6257926956113181,
+        "observed": 0.6515912897822446
+      },
+      {
+        "bin": 7,
+        "n": 7,
+        "predicted": 0.717869576741462,
+        "observed": 0.14285714285714285
+      },
+      {
+        "bin": 8,
+        "n": 0,
+        "predicted": null,
+        "observed": null
+      },
+      {
+        "bin": 9,
+        "n": 0,
+        "predicted": null,
+        "observed": null
+      }
+    ],
+    "ece": 0.013932578142138113
+  },
+  "bySeason": [
+    {
+      "season": 2023,
+      "n": 2464,
+      "brier": 0.24677857578196483,
+      "logLoss": 0.6866702938913047,
+      "calibration": [
+        {
+          "bin": 0,
+          "n": 0,
+          "predicted": null,
+          "observed": null
+        },
+        {
+          "bin": 1,
+          "n": 0,
+          "predicted": null,
+          "observed": null
+        },
+        {
+          "bin": 2,
+          "n": 0,
+          "predicted": null,
+          "observed": null
+        },
+        {
+          "bin": 3,
+          "n": 18,
+          "predicted": 0.3822880796011164,
+          "observed": 0.16666666666666666
+        },
+        {
+          "bin": 4,
+          "n": 616,
+          "predicted": 0.4690553181725901,
+          "observed": 0.4707792207792208
+        },
+        {
+          "bin": 5,
+          "n": 1521,
+          "predicted": 0.5472953486075381,
+          "observed": 0.5253122945430638
+        },
+        {
+          "bin": 6,
+          "n": 304,
+          "predicted": 0.6244254993218155,
+          "observed": 0.5986842105263158
+        },
+        {
+          "bin": 7,
+          "n": 5,
+          "predicted": 0.7098399261002479,
+          "observed": 0.8
+        },
+        {
+          "bin": 8,
+          "n": 0,
+          "predicted": null,
+          "observed": null
+        },
+        {
+          "bin": 9,
+          "n": 0,
+          "predicted": null,
+          "observed": null
+        }
+      ],
+      "ece": 0.018934856669602554
+    },
+    {
+      "season": 2024,
+      "n": 2469,
+      "brier": 0.24616578602407044,
+      "logLoss": 0.685399314782522,
+      "calibration": [
+        {
+          "bin": 0,
+          "n": 0,
+          "predicted": null,
+          "observed": null
+        },
+        {
+          "bin": 1,
+          "n": 0,
+          "predicted": null,
+          "observed": null
+        },
+        {
+          "bin": 2,
+          "n": 0,
+          "predicted": null,
+          "observed": null
+        },
+        {
+          "bin": 3,
+          "n": 9,
+          "predicted": 0.385672332671011,
+          "observed": 0.3333333333333333
+        },
+        {
+          "bin": 4,
+          "n": 606,
+          "predicted": 0.4722569924606846,
+          "observed": 0.45544554455445546
+        },
+        {
+          "bin": 5,
+          "n": 1601,
+          "predicted": 0.5474731630807779,
+          "observed": 0.5277951280449719
+        },
+        {
+          "bin": 6,
+          "n": 253,
+          "predicted": 0.6237204561599693,
+          "observed": 0.6482213438735178
+        },
+        {
+          "bin": 7,
+          "n": 0,
+          "predicted": null,
+          "observed": null
+        },
+        {
+          "bin": 8,
+          "n": 0,
+          "predicted": null,
+          "observed": null
+        },
+        {
+          "bin": 9,
+          "n": 0,
+          "predicted": null,
+          "observed": null
+        }
+      ],
+      "ece": 0.01958770640302436
+    },
+    {
+      "season": 2025,
+      "n": 2473,
+      "brier": 0.24604369747743848,
+      "logLoss": 0.685176641889614,
+      "calibration": [
+        {
+          "bin": 0,
+          "n": 0,
+          "predicted": null,
+          "observed": null
+        },
+        {
+          "bin": 1,
+          "n": 0,
+          "predicted": null,
+          "observed": null
+        },
+        {
+          "bin": 2,
+          "n": 0,
+          "predicted": null,
+          "observed": null
+        },
+        {
+          "bin": 3,
+          "n": 23,
+          "predicted": 0.3790143405039687,
+          "observed": 0.17391304347826086
+        },
+        {
+          "bin": 4,
+          "n": 590,
+          "predicted": 0.4709084972258381,
+          "observed": 0.511864406779661
+        },
+        {
+          "bin": 5,
+          "n": 1566,
+          "predicted": 0.5463479105196618,
+          "observed": 0.5459770114942529
+        },
+        {
+          "bin": 6,
+          "n": 292,
+          "predicted": 0.6229268984470566,
+          "observed": 0.613013698630137
+        },
+        {
+          "bin": 7,
+          "n": 2,
+          "predicted": 0.7065883016673787,
+          "observed": 1.0
+        },
+        {
+          "bin": 8,
+          "n": 0,
+          "predicted": null,
+          "observed": null
+        },
+        {
+          "bin": 9,
+          "n": 0,
+          "predicted": null,
+          "observed": null
+        }
+      ],
+      "ece": 0.013321319080203354
+    }
+  ],
+  "bySegment": [
+    {
+      "segment": "regular-season",
+      "n": 7275,
+      "brier": 0.2462471519410504,
+      "logLoss": 0.6855812197964418,
+      "calibration": [
+        {
+          "bin": 0,
+          "n": 0,
+          "predicted": null,
+          "observed": null
+        },
+        {
+          "bin": 1,
+          "n": 0,
+          "predicted": null,
+          "observed": null
+        },
+        {
+          "bin": 2,
+          "n": 0,
+          "predicted": null,
+          "observed": null
+        },
+        {
+          "bin": 3,
+          "n": 50,
+          "predicted": 0.3813913251690096,
+          "observed": 0.2
+        },
+        {
+          "bin": 4,
+          "n": 1792,
+          "predicted": 0.4706731836273085,
+          "observed": 0.4799107142857143
+        },
+        {
+          "bin": 5,
+          "n": 4592,
+          "predicted": 0.5471659014945959,
+          "observed": 0.5339721254355401
+        },
+        {
+          "bin": 6,
+          "n": 834,
+          "predicted": 0.6237772589954255,
+          "observed": 0.6199040767386091
+        },
+        {
+          "bin": 7,
+          "n": 7,
+          "predicted": 0.7089108905479995,
+          "observed": 0.8571428571428571
+        },
+        {
+          "bin": 8,
+          "n": 0,
+          "predicted": null,
+          "observed": null
+        },
+        {
+          "bin": 9,
+          "n": 0,
+          "predicted": null,
+          "observed": null
+        }
+      ],
+      "ece": 0.012436687096886155,
+      "baseRate": {
+        "n": 7275,
+        "brier": 0.2492267207690997,
+        "logLoss": 0.6916000860969896,
+        "calibration": [
+          {
+            "bin": 0,
+            "n": 0,
+            "predicted": null,
+            "observed": null
+          },
+          {
+            "bin": 1,
+            "n": 0,
+            "predicted": null,
+            "observed": null
+          },
+          {
+            "bin": 2,
+            "n": 0,
+            "predicted": null,
+            "observed": null
+          },
+          {
+            "bin": 3,
+            "n": 0,
+            "predicted": null,
+            "observed": null
+          },
+          {
+            "bin": 4,
+            "n": 0,
+            "predicted": null,
+            "observed": null
+          },
+          {
+            "bin": 5,
+            "n": 7275,
+            "predicted": 0.534866189219751,
+            "observed": 0.5285223367697595
+          },
+          {
+            "bin": 6,
+            "n": 0,
+            "predicted": null,
+            "observed": null
+          },
+          {
+            "bin": 7,
+            "n": 0,
+            "predicted": null,
+            "observed": null
+          },
+          {
+            "bin": 8,
+            "n": 0,
+            "predicted": null,
+            "observed": null
+          },
+          {
+            "bin": 9,
+            "n": 0,
+            "predicted": null,
+            "observed": null
+          }
+        ],
+        "ece": 0.006343852449991583
+      },
+      "fairCoin": {
+        "n": 7275,
+        "brier": 0.25,
+        "logLoss": 0.6931471805599452,
+        "calibration": [
+          {
+            "bin": 0,
+            "n": 0,
+            "predicted": null,
+            "observed": null
+          },
+          {
+            "bin": 1,
+            "n": 0,
+            "predicted": null,
+            "observed": null
+          },
+          {
+            "bin": 2,
+            "n": 0,
+            "predicted": null,
+            "observed": null
+          },
+          {
+            "bin": 3,
+            "n": 0,
+            "predicted": null,
+            "observed": null
+          },
+          {
+            "bin": 4,
+            "n": 0,
+            "predicted": null,
+            "observed": null
+          },
+          {
+            "bin": 5,
+            "n": 7275,
+            "predicted": 0.5,
+            "observed": 0.5285223367697595
+          },
+          {
+            "bin": 6,
+            "n": 0,
+            "predicted": null,
+            "observed": null
+          },
+          {
+            "bin": 7,
+            "n": 0,
+            "predicted": null,
+            "observed": null
+          },
+          {
+            "bin": 8,
+            "n": 0,
+            "predicted": null,
+            "observed": null
+          },
+          {
+            "bin": 9,
+            "n": 0,
+            "predicted": null,
+            "observed": null
+          }
+        ],
+        "ece": 0.028522336769759456
+      }
+    },
+    {
+      "segment": "postseason",
+      "n": 131,
+      "brier": 0.25086847260118333,
+      "logLoss": 0.6949997993902509,
+      "calibration": [
+        {
+          "bin": 0,
+          "n": 0,
+          "predicted": null,
+          "observed": null
+        },
+        {
+          "bin": 1,
+          "n": 0,
+          "predicted": null,
+          "observed": null
+        },
+        {
+          "bin": 2,
+          "n": 0,
+          "predicted": null,
+          "observed": null
+        },
+        {
+          "bin": 3,
+          "n": 0,
+          "predicted": null,
+          "observed": null
+        },
+        {
+          "bin": 4,
+          "n": 20,
+          "predicted": 0.4757740864299008,
+          "observed": 0.4
+        },
+        {
+          "bin": 5,
+          "n": 96,
+          "predicted": 0.5409975784895478,
+          "observed": 0.4895833333333333
+        },
+        {
+          "bin": 6,
+          "n": 15,
+          "predicted": 0.6194031697773219,
+          "observed": 0.5333333333333333
+        },
+        {
+          "bin": 7,
+          "n": 0,
+          "predicted": null,
+          "observed": null
+        },
+        {
+          "bin": 8,
+          "n": 0,
+          "predicted": null,
+          "observed": null
+        },
+        {
+          "bin": 9,
+          "n": 0,
+          "predicted": null,
+          "observed": null
+        }
+      ],
+      "ece": 0.059101502368354444,
+      "baseRate": {
+        "n": 131,
+        "brier": 0.252546421731614,
+        "logLoss": 0.6982502811245692,
+        "calibration": [
+          {
+            "bin": 0,
+            "n": 0,
+            "predicted": null,
+            "observed": null
+          },
+          {
+            "bin": 1,
+            "n": 0,
+            "predicted": null,
+            "observed": null
+          },
+          {
+            "bin": 2,
+            "n": 0,
+            "predicted": null,
+            "observed": null
+          },
+          {
+            "bin": 3,
+            "n": 0,
+            "predicted": null,
+            "observed": null
+          },
+          {
+            "bin": 4,
+            "n": 0,
+            "predicted": null,
+            "observed": null
+          },
+          {
+            "bin": 5,
+            "n": 131,
+            "predicted": 0.534866189219751,
+            "observed": 0.48091603053435117
+          },
+          {
+            "bin": 6,
+            "n": 0,
+            "predicted": null,
+            "observed": null
+          },
+          {
+            "bin": 7,
+            "n": 0,
+            "predicted": null,
+            "observed": null
+          },
+          {
+            "bin": 8,
+            "n": 0,
+            "predicted": null,
+            "observed": null
+          },
+          {
+            "bin": 9,
+            "n": 0,
+            "predicted": null,
+            "observed": null
+          }
+        ],
+        "ece": 0.053950158685399874
+      },
+      "fairCoin": {
+        "n": 131,
+        "brier": 0.25,
+        "logLoss": 0.6931471805599453,
+        "calibration": [
+          {
+            "bin": 0,
+            "n": 0,
+            "predicted": null,
+            "observed": null
+          },
+          {
+            "bin": 1,
+            "n": 0,
+            "predicted": null,
+            "observed": null
+          },
+          {
+            "bin": 2,
+            "n": 0,
+            "predicted": null,
+            "observed": null
+          },
+          {
+            "bin": 3,
+            "n": 0,
+            "predicted": null,
+            "observed": null
+          },
+          {
+            "bin": 4,
+            "n": 0,
+            "predicted": null,
+            "observed": null
+          },
+          {
+            "bin": 5,
+            "n": 131,
+            "predicted": 0.5,
+            "observed": 0.48091603053435117
+          },
+          {
+            "bin": 6,
+            "n": 0,
+            "predicted": null,
+            "observed": null
+          },
+          {
+            "bin": 7,
+            "n": 0,
+            "predicted": null,
+            "observed": null
+          },
+          {
+            "bin": 8,
+            "n": 0,
+            "predicted": null,
+            "observed": null
+          },
+          {
+            "bin": 9,
+            "n": 0,
+            "predicted": null,
+            "observed": null
+          }
+        ],
+        "ece": 0.01908396946564883
+      }
+    }
+  ],
+  "uncertainty": {
+    "method": "1,000 paired season/week-block bootstrap resamples; model minus home-base-rate log loss",
+    "interval95": [
+      -0.008186409384938894,
+      -0.003914885659469964
+    ],
+    "blocks": 98,
+    "perWagerProbabilityBounds": null
+  },
+  "brierDefinition": "Binary mean squared probability error; range 0 to 1.",
+  "marketBenchmark": {
+    "status": "UNAVAILABLE",
+    "n": 0,
+    "modelImproves": null,
+    "limitation": "No timestamped equivalent historical executable sportsbook prices in this source."
+  },
+  "estimatedEv": null,
+  "wageringReturns": null,
+  "predictiveEvidence": "BEATS_HOME_BASE_RATE",
+  "conclusion": "Candidate improves held-out log loss versus the home-team base rate. Postseason diagnostics do not improve on a fair-coin log-loss benchmark. This does not establish an edge over sportsbook prices; no live approval.",
+  "excludedRows": {
+    "duplicate_game_id": 1,
+    "not_final": 544,
+    "resumed_game_availability_ambiguous": 82,
+    "tie_or_invalid_score": 1
+  },
+  "promotionBlockers": [
+    "No matched timestamped historical price, availability or settlement-contract replay.",
+    "Final-result snapshots can include later revisions; known resumed games excluded but historical vintage not verified.",
+    "No starting-pitcher, bullpen, lineup or participation features; playoff stability requires separate evidence.",
+    "No validated per-wager uncertainty bounds or prospective evaluation.",
+    "No verified live feature adapter, prop distribution or joint probability model."
+  ],
+  "replayAssumptions": [
+    "Fixed 2015\u20132020 train, 2021\u20132022 validation, 2023\u20132025 test. 2014 warm-up; no 2026 results.",
+    "Only earlier game scores, with a two-calendar-day embargo. Same-day results excluded; twenty-game windows span seasons.",
+    "Only final/game-over status codes accepted; postponed/cancelled and known resumed games excluded. Valid game IDs deduplicated after eligibility, never allowing a postponed row to suppress its valid completion. Exclusions counted.",
+    "C selected from [.01,.1,1] using validation only; no test-guided tuning or promotion.",
+    "Modern official snapshots are authoritative final results, not proof of original feature availability.",
+    "No odds as model inputs. No invented capture/settlement timestamps, fees, account fills, EV or ROI."
+  ]
+}

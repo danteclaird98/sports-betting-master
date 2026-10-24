@@ -1,0 +1,147 @@
+{
+  "calibration_comparison": {
+    "limitation": "Platt fitted and compared on same late2024 partition; in-sample calibration selection, not independent evidence",
+    "platt": {
+      "brier": 0.08314823820016419,
+      "log_loss": 0.2747096158439417,
+      "n": 2490
+    },
+    "raw": {
+      "brier": 0.08406581164144467,
+      "log_loss": 0.27823597459289445,
+      "n": 2490
+    },
+    "selected": true
+  },
+  "counts": {
+    "calibration": 2490,
+    "consumed_diagnostic": 5064,
+    "selection": 2419,
+    "train": 13344
+  },
+  "exclusions": {
+    "insufficient_prior_rows": 2780,
+    "outside_regular_season_position_scope": 68751
+  },
+  "limitations": [
+    "Candidate retrospective; protocol chosen after prior diagnostic consumption",
+    "No untouched test or validated uncertainty; no market price/EV analysis",
+    "Weekly archived rows lack historical publication timestamps; week order is a retrospective proxy",
+    "Recorded-player-row cohort is conditional on an eventual row, not a prospective active roster",
+    "No reproduction of deployed SportsAI888 backend; source access unavailable"
+  ],
+  "negative_yard_rows_retained": 299,
+  "partition_metrics": {
+    "calibration": {
+      "p": {
+        "brier": 0.08314823820016422,
+        "log_loss": 0.2747096158439417,
+        "n": 2490
+      },
+      "p_calibrated": {
+        "brier": 0.08314823820016422,
+        "log_loss": 0.2747096158439417,
+        "n": 2490
+      },
+      "p_raw": {
+        "brier": 0.0840658116414445,
+        "log_loss": 0.27823597459289495,
+        "n": 2490
+      },
+      "train_base_rate": {
+        "brier": 0.11614407820140266,
+        "log_loss": 0.3941757593984464,
+        "n": 2490
+      }
+    },
+    "consumed_diagnostic": {
+      "p": {
+        "brier": 0.08259301702148152,
+        "log_loss": 0.2736713689279624,
+        "n": 5064
+      },
+      "p_calibrated": {
+        "brier": 0.08259301702148152,
+        "log_loss": 0.2736713689279624,
+        "n": 5064
+      },
+      "p_raw": {
+        "brier": 0.08128103240155439,
+        "log_loss": 0.27179788107012065,
+        "n": 5064
+      },
+      "train_base_rate": {
+        "brier": 0.10210396400714165,
+        "log_loss": 0.3584189422769153,
+        "n": 5064
+      }
+    },
+    "selection": {
+      "p": {
+        "brier": 0.09254852691298199,
+        "log_loss": 0.29584273507300907,
+        "n": 2419
+      },
+      "p_calibrated": {
+        "brier": 0.09254852691298199,
+        "log_loss": 0.29584273507300907,
+        "n": 2419
+      },
+      "p_raw": {
+        "brier": 0.09091118664397814,
+        "log_loss": 0.2944940938390401,
+        "n": 2419
+      },
+      "train_base_rate": {
+        "brier": 0.11146750070179119,
+        "log_loss": 0.3822656335907356,
+        "n": 2419
+      }
+    },
+    "train": {
+      "p": {
+        "brier": 0.09453080067223517,
+        "log_loss": 0.30902731760577706,
+        "n": 13344
+      },
+      "p_calibrated": {
+        "brier": 0.09453080067223517,
+        "log_loss": 0.30902731760577706,
+        "n": 13344
+      },
+      "p_raw": {
+        "brier": 0.0930008678911922,
+        "log_loss": 0.3051882083974401,
+        "n": 13344
+      },
+      "train_base_rate": {
+        "brier": 0.11642245893033774,
+        "log_loss": 0.39488472861885054,
+        "n": 13344
+      }
+    }
+  },
+  "selection_grid": [
+    {
+      "l2": 0.01,
+      "log_loss": 0.2944940938390401
+    },
+    {
+      "l2": 0.1,
+      "log_loss": 0.29449613875376157
+    },
+    {
+      "l2": 1.0,
+      "log_loss": 0.2945165364240215
+    },
+    {
+      "l2": 10.0,
+      "log_loss": 0.2947102607540537
+    },
+    {
+      "l2": 100.0,
+      "log_loss": 0.29578129297547257
+    }
+  ],
+  "status": "HOLD"
+}

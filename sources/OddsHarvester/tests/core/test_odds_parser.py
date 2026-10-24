@@ -1,0 +1,548 @@
+from datetime import UTC, datetime
+import logging
+from unittest.mock import patch
+
+import pytest
+from tests.clock import SUMMER_NOW, WINTER_NOW, frozen_clock
+from tests.dom_builders import bookmaker_row, line_row, odds_cell, odds_table
+
+from oddsharvester.core.market_extraction.odds_parser import OddsParser, parse_odds_value
+
+
+class TestOddsParser:
+    """Unit tests for the OddsParser class."""
+
+    @pytest.fixture
+    def odds_parser(self):
+        """Create an instance of OddsParser."""
+        return OddsParser()
+
+    # One leaf <tr> per bookmaker, keyed by the bookmaker links in its first cell.
+    @staticmethod
+    def _bm_row(name="Bookmaker1", odds=("1.90", "3.50", "4.20"), name_via="label", blocked=()):
+        if name_via == "label":
+            return bookmaker_row(name, list(odds), blocked=tuple(blocked))
+        # Logo-only rows name the bookmaker on the bonus link's title attribute.
+        cells = "".join(odds_cell(o, blocked=i in blocked, betslip_slug="x") for i, o in enumerate(odds))
+        title_html = f'<a title="{name}" href="/proxy/bookmakers/x/bonus/1/"><img alt="Bookmaker"/></a>' if name else ""
+        return (
+            f'<tr class="h-9"><td><a href="/proxy/bookmakers/x/link/"><img alt="Bookmaker"/></a>{title_html}</td>'
+            f'{cells}<td class="w-[68px]"><span>94.1%</span></td></tr>'
+        )
+
+    @classmethod
+    def _table(cls, rows, extra_rows=""):
+        return odds_table("".join(rows) + extra_rows)
+
+    @property
+    def SAMPLE_HTML_ODDS(self):  # noqa: N802 - keeps the historical fixture name
+        return self._table(
+            [
+                self._bm_row("Bookmaker1", ("1.90", "3.50", "4.20")),
+                self._bm_row("Bookmaker2", ("1.85", "3.60", "4.10")),
+            ]
+        )
+
+    SAMPLE_HTML_ODDS_HISTORY = """
+<div class="flex w-max flex-col gap-2">
+    <h3 class="text-sm font-semibold uppercase leading-6">Odds movement</h3>
+    <div class="flex flex-row gap-3">
+        <div class="flex flex-col gap-1">
+            <div class="text-[10px] font-normal">10 Jun, 14:30</div>
+            <div class="text-[10px] font-normal">10 Jun, 12:00</div>
+        </div>
+        <div class="flex flex-col gap-1">
+            <div class="text-[10px] font-bold">1.95</div>
+            <div class="text-[10px] font-bold">1.90</div>
+        </div>
+        <div class="flex flex-col gap-1">
+            <div class="text-[10px] font-bold text-green-dark">+0.05</div>
+        </div>
+    </div>
+    <div class="mt-2 gap-1">
+        <div class="text-[10px] font-bold">Opening odds:</div>
+        <div class="flex gap-1"><div class="font-normal">10 Jun, 08:00</div><div class="font-bold">1.85</div></div>
+    </div>
+</div>
+"""
+
+    @staticmethod
+    def _history_html(history, opening=None):
+        times = "".join(f'<div class="text-[10px] font-normal">{t}</div>' for t, _ in history)
+        values = "".join(f'<div class="text-[10px] font-bold">{v}</div>' for _, v in history)
+        opening_html = (
+            '<div class="mt-2 gap-1"><div class="text-[10px] font-bold">Opening odds:</div>'
+            f'<div class="flex gap-1"><div class="font-normal">{opening[0]}</div>'
+            f'<div class="font-bold">{opening[1]}</div></div></div>'
+            if opening
+            else ""
+        )
+        return (
+            '<div class="flex w-max flex-col gap-2"><div class="flex flex-row gap-3">'
+            f'<div class="flex flex-col gap-1">{times}</div><div class="flex flex-col gap-1">{values}</div>'
+            f"</div>{opening_html}</div>"
+        )
+
+    def test_history_year_before_january_kickoff(self, odds_parser):
+        html = self._history_html([("4 Jan, 18:27", "1.95")], opening=("27 Dec, 18:08", "2.10"))
+
+        result = odds_parser.parse_odds_history_modal(html, reference=datetime(2026, 1, 4, 18, 30))
+
+        assert result["odds_history"][0]["timestamp"] == "2026-01-04T18:27:00"
+        assert result["opening_odds"]["timestamp"] == "2025-12-27T18:08:00"
+
+    def test_history_year_same_and_earlier_month(self, odds_parser):
+        html = self._history_html([("20 May, 10:00", "1.95")], opening=("28 Apr, 09:00", "2.10"))
+
+        result = odds_parser.parse_odds_history_modal(html, reference=datetime(2023, 5, 21, 15, 0))
+
+        assert result["odds_history"][0]["timestamp"] == "2023-05-20T10:00:00"
+        assert result["opening_odds"]["timestamp"] == "2023-04-28T09:00:00"
+
+    def test_history_accepts_29_february_in_a_leap_year(self, odds_parser):
+        html = self._history_html([("29 Feb, 12:00", "1.95")])
+
+        result = odds_parser.parse_odds_history_modal(html, reference=datetime(2028, 3, 1, 20, 0))
+
+        assert result["odds_history"][0]["timestamp"] == "2028-02-29T12:00:00"
+
+    def test_history_drops_a_29_february_point_when_the_inferred_year_is_not_leap(self, odds_parser):
+        """Pins today's behaviour: the ValueError is caught and only that point is dropped.
+
+        With a kickoff reference this cannot happen for real: a 29 February point lands in a
+        non-leap year only when it sits at least eleven months before kickoff.
+        """
+        html = self._history_html(
+            [("8 Mar, 12:00", "2.10"), ("29 Feb, 10:00", "2.00")], opening=("25 Feb, 09:00", "1.90")
+        )
+
+        result = odds_parser.parse_odds_history_modal(html, reference=datetime(2025, 3, 10, 20, 0))
+
+        assert result == {
+            "odds_history": [{"timestamp": "2025-03-08T12:00:00", "odds": 2.1}],
+            "opening_odds": {"timestamp": "2025-02-25T09:00:00", "odds": 1.9},
+        }
+
+    def test_history_later_in_the_kickoff_month_keeps_the_kickoff_year(self, odds_parser):
+        """The rule compares months only: a point after kickoff in the same month keeps the kickoff year."""
+        html = self._history_html([("20 Jan, 10:00", "1.95")], opening=("28 Dec, 09:00", "2.10"))
+
+        result = odds_parser.parse_odds_history_modal(html, reference=datetime(2026, 1, 4, 18, 30))
+
+        assert result == {
+            "odds_history": [{"timestamp": "2026-01-20T10:00:00", "odds": 1.95}],
+            "opening_odds": {"timestamp": "2025-12-28T09:00:00", "odds": 2.1},
+        }
+
+    def test_history_without_reference_uses_the_current_year(self, odds_parser):
+        html = self._history_html([("10 Jun, 14:30", "1.95")])
+
+        result = odds_parser.parse_odds_history_modal(html)
+
+        assert result["odds_history"][0]["timestamp"] == f"{datetime.now(UTC).year}-06-10T14:30:00"
+
+    def test_history_shown_in_summer_for_a_january_match_is_read_one_hour_earlier(self):
+        """Man City - Chelsea, 4 Jan 2026: scraped in BST, Betclic's last move shows 17:58 for 16:58 UTC."""
+        kickoff = datetime(2026, 1, 4, 17, 30)
+
+        assert OddsParser._history_timestamp("4 Jan, 17:58", kickoff, "Europe/London", SUMMER_NOW) == (
+            "2026-01-04T16:58:00"
+        )
+        assert OddsParser._history_timestamp("27 Dec, 18:08", kickoff, "Europe/London", SUMMER_NOW) == (
+            "2025-12-27T17:08:00"
+        )
+
+    def test_history_shown_in_winter_for_a_july_match_is_read_one_hour_later(self):
+        kickoff = datetime(2026, 7, 4, 20, 0)
+
+        assert OddsParser._history_timestamp("4 Jul, 18:00", kickoff, "Europe/London", WINTER_NOW) == (
+            "2026-07-04T19:00:00"
+        )
+
+    @pytest.mark.parametrize("now", [SUMMER_NOW, WINTER_NOW])
+    def test_history_in_utc_is_read_as_shown(self, now):
+        kickoff = datetime(2025, 6, 11, 20, 0)
+
+        assert OddsParser._history_timestamp("10 Jun, 14:30", kickoff, "UTC", now) == "2025-06-10T14:30:00"
+
+    def test_history_shown_past_midnight_on_new_year_keeps_the_year_it_is_shown_in(self):
+        """Kickoff 23:30 on 31 Dec 2025 in London, scraped in BST: the page shows it at 00:30 on 1 January."""
+        kickoff = datetime(2025, 12, 31, 23, 30)
+
+        assert OddsParser._history_timestamp("1 Jan, 00:10", kickoff, "Europe/London", SUMMER_NOW) == (
+            "2025-12-31T23:10:00"
+        )
+        assert OddsParser._history_timestamp("24 Dec, 10:00", kickoff, "Europe/London", SUMMER_NOW) == (
+            "2025-12-24T09:00:00"
+        )
+
+    def test_history_in_the_autumn_fold_reads_both_instants_as_one_local_clock(self):
+        """25 Oct 2026 in London: 00:30 and 01:30 UTC are both 01:30 local, and naive output keeps it that way."""
+        kickoff = datetime(2026, 10, 25, 15, 0)
+
+        assert OddsParser._history_timestamp("25 Oct, 00:30", kickoff, "Europe/London", WINTER_NOW) == (
+            "2026-10-25T01:30:00"
+        )
+        assert OddsParser._history_timestamp("25 Oct, 01:30", kickoff, "Europe/London", WINTER_NOW) == (
+            "2026-10-25T01:30:00"
+        )
+
+    def test_history_timestamps_read_the_clock_once(self):
+        """Two reads across a DST switch would put the year rule and the conversion an hour apart."""
+        moments = iter([SUMMER_NOW, WINTER_NOW])
+
+        class SwitchingClock(datetime):
+            @classmethod
+            def now(cls, tz=None):
+                moment = next(moments)
+                return moment if tz is None else moment.astimezone(tz)
+
+        kickoff = datetime(2026, 1, 4, 17, 30)
+        with (
+            patch("oddsharvester.utils.page_time.datetime", SwitchingClock),
+            patch("oddsharvester.core.market_extraction.odds_parser.datetime", frozen_clock(SUMMER_NOW)),
+        ):
+            timestamp = OddsParser._history_timestamp("4 Jan, 17:58", kickoff, "Europe/London")
+
+        assert timestamp == "2026-01-04T16:58:00"
+
+    def test_parse_odds_history_modal_reads_every_time_at_the_page_offset(self, odds_parser):
+        html = self._history_html([("4 Jan, 17:58", "1.46")], opening=("27 Dec, 18:08", "1.60"))
+
+        with patch("oddsharvester.utils.page_time.datetime", frozen_clock(SUMMER_NOW)):
+            result = odds_parser.parse_odds_history_modal(
+                html, reference=datetime(2026, 1, 4, 17, 30), tz_name="Europe/London"
+            )
+
+        assert result == {
+            "odds_history": [{"timestamp": "2026-01-04T16:58:00", "odds": 1.46}],
+            "opening_odds": {"timestamp": "2025-12-27T17:08:00", "odds": 1.6},
+        }
+
+    def test_history_is_kept_when_the_opening_block_is_missing(self, odds_parser):
+        html = self._history_html([("10 Jun, 14:30", "1.95")])
+
+        result = odds_parser.parse_odds_history_modal(html, reference=datetime(2025, 6, 11, 20, 0))
+
+        assert result == {"odds_history": [{"timestamp": "2025-06-10T14:30:00", "odds": 1.95}], "opening_odds": None}
+
+    def test_parse_market_odds_success(self, odds_parser):
+        """Test successful parsing of market odds."""
+        # Arrange
+        odds_labels = ["1", "X", "2"]
+
+        # Act
+        result = odds_parser.parse_market_odds(self.SAMPLE_HTML_ODDS, "FullTime", odds_labels)
+
+        # Assert
+        assert len(result) == 2
+        assert result[0]["bookmaker_name"] == "Bookmaker1"
+        assert result[0]["1"] == "1.90"
+        assert result[0]["X"] == "3.50"
+        assert result[0]["2"] == "4.20"
+        assert result[0]["period"] == "FullTime"
+        assert result[1]["bookmaker_name"] == "Bookmaker2"
+
+    def test_parse_market_odds_with_target_bookmaker(self, odds_parser):
+        """Test parsing odds with a specific target bookmaker."""
+        # Arrange
+        odds_labels = ["1", "X", "2"]
+        target_bookmaker = "Bookmaker1"
+
+        # Act
+        result = odds_parser.parse_market_odds(self.SAMPLE_HTML_ODDS, "FullTime", odds_labels, target_bookmaker)
+
+        # Assert
+        assert len(result) == 1
+        assert result[0]["bookmaker_name"] == "Bookmaker1"
+        assert result[0]["1"] == "1.90"
+        assert result[0]["X"] == "3.50"
+        assert result[0]["2"] == "4.20"
+
+    def test_parse_market_odds_no_bookmakers(self, odds_parser):
+        """Test parsing odds when no bookmakers are found."""
+        # Arrange
+        odds_labels = ["1", "X", "2"]
+        empty_html = "<div>No bookmakers found</div>"
+
+        # Act
+        result = odds_parser.parse_market_odds(empty_html, "FullTime", odds_labels)
+
+        # Assert
+        assert len(result) == 0
+
+    def test_parse_market_odds_missing_data(self, odds_parser):
+        """Test parsing odds when a bookmaker has incomplete data."""
+        # Arrange
+        odds_labels = ["1", "X", "2", "Extras"]
+
+        # Act
+        result = odds_parser.parse_market_odds(self.SAMPLE_HTML_ODDS, "FullTime", odds_labels)
+
+        # Assert
+        assert len(result) == 0
+
+    @pytest.mark.parametrize(
+        "broken_html",
+        [
+            odds_table('<tr><td><a href="/proxy/bookmakers/x/link/"><p>Bookmaker1</p></a></td></tr>'),
+            '<div class="border-black-borders flex h-9"><img class="bookmaker-logo" title="Bookmaker1">'
+            "<!-- Data manquante/corrompue --></div>",
+        ],
+        ids=["row_without_odds_cells", "comment_only_block"],
+    )
+    def test_parse_market_odds_error_handling(self, odds_parser, broken_html):
+        """A bookmaker row with no odds cells, or a block holding only a comment, yields no odds."""
+        result = odds_parser.parse_market_odds(broken_html, "FullTime", ["1", "X", "2"])
+
+        assert result == []
+
+    def test_parse_market_odds_duplicate_odds_removal(self, odds_parser):
+        """Doubled odds strings ('1.901.90') are collapsed to a single value."""
+        html = self._table([self._bm_row("Bookmaker1", ("1.901.90", "3.50"))])
+
+        result = odds_parser.parse_market_odds(html, "FullTime", ["1", "X"])
+
+        assert len(result) == 1
+        assert result[0]["1"] == "1.90"
+
+    def test_parse_market_odds_skips_nested_wrapper_rows(self, odds_parser):
+        """An expanded submarket <tr> wraps a nested table; only leaf rows count."""
+        inner = f"<table><tbody>{self._bm_row('Bookmaker1', ('1.90', '3.50', '4.20'))}</tbody></table>"
+        html = self._table([f"<tr><td>{inner}</td></tr>"])
+
+        result = odds_parser.parse_market_odds(html, "FullTime", ["1", "X", "2"])
+
+        assert len(result) == 1
+        assert result[0]["bookmaker_name"] == "Bookmaker1"
+
+    def test_parse_odds_history_modal_success(self, odds_parser):
+        """Every point and the opening odds are dated from the kickoff reference."""
+        result = odds_parser.parse_odds_history_modal(
+            self.SAMPLE_HTML_ODDS_HISTORY, reference=datetime(2025, 6, 10, 20, 0)
+        )
+
+        assert result == {
+            "odds_history": [
+                {"timestamp": "2025-06-10T14:30:00", "odds": 1.95},
+                {"timestamp": "2025-06-10T12:00:00", "odds": 1.90},
+            ],
+            "opening_odds": {"timestamp": "2025-06-10T08:00:00", "odds": 1.85},
+        }
+
+    def test_parse_odds_history_modal_invalid_html(self, odds_parser):
+        """An unreadable modal gives the empty block, never {}."""
+        result = odds_parser.parse_odds_history_modal("<div>Invalid HTML content</div>")
+
+        assert result == {"odds_history": [], "opening_odds": None}
+
+    def test_parse_odds_history_modal_invalid_date(self, odds_parser):
+        """A timestamp that does not parse drops its own point; the opening odds go the same way."""
+        html = self._history_html([("10 Jun, 14:30", "1.95"), ("Yesterday", "1.90")], opening=("Opened early", "1.85"))
+
+        result = odds_parser.parse_odds_history_modal(html, reference=datetime(2025, 6, 10, 20, 0))
+
+        assert result == {"odds_history": [{"timestamp": "2025-06-10T14:30:00", "odds": 1.95}], "opening_odds": None}
+
+    def test_parse_odds_history_modal_fractional_odds(self, odds_parser):
+        """Test parsing odds history when bookmaker returns fractional odds."""
+        fractional_html = """
+        <div class="flex w-max flex-col gap-2">
+            <h3 class="text-sm font-semibold uppercase leading-6">Odds movement</h3>
+            <div class="flex flex-row gap-3">
+                <div class="flex flex-col gap-1">
+                    <div class="text-[10px] font-normal">10 Jun, 14:30</div>
+                    <div class="text-[10px] font-normal">10 Jun, 12:00</div>
+                </div>
+                <div class="flex flex-col gap-1">
+                    <div class="text-[10px] font-bold">4/5</div>
+                    <div class="text-[10px] font-bold">21/20</div>
+                </div>
+                <div class="flex flex-col gap-1">
+                    <div class="text-[10px] font-bold text-green-dark">-0.11</div>
+                </div>
+            </div>
+            <div class="mt-2 gap-1">
+                <div class="text-[10px] font-bold">Opening odds:</div>
+                <div class="flex gap-1"><div class="font-normal">10 Jun, 08:00</div>
+                <div class="font-bold">9/2</div></div>
+            </div>
+        </div>
+        """
+        result = odds_parser.parse_odds_history_modal(fractional_html, reference=datetime(2025, 6, 10, 20, 0))
+
+        assert [point["timestamp"] for point in result["odds_history"]] == [
+            "2025-06-10T14:30:00",
+            "2025-06-10T12:00:00",
+        ]
+        assert result["odds_history"][0]["odds"] == pytest.approx(1.8)  # 4/5 + 1
+        assert result["odds_history"][1]["odds"] == pytest.approx(2.05)  # 21/20 + 1
+        assert result["opening_odds"]["timestamp"] == "2025-06-10T08:00:00"
+        assert result["opening_odds"]["odds"] == pytest.approx(5.5)  # 9/2 + 1
+
+    def test_parse_market_odds_bookmaker_name_fallback_a_tag(self, odds_parser):
+        """Name resolution falls back to <a title> on rows showing only a logo."""
+        html = self._table([self._bm_row("Betfred", ("1.90", "2.10"), name_via="a_title")])
+
+        result = odds_parser.parse_market_odds(html, "FullTime", ["home", "away"])
+
+        assert len(result) == 1
+        assert result[0]["bookmaker_name"] == "Betfred"
+
+    def test_parse_market_odds_bookmaker_name_cta_normalised(self, odds_parser):
+        """CTA-style <a title> values are normalised to clean bookmaker names."""
+        html = self._table([self._bm_row("Go to Betfair Exchange website!", ("1.90", "2.10"), name_via="a_title")])
+
+        result = odds_parser.parse_market_odds(html, "FullTime", ["home", "away"])
+
+        assert len(result) == 1
+        assert result[0]["bookmaker_name"] == "Betfair Exchange"
+
+    def test_parse_market_odds_names_a_row_with_no_label_or_title_after_its_link(self, odds_parser):
+        """The logo alt is a generic "Bookmaker": a row with no label and no title is named from its logo link."""
+        html = self._table([self._bm_row("", ("1.90", "2.10"), name_via="logo_only")])
+
+        result = odds_parser.parse_market_odds(html, "FullTime", ["home", "away"])
+
+        assert [entry["bookmaker_name"] for entry in result] == ["x"]
+
+    def test_parse_market_odds_reads_the_logo_only_unibet_row(self, odds_parser):
+        """The Unibet.fr row as the site serves it: a logo link, no label, no title."""
+        unibet = (
+            '<tr class="h-9"><td><div class="flex"><div class="flex h-8 shrink-0">'
+            '<a href="/proxy/bookmakers/unibet-fr/link/"><div><img alt="Bookmaker"/></div></a></div>'
+            '<div class="shrink-0"></div></div></td>'
+            + "".join(odds_cell(value, betslip_slug="unibet-fr") for value in ("1.32", "4.35", "6.30"))
+            + '<td class="w-[68px]"><span>94.1%</span></td></tr>'
+        )
+        html = self._table([unibet, self._bm_row("Winamax", ("1.33", "4.40", "6.25"))])
+
+        result = odds_parser.parse_market_odds(html, "FullTime", ["1", "X", "2"])
+
+        assert [(e["bookmaker_name"], e["1"], e["X"], e["2"]) for e in result] == [
+            ("Unibet.fr", "1.32", "4.35", "6.30"),
+            ("Winamax", "1.33", "4.40", "6.25"),
+        ]
+
+    def test_parse_market_odds_warns_on_a_row_it_cannot_name(self, odds_parser, caplog):
+        """A bookmaker row whose link carries no slug cannot be named: skipped, but not silently."""
+        cells = "".join(odds_cell(o) for o in ("1.90", "2.10"))
+        row = f'<tr class="h-9"><td><a href="/proxy/bookmakers/"><img alt="Bookmaker"/></a></td>{cells}</tr>'
+
+        with caplog.at_level(logging.WARNING):
+            result = odds_parser.parse_market_odds(self._table([row]), "FullTime", ["home", "away"])
+
+        assert result == []
+        assert "no name" in caplog.text
+
+    def test_parse_market_odds_no_bookmaker_name_skips_row(self, odds_parser):
+        """Collapsed submarket line rows carry no bookmaker link and must never be
+        parsed as bookmakers (live regression)."""
+        html = self._table([line_row("Over/Under +2.5", ["1.68", "1.98"])])
+
+        result = odds_parser.parse_market_odds(html, "FullTime", ["odds_over", "odds_under"])
+
+        assert len(result) == 0
+
+    def test_parse_market_odds_skips_peripheral_rows(self, odds_parser):
+        """My coupon / User Predictions / OddsAlert rows carry no bookmaker link."""
+        coupon = "<tr><td>My coupon</td><td>+</td></tr>"
+        predictions = "<tr><td>User Predictions</td><td>0%</td></tr>"
+        html = self._table([self._bm_row("Betclic.fr", ("1.10", "14.00", "7.05"))], extra_rows=coupon + predictions)
+
+        result = odds_parser.parse_market_odds(html, "FullTime", ["1", "X", "2"])
+
+        assert [r["bookmaker_name"] for r in result] == ["Betclic.fr"]
+
+    def test_parse_market_odds_flags_fully_blocked_row(self, odds_parser):
+        """A row whose every odds cell is struck through reports all labels and keeps its values."""
+        html = self._table([self._bm_row("Betclic.fr", ("1.60", "3.30", "4.75"), blocked=(0, 1, 2))])
+
+        result = odds_parser.parse_market_odds(html, "FullTime", ["1", "X", "2"])
+
+        assert len(result) == 1
+        assert result[0]["bookmaker_name"] == "Betclic.fr"
+        assert result[0]["blocked_outcomes"] == ["1", "X", "2"]
+        # A struck-through price is still the last price the bookmaker showed.
+        assert result[0]["1"] == "1.60"
+        assert result[0]["X"] == "3.30"
+        assert result[0]["2"] == "4.75"
+
+    def test_parse_market_odds_flags_partially_blocked_row(self, odds_parser):
+        """Only the struck-through outcome is reported, in odds_labels order."""
+        html = self._table([self._bm_row("Winamax", ("1.44", "4.10", "5.00"), blocked=(1,))])
+
+        result = odds_parser.parse_market_odds(html, "FullTime", ["1", "X", "2"])
+
+        assert len(result) == 1
+        assert result[0]["blocked_outcomes"] == ["X"]
+        assert result[0]["1"] == "1.44"
+        assert result[0]["X"] == "4.10"
+        assert result[0]["2"] == "5.00"
+
+    def test_parse_market_odds_flags_blocked_odds_link_variant(self, odds_parser):
+        """The line-through class must be detected on <a> odds links too."""
+        row = (
+            '<tr><td><a href="/proxy/bookmakers/bet365/link/"><p>Bet365</p></a></td>'
+            '<td class="w-[var(--event-table-odd-col)]"><div class="font-bold">'
+            '<a class="odds-link underline line-through" href="/proxy/bookmakers/bet365/betslip/p/">1.85</a>'
+            "</div></td>" + odds_cell("3.40", betslip_slug="bet365") + "</tr>"
+        )
+        html = self._table([row])
+
+        result = odds_parser.parse_market_odds(html, "FullTime", ["1", "X"])
+
+        assert len(result) == 1
+        assert result[0]["blocked_outcomes"] == ["1"]
+        assert result[0]["1"] == "1.85"
+        assert result[0]["X"] == "3.40"
+
+    def test_parse_market_odds_omits_key_when_nothing_blocked(self, odds_parser):
+        """Output for the nominal case is unchanged: no blocked_outcomes key at all."""
+        result = odds_parser.parse_market_odds(self.SAMPLE_HTML_ODDS, "FullTime", ["1", "X", "2"])
+
+        assert len(result) == 2
+        assert "blocked_outcomes" not in result[0]
+        assert "blocked_outcomes" not in result[1]
+
+    def test_parse_market_odds_does_not_flag_bookmaker_without_odds(self, odds_parser):
+        """A bookmaker with no price renders '-' with no line-through class:
+        'no odds' and 'blocked' must stay distinguishable."""
+        html = self._table([self._bm_row("Bets.io", ("-", "-"))])
+
+        result = odds_parser.parse_market_odds(html, "FullTime", ["home", "away"])
+
+        assert len(result) == 1
+        assert "blocked_outcomes" not in result[0]
+        assert result[0]["home"] == "-"
+
+    def test_logger_initialization(self, odds_parser):
+        """Test that logger is properly initialized."""
+        assert odds_parser.logger is not None
+        assert odds_parser.logger.name == "OddsParser"
+
+
+class TestParseOddsValue:
+    """Unit tests for the parse_odds_value helper."""
+
+    def test_decimal_passthrough(self):
+        assert parse_odds_value("1.90") == 1.90
+
+    def test_fractional_simple(self):
+        assert parse_odds_value("4/5") == pytest.approx(1.8)
+
+    def test_fractional_evens(self):
+        assert parse_odds_value("1/1") == pytest.approx(2.0)
+
+    def test_fractional_long_odds(self):
+        assert parse_odds_value("9/2") == pytest.approx(5.5)
+
+    def test_fractional_short_odds(self):
+        assert parse_odds_value("1/5") == pytest.approx(1.2)
+
+    def test_fractional_large_denominator(self):
+        assert parse_odds_value("87/100") == pytest.approx(1.87)
+
+    def test_invalid_raises(self):
+        with pytest.raises(ValueError):
+            parse_odds_value("abc")

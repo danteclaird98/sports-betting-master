@@ -1,0 +1,624 @@
+{
+  "status": "RETROSPECTIVE_BASELINE_EVALUATED",
+  "liveApproved": false,
+  "source": {
+    "name": "nflverse/nfldata games.csv",
+    "url": "https://raw.githubusercontent.com/nflverse/nfldata/4a40176ea8528161122590ddd92a7cbf551de5a9/data/games.csv",
+    "commit": "4a40176ea8528161122590ddd92a7cbf551de5a9",
+    "sha256": "0bd294451070f3151685eaa239129bf78206b925320c2c8a58c61e4947e25905",
+    "downloadedAt": "2026-10-04T17:20:19.936998+00:00",
+    "rows": 7548,
+    "historyVintageVerified": false
+  },
+  "scope": "NFL game outcomes: away win / tie / home win, including overtime final scores",
+  "model": {
+    "family": "regularized multinomial logistic regression",
+    "features": [
+      "prior_eight_game_margin_difference",
+      "prior_eight_game_win_rate_difference",
+      "home_venue_indicator"
+    ],
+    "classes": [
+      "away win",
+      "tie",
+      "home win"
+    ],
+    "weights": [
+      [
+        -0.23499161260280169,
+        -0.0713835232210113,
+        -0.0071752969863300734
+      ],
+      [
+        0.004909797438080426,
+        -0.02286105624819118,
+        -0.06533709291804836
+      ],
+      [
+        0.23008181516472126,
+        0.09424457946920266,
+        0.0725123899043782
+      ]
+    ],
+    "intercepts": [
+      1.5308439530756517,
+      -3.391477613475831,
+      1.8606336604001452
+    ],
+    "means": [
+      -0.09813573523250943,
+      -0.00487012987012987,
+      0.9857561793045664
+    ],
+    "scales": [
+      9.491654393347734,
+      0.2999864347165283,
+      0.11849444825572907
+    ],
+    "C": 0.01,
+    "version": "nfl-independent-outcome-baseline-v1"
+  },
+  "splits": [
+    {
+      "name": "train",
+      "seasons": [
+        2010,
+        2018
+      ],
+      "n": 2387,
+      "ties": 7,
+      "from": "2010-09-09",
+      "to": "2019-02-03"
+    },
+    {
+      "name": "validation",
+      "seasons": [
+        2019,
+        2021
+      ],
+      "n": 813,
+      "ties": 3,
+      "from": "2019-09-05",
+      "to": "2022-02-13"
+    },
+    {
+      "name": "held-out test",
+      "seasons": [
+        2022,
+        2025
+      ],
+      "n": 1139,
+      "ties": 3,
+      "from": "2022-09-08",
+      "to": "2026-02-08"
+    }
+  ],
+  "test": {
+    "n": 1139,
+    "brier": 0.4568344647700966,
+    "logLoss": 0.6616548827544112,
+    "calibration": [
+      {
+        "bin": 0,
+        "n": 0,
+        "predicted": null,
+        "observed": null
+      },
+      {
+        "bin": 1,
+        "n": 2,
+        "predicted": 0.1990814754726048,
+        "observed": 0.0
+      },
+      {
+        "bin": 2,
+        "n": 25,
+        "predicted": 0.2682367272136762,
+        "observed": 0.28
+      },
+      {
+        "bin": 3,
+        "n": 101,
+        "predicted": 0.35574810455765704,
+        "observed": 0.3564356435643564
+      },
+      {
+        "bin": 4,
+        "n": 217,
+        "predicted": 0.455126177945376,
+        "observed": 0.4055299539170507
+      },
+      {
+        "bin": 5,
+        "n": 294,
+        "predicted": 0.5514109423260558,
+        "observed": 0.5170068027210885
+      },
+      {
+        "bin": 6,
+        "n": 275,
+        "predicted": 0.6485782997688141,
+        "observed": 0.6472727272727272
+      },
+      {
+        "bin": 7,
+        "n": 176,
+        "predicted": 0.7392898399104055,
+        "observed": 0.7272727272727273
+      },
+      {
+        "bin": 8,
+        "n": 49,
+        "predicted": 0.8309696403235364,
+        "observed": 0.8163265306122449
+      },
+      {
+        "bin": 9,
+        "n": 0,
+        "predicted": null,
+        "observed": null
+      }
+    ]
+  },
+  "baseRate": {
+    "n": 1139,
+    "brier": 0.49779857090332663,
+    "logLoss": 0.7048501705297513,
+    "calibration": [
+      {
+        "bin": 0,
+        "n": 0,
+        "predicted": null,
+        "observed": null
+      },
+      {
+        "bin": 1,
+        "n": 0,
+        "predicted": null,
+        "observed": null
+      },
+      {
+        "bin": 2,
+        "n": 0,
+        "predicted": null,
+        "observed": null
+      },
+      {
+        "bin": 3,
+        "n": 0,
+        "predicted": null,
+        "observed": null
+      },
+      {
+        "bin": 4,
+        "n": 0,
+        "predicted": null,
+        "observed": null
+      },
+      {
+        "bin": 5,
+        "n": 1139,
+        "predicted": 0.5732217573221757,
+        "observed": 0.5522388059701493
+      },
+      {
+        "bin": 6,
+        "n": 0,
+        "predicted": null,
+        "observed": null
+      },
+      {
+        "bin": 7,
+        "n": 0,
+        "predicted": null,
+        "observed": null
+      },
+      {
+        "bin": 8,
+        "n": 0,
+        "predicted": null,
+        "observed": null
+      },
+      {
+        "bin": 9,
+        "n": 0,
+        "predicted": null,
+        "observed": null
+      }
+    ]
+  },
+  "validation": {
+    "n": 813,
+    "brier": 0.4621345466390414,
+    "logLoss": 0.6717244737169586,
+    "calibration": [
+      {
+        "bin": 0,
+        "n": 0,
+        "predicted": null,
+        "observed": null
+      },
+      {
+        "bin": 1,
+        "n": 3,
+        "predicted": 0.1605370892940509,
+        "observed": 0.3333333333333333
+      },
+      {
+        "bin": 2,
+        "n": 19,
+        "predicted": 0.2573423080745455,
+        "observed": 0.15789473684210525
+      },
+      {
+        "bin": 3,
+        "n": 87,
+        "predicted": 0.35780983174688513,
+        "observed": 0.2988505747126437
+      },
+      {
+        "bin": 4,
+        "n": 141,
+        "predicted": 0.45240600550110066,
+        "observed": 0.3475177304964539
+      },
+      {
+        "bin": 5,
+        "n": 190,
+        "predicted": 0.5544587319800588,
+        "observed": 0.49473684210526314
+      },
+      {
+        "bin": 6,
+        "n": 213,
+        "predicted": 0.6488547963709433,
+        "observed": 0.6103286384976526
+      },
+      {
+        "bin": 7,
+        "n": 120,
+        "predicted": 0.7444274414762826,
+        "observed": 0.6666666666666666
+      },
+      {
+        "bin": 8,
+        "n": 40,
+        "predicted": 0.8363057100259003,
+        "observed": 0.875
+      },
+      {
+        "bin": 9,
+        "n": 0,
+        "predicted": null,
+        "observed": null
+      }
+    ]
+  },
+  "bySeason": [
+    {
+      "season": 2022,
+      "n": 284,
+      "brier": 0.4530576224814255,
+      "logLoss": 0.6754933389451824,
+      "calibration": [
+        {
+          "bin": 0,
+          "n": 0,
+          "predicted": null,
+          "observed": null
+        },
+        {
+          "bin": 1,
+          "n": 0,
+          "predicted": null,
+          "observed": null
+        },
+        {
+          "bin": 2,
+          "n": 4,
+          "predicted": 0.2897816707912508,
+          "observed": 0.25
+        },
+        {
+          "bin": 3,
+          "n": 23,
+          "predicted": 0.35506939746712723,
+          "observed": 0.30434782608695654
+        },
+        {
+          "bin": 4,
+          "n": 48,
+          "predicted": 0.45041114338093896,
+          "observed": 0.4166666666666667
+        },
+        {
+          "bin": 5,
+          "n": 82,
+          "predicted": 0.5559028017502,
+          "observed": 0.5121951219512195
+        },
+        {
+          "bin": 6,
+          "n": 80,
+          "predicted": 0.6454254245767347,
+          "observed": 0.675
+        },
+        {
+          "bin": 7,
+          "n": 40,
+          "predicted": 0.73385945372193,
+          "observed": 0.75
+        },
+        {
+          "bin": 8,
+          "n": 7,
+          "predicted": 0.8324620459371767,
+          "observed": 0.8571428571428571
+        },
+        {
+          "bin": 9,
+          "n": 0,
+          "predicted": null,
+          "observed": null
+        }
+      ]
+    },
+    {
+      "season": 2023,
+      "n": 285,
+      "brier": 0.4690017832778876,
+      "logLoss": 0.6639864272559259,
+      "calibration": [
+        {
+          "bin": 0,
+          "n": 0,
+          "predicted": null,
+          "observed": null
+        },
+        {
+          "bin": 1,
+          "n": 0,
+          "predicted": null,
+          "observed": null
+        },
+        {
+          "bin": 2,
+          "n": 6,
+          "predicted": 0.27060410035558424,
+          "observed": 0.16666666666666666
+        },
+        {
+          "bin": 3,
+          "n": 20,
+          "predicted": 0.3533439797330049,
+          "observed": 0.45
+        },
+        {
+          "bin": 4,
+          "n": 61,
+          "predicted": 0.4520818705761292,
+          "observed": 0.45901639344262296
+        },
+        {
+          "bin": 5,
+          "n": 71,
+          "predicted": 0.5529728032615978,
+          "observed": 0.5352112676056338
+        },
+        {
+          "bin": 6,
+          "n": 68,
+          "predicted": 0.6509908775650142,
+          "observed": 0.6323529411764706
+        },
+        {
+          "bin": 7,
+          "n": 52,
+          "predicted": 0.7405152058483869,
+          "observed": 0.6923076923076923
+        },
+        {
+          "bin": 8,
+          "n": 7,
+          "predicted": 0.8286043941083142,
+          "observed": 0.8571428571428571
+        },
+        {
+          "bin": 9,
+          "n": 0,
+          "predicted": null,
+          "observed": null
+        }
+      ]
+    },
+    {
+      "season": 2024,
+      "n": 285,
+      "brier": 0.45880277608342535,
+      "logLoss": 0.6542202670221641,
+      "calibration": [
+        {
+          "bin": 0,
+          "n": 0,
+          "predicted": null,
+          "observed": null
+        },
+        {
+          "bin": 1,
+          "n": 1,
+          "predicted": 0.19956893718922225,
+          "observed": 0.0
+        },
+        {
+          "bin": 2,
+          "n": 4,
+          "predicted": 0.25931897114866675,
+          "observed": 0.75
+        },
+        {
+          "bin": 3,
+          "n": 29,
+          "predicted": 0.3550492139527456,
+          "observed": 0.3448275862068966
+        },
+        {
+          "bin": 4,
+          "n": 56,
+          "predicted": 0.4554198259643953,
+          "observed": 0.35714285714285715
+        },
+        {
+          "bin": 5,
+          "n": 69,
+          "predicted": 0.5447840510920519,
+          "observed": 0.5362318840579711
+        },
+        {
+          "bin": 6,
+          "n": 72,
+          "predicted": 0.6504302944752047,
+          "observed": 0.6111111111111112
+        },
+        {
+          "bin": 7,
+          "n": 37,
+          "predicted": 0.7471991234875464,
+          "observed": 0.8108108108108109
+        },
+        {
+          "bin": 8,
+          "n": 17,
+          "predicted": 0.8361933419173618,
+          "observed": 0.7058823529411765
+        },
+        {
+          "bin": 9,
+          "n": 0,
+          "predicted": null,
+          "observed": null
+        }
+      ]
+    },
+    {
+      "season": 2025,
+      "n": 285,
+      "brier": 0.4464624251594422,
+      "logLoss": 0.6529680537810066,
+      "calibration": [
+        {
+          "bin": 0,
+          "n": 0,
+          "predicted": null,
+          "observed": null
+        },
+        {
+          "bin": 1,
+          "n": 1,
+          "predicted": 0.19859401375598734,
+          "observed": 0.0
+        },
+        {
+          "bin": 2,
+          "n": 11,
+          "predicted": 0.26235372822261177,
+          "observed": 0.18181818181818182
+        },
+        {
+          "bin": 3,
+          "n": 29,
+          "predicted": 0.35864329721688715,
+          "observed": 0.3448275862068966
+        },
+        {
+          "bin": 4,
+          "n": 52,
+          "predicted": 0.46273348793675984,
+          "observed": 0.38461538461538464
+        },
+        {
+          "bin": 5,
+          "n": 72,
+          "predicted": 0.5511058158808192,
+          "observed": 0.4861111111111111
+        },
+        {
+          "bin": 6,
+          "n": 55,
+          "predicted": 0.6477570471572617,
+          "observed": 0.6727272727272727
+        },
+        {
+          "bin": 7,
+          "n": 47,
+          "predicted": 0.7363292638765707,
+          "observed": 0.6808510638297872
+        },
+        {
+          "bin": 8,
+          "n": 18,
+          "predicted": 0.8263755823855389,
+          "observed": 0.8888888888888888
+        },
+        {
+          "bin": 9,
+          "n": 0,
+          "predicted": null,
+          "observed": null
+        }
+      ]
+    }
+  ],
+  "uncertainty": {
+    "method": "1,000 paired season/week-block bootstrap resamples; model minus base-rate log loss, negative favors model",
+    "interval95": [
+      -0.05922188815028219,
+      -0.026810724740362064
+    ],
+    "blocks": 88,
+    "perWagerProbabilityBounds": null
+  },
+  "brierDefinition": "Multiclass sum of squared probability errors per event; range 0 to 2. Not directly comparable to binary Brier.",
+  "marketBenchmark": {
+    "status": "UNTIMESTAMPED_ARCHIVED_BENCHMARK_ONLY",
+    "n": 1136,
+    "excludedTies": 3,
+    "target": "Home win conditional on a decisive game; both sides normalized proportionally, ties kept in the original three-way model.",
+    "model": {
+      "brier": 0.2270372133770338,
+      "logLoss": 0.6451151104951135
+    },
+    "market": {
+      "brier": 0.20995252368271963,
+      "logLoss": 0.6070395437731116
+    },
+    "pairedLogLossDifference95": [
+      0.025981056570745217,
+      0.05000682544173759
+    ],
+    "modelImproves": false,
+    "limitation": "Archive quote timestamps, bookmaker, contract rules and execution availability are not recorded. No ROI, decision-time edge or closing-line equivalence is claimed."
+  },
+  "estimatedEv": null,
+  "wageringReturns": null,
+  "conclusion": "Candidate beats training base rate but is inferior to the supplied archived moneyline benchmark; not approved for betting.",
+  "promotionBlockers": [
+    "Held-out candidate does not beat the supplied archived market benchmark.",
+    "No timestamped executable price history or matched settlement-contract replay.",
+    "Modern source snapshot can contain revisions; historical data vintage not independently verified.",
+    "No validated per-wager uncertainty bounds or prospective calibration.",
+    "No live feature adapter or player-prop distributions; this baseline only covers game outcomes.",
+    "Beating base rate does not establish an edge over sportsbook prices."
+  ],
+  "replayAssumptions": [
+    "Fixed season split declared before fitting; validation selects C from [.01,.1,1]; test unused for fitting or parameter selection.",
+    "Features use only prior completed games with a four-calendar-day embargo; eight-game windows span seasons. No odds, injuries, weather or later results used as features.",
+    "Ties are explicitly modeled as a third outcome; no tied games silently discarded.",
+    "No odds observation, settlement confirmation or source availability timestamps are invented.",
+    "Historical data was downloaded from a pinned source revision; this is retrospective evaluation, not prospective validation."
+  ],
+  "audit": {
+    "heldOutRows": 1139,
+    "predictionLedgerSha256": "01f3c29ebf8d50789e3303f06e3fce278960e4c66eb8d892c4007d6fea573226",
+    "reproduction": "Run tests/build_nfl_baseline.py against the pinned source URL to reproduce predictions and full diagnostics."
+  }
+}

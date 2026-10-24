@@ -1,0 +1,43 @@
+{
+  "agent": "edgeboard-integration",
+  "task_id": "edgeboard-integration-001",
+  "base_sha": "8a0a7c440ce5736c3095a3e31aaf2d6d35d72db9",
+  "head_sha": "f9a48c6ca0abe162594ae00bc363d64846170607",
+  "changed_paths": [
+    "edgeodds/read_api.py",
+    "edgeodds/tests/test_ingestion.py",
+    "edgeodds/integrations/__init__.py",
+    "edgeodds/integrations/edgeboard.py",
+    "edgeodds/tests/test_edgeboard_integration.py",
+    "docs/integration/EDGEBOARD_V1.md"
+  ],
+  "changed_contracts": [
+    "verification-state"
+  ],
+  "tests_run": [
+    "python -m unittest discover -s edgeodds/tests -v"
+  ],
+  "live_data_used": false,
+  "claims": [
+    {
+      "claim": "EdgeBoard receives a versioned provider-independent read contract rather than provider-native payload structure",
+      "evidence": "test_schema_is_provider_independent; test_provider_native_extras_do_not_leak"
+    },
+    {
+      "claim": "Missing quote timestamps, model probability, EV, and settlement verification remain explicitly unavailable",
+      "evidence": "test_missing_quote_clock_and_model_stay_missing; test_unverified_rules_stay_unverified"
+    },
+    {
+      "claim": "The EdgeBoard endpoint remains read-only with execution disabled",
+      "evidence": "test_contract_is_read_only_and_execution_disabled; test_no_writes_or_execution"
+    },
+    {
+      "claim": "Compatibility transformation does not mutate ingestion evidence",
+      "evidence": "test_contract_does_not_mutate_source"
+    }
+  ],
+  "blockers": [
+    "The deployed legacy EdgeBoard application remains inaccessible in the connected AppDeploy workspace, so UI integration cannot be verified end-to-end.",
+    "No live provider credential is available, so the contract is validated against synthetic/fixture ingestion only."
+  ]
+}

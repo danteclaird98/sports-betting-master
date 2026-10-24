@@ -1,0 +1,1435 @@
+{
+  "model_id": "nfl-receptions-nb2-v1-cc50b1f7c6ba76af4f91",
+  "status": "research_only",
+  "player_game_count": 3923,
+  "game_count": 256,
+  "threshold_evaluations": 39230,
+  "fixed_lines": [
+    0.5,
+    1.5,
+    2.5,
+    3.5,
+    4.5,
+    5.5,
+    6.5,
+    7.5,
+    8.5,
+    9.5
+  ],
+  "raw_model": {
+    "brier": 0.08855167611340226,
+    "log_loss": 0.282886195990605,
+    "ece_10_bins": 0.010911247657942085,
+    "reliability_bins": [
+      {
+        "low": 0.0,
+        "high": 0.1,
+        "count": 22130,
+        "predicted": 0.017426326158976685,
+        "observed": 0.023723452327157703
+      },
+      {
+        "low": 0.1,
+        "high": 0.2,
+        "count": 3648,
+        "predicted": 0.1454306987522031,
+        "observed": 0.16255482456140352
+      },
+      {
+        "low": 0.2,
+        "high": 0.3,
+        "count": 2380,
+        "predicted": 0.24691910769625355,
+        "observed": 0.26134453781512607
+      },
+      {
+        "low": 0.3,
+        "high": 0.4,
+        "count": 1958,
+        "predicted": 0.34830910423152467,
+        "observed": 0.35444330949948927
+      },
+      {
+        "low": 0.4,
+        "high": 0.5,
+        "count": 1723,
+        "predicted": 0.4492867254691801,
+        "observed": 0.4619849100406268
+      },
+      {
+        "low": 0.5,
+        "high": 0.6,
+        "count": 1557,
+        "predicted": 0.5494817566462711,
+        "observed": 0.565189466923571
+      },
+      {
+        "low": 0.6,
+        "high": 0.7,
+        "count": 1495,
+        "predicted": 0.649806919907955,
+        "observed": 0.6608695652173913
+      },
+      {
+        "low": 0.7,
+        "high": 0.8,
+        "count": 1407,
+        "predicted": 0.7494661733306273,
+        "observed": 0.7839374555792467
+      },
+      {
+        "low": 0.8,
+        "high": 0.9,
+        "count": 1412,
+        "predicted": 0.8538815772735491,
+        "observed": 0.8817280453257791
+      },
+      {
+        "low": 0.9,
+        "high": 1.0,
+        "count": 1520,
+        "predicted": 0.945272436644641,
+        "observed": 0.9644736842105263
+      }
+    ]
+  },
+  "calibrated_model": {
+    "brier": 0.0887023681940331,
+    "log_loss": 0.2840606317791325,
+    "ece_10_bins": 0.00819037971974437,
+    "reliability_bins": [
+      {
+        "low": 0.0,
+        "high": 0.1,
+        "count": 22488,
+        "predicted": 0.020789195735558243,
+        "observed": 0.02534685165421558
+      },
+      {
+        "low": 0.1,
+        "high": 0.2,
+        "count": 2792,
+        "predicted": 0.13752983210520897,
+        "observed": 0.15687679083094555
+      },
+      {
+        "low": 0.2,
+        "high": 0.3,
+        "count": 2907,
+        "predicted": 0.24829283141216968,
+        "observed": 0.25386996904024767
+      },
+      {
+        "low": 0.3,
+        "high": 0.4,
+        "count": 2233,
+        "predicted": 0.3609807902213389,
+        "observed": 0.36139722346618897
+      },
+      {
+        "low": 0.4,
+        "high": 0.5,
+        "count": 558,
+        "predicted": 0.4479858759298638,
+        "observed": 0.45161290322580644
+      },
+      {
+        "low": 0.5,
+        "high": 0.6,
+        "count": 2461,
+        "predicted": 0.5615619056553385,
+        "observed": 0.5408370581064608
+      },
+      {
+        "low": 0.6,
+        "high": 0.7,
+        "count": 1941,
+        "predicted": 0.6513597090223507,
+        "observed": 0.6888201957753736
+      },
+      {
+        "low": 0.7,
+        "high": 0.8,
+        "count": 4,
+        "predicted": 0.7353534617806312,
+        "observed": 0.5
+      },
+      {
+        "low": 0.8,
+        "high": 0.9,
+        "count": 2101,
+        "predicted": 0.8352760542726009,
+        "observed": 0.8381722989052832
+      },
+      {
+        "low": 0.9,
+        "high": 1.0,
+        "count": 1745,
+        "predicted": 0.9519245116521223,
+        "observed": 0.960458452722063
+      }
+    ]
+  },
+  "rolling_8_game_Poisson_baseline": {
+    "brier": 0.0903166649300566,
+    "log_loss": 0.2977324052712758,
+    "ece_10_bins": 0.025388482752233196,
+    "reliability_bins": [
+      {
+        "low": 0.0,
+        "high": 0.1,
+        "count": 23438,
+        "predicted": 0.012996205793190397,
+        "observed": 0.03101800494922775
+      },
+      {
+        "low": 0.1,
+        "high": 0.2,
+        "count": 2813,
+        "predicted": 0.14383505511895214,
+        "observed": 0.19196587273373622
+      },
+      {
+        "low": 0.2,
+        "high": 0.3,
+        "count": 1988,
+        "predicted": 0.2477629850897212,
+        "observed": 0.25855130784708247
+      },
+      {
+        "low": 0.3,
+        "high": 0.4,
+        "count": 1687,
+        "predicted": 0.351493533355968,
+        "observed": 0.35684647302904565
+      },
+      {
+        "low": 0.4,
+        "high": 0.5,
+        "count": 1272,
+        "predicted": 0.45382487307321745,
+        "observed": 0.42059748427672955
+      },
+      {
+        "low": 0.5,
+        "high": 0.6,
+        "count": 1321,
+        "predicted": 0.5537837533205286,
+        "observed": 0.53444360333081
+      },
+      {
+        "low": 0.6,
+        "high": 0.7,
+        "count": 1217,
+        "predicted": 0.6501656571906821,
+        "observed": 0.571076417419885
+      },
+      {
+        "low": 0.7,
+        "high": 0.8,
+        "count": 1256,
+        "predicted": 0.7471592910707396,
+        "observed": 0.696656050955414
+      },
+      {
+        "low": 0.8,
+        "high": 0.9,
+        "count": 1572,
+        "predicted": 0.8508012441222851,
+        "observed": 0.787531806615776
+      },
+      {
+        "low": 0.9,
+        "high": 1.0,
+        "count": 2666,
+        "predicted": 0.9605284539004909,
+        "observed": 0.9302325581395349
+      }
+    ]
+  },
+  "per_line": {
+    "0.5": {
+      "brier": 0.14904633800954264,
+      "log_loss": 0.4617385300057453,
+      "ece_10_bins": 0.04953233612659706,
+      "reliability_bins": [
+        {
+          "low": 0.2,
+          "high": 0.3,
+          "count": 77,
+          "predicted": 0.2715564261552877,
+          "observed": 0.09090909090909091
+        },
+        {
+          "low": 0.3,
+          "high": 0.4,
+          "count": 259,
+          "predicted": 0.37013739533468704,
+          "observed": 0.24324324324324326
+        },
+        {
+          "low": 0.4,
+          "high": 0.5,
+          "count": 102,
+          "predicted": 0.44786934215300894,
+          "observed": 0.4019607843137255
+        },
+        {
+          "low": 0.5,
+          "high": 0.6,
+          "count": 643,
+          "predicted": 0.5629565024628519,
+          "observed": 0.4307931570762053
+        },
+        {
+          "low": 0.6,
+          "high": 0.7,
+          "count": 623,
+          "predicted": 0.651502654197456,
+          "observed": 0.6243980738362761
+        },
+        {
+          "low": 0.7,
+          "high": 0.8,
+          "count": 2,
+          "predicted": 0.7442767822506215,
+          "observed": 1.0
+        },
+        {
+          "low": 0.8,
+          "high": 0.9,
+          "count": 862,
+          "predicted": 0.8407515547635837,
+          "observed": 0.8016241299303944
+        },
+        {
+          "low": 0.9,
+          "high": 1.0,
+          "count": 1355,
+          "predicted": 0.956641490605863,
+          "observed": 0.9616236162361623
+        }
+      ]
+    },
+    "1.5": {
+      "brier": 0.15692948885217897,
+      "log_loss": 0.481202214471533,
+      "ece_10_bins": 0.027649832384411977,
+      "reliability_bins": [
+        {
+          "low": 0.0,
+          "high": 0.1,
+          "count": 290,
+          "predicted": 0.07650095965360339,
+          "observed": 0.06206896551724138
+        },
+        {
+          "low": 0.1,
+          "high": 0.2,
+          "count": 416,
+          "predicted": 0.13822813837932185,
+          "observed": 0.12740384615384615
+        },
+        {
+          "low": 0.2,
+          "high": 0.3,
+          "count": 560,
+          "predicted": 0.24911836495464437,
+          "observed": 0.225
+        },
+        {
+          "low": 0.3,
+          "high": 0.4,
+          "count": 448,
+          "predicted": 0.36028614715820384,
+          "observed": 0.328125
+        },
+        {
+          "low": 0.4,
+          "high": 0.5,
+          "count": 102,
+          "predicted": 0.4481132075471696,
+          "observed": 0.37254901960784315
+        },
+        {
+          "low": 0.5,
+          "high": 0.6,
+          "count": 460,
+          "predicted": 0.5641254648805882,
+          "observed": 0.5673913043478261
+        },
+        {
+          "low": 0.6,
+          "high": 0.7,
+          "count": 581,
+          "predicted": 0.6546355343095134,
+          "observed": 0.7177280550774526
+        },
+        {
+          "low": 0.7,
+          "high": 0.8,
+          "count": 1,
+          "predicted": 0.7436450003823867,
+          "observed": 0.0
+        },
+        {
+          "low": 0.8,
+          "high": 0.9,
+          "count": 720,
+          "predicted": 0.8351404529849846,
+          "observed": 0.8597222222222223
+        },
+        {
+          "low": 0.9,
+          "high": 1.0,
+          "count": 345,
+          "predicted": 0.937511525985153,
+          "observed": 0.9594202898550724
+        }
+      ]
+    },
+    "2.5": {
+      "brier": 0.14936985016634408,
+      "log_loss": 0.4584800070607091,
+      "ece_10_bins": 0.024067667590365095,
+      "reliability_bins": [
+        {
+          "low": 0.0,
+          "high": 0.1,
+          "count": 1207,
+          "predicted": 0.05040211398185086,
+          "observed": 0.06462303231151616
+        },
+        {
+          "low": 0.1,
+          "high": 0.2,
+          "count": 447,
+          "predicted": 0.13660053744779255,
+          "observed": 0.1476510067114094
+        },
+        {
+          "low": 0.2,
+          "high": 0.3,
+          "count": 413,
+          "predicted": 0.24828387084707784,
+          "observed": 0.2469733656174334
+        },
+        {
+          "low": 0.3,
+          "high": 0.4,
+          "count": 385,
+          "predicted": 0.3653220847106047,
+          "observed": 0.43116883116883115
+        },
+        {
+          "low": 0.4,
+          "high": 0.5,
+          "count": 98,
+          "predicted": 0.44768603154806624,
+          "observed": 0.5
+        },
+        {
+          "low": 0.5,
+          "high": 0.6,
+          "count": 571,
+          "predicted": 0.5602320799358887,
+          "observed": 0.563922942206655
+        },
+        {
+          "low": 0.6,
+          "high": 0.7,
+          "count": 369,
+          "predicted": 0.6503292776242702,
+          "observed": 0.6991869918699187
+        },
+        {
+          "low": 0.7,
+          "high": 0.8,
+          "count": 1,
+          "predicted": 0.7092152822388949,
+          "observed": 0.0
+        },
+        {
+          "low": 0.8,
+          "high": 0.9,
+          "count": 388,
+          "predicted": 0.8299983342438976,
+          "observed": 0.8814432989690721
+        },
+        {
+          "low": 0.9,
+          "high": 1.0,
+          "count": 44,
+          "predicted": 0.9207180384351991,
+          "observed": 0.9318181818181818
+        }
+      ]
+    },
+    "3.5": {
+      "brier": 0.12976358052734213,
+      "log_loss": 0.40559636018541584,
+      "ece_10_bins": 0.033861384670736454,
+      "reliability_bins": [
+        {
+          "low": 0.0,
+          "high": 0.1,
+          "count": 1877,
+          "predicted": 0.03371804728969853,
+          "observed": 0.04581779435269046
+        },
+        {
+          "low": 0.1,
+          "high": 0.2,
+          "count": 323,
+          "predicted": 0.1386346242320193,
+          "observed": 0.20123839009287925
+        },
+        {
+          "low": 0.2,
+          "high": 0.3,
+          "count": 481,
+          "predicted": 0.24970165603355507,
+          "observed": 0.31185031185031187
+        },
+        {
+          "low": 0.3,
+          "high": 0.4,
+          "count": 424,
+          "predicted": 0.35807015876226195,
+          "observed": 0.37028301886792453
+        },
+        {
+          "low": 0.4,
+          "high": 0.5,
+          "count": 95,
+          "predicted": 0.44811320754716955,
+          "observed": 0.3894736842105263
+        },
+        {
+          "low": 0.5,
+          "high": 0.6,
+          "count": 364,
+          "predicted": 0.5627882432012549,
+          "observed": 0.6318681318681318
+        },
+        {
+          "low": 0.6,
+          "high": 0.7,
+          "count": 240,
+          "predicted": 0.6484336568096711,
+          "observed": 0.7333333333333333
+        },
+        {
+          "low": 0.8,
+          "high": 0.9,
+          "count": 118,
+          "predicted": 0.8165386383989471,
+          "observed": 0.847457627118644
+        },
+        {
+          "low": 0.9,
+          "high": 1.0,
+          "count": 1,
+          "predicted": 0.905982905982906,
+          "observed": 1.0
+        }
+      ]
+    },
+    "4.5": {
+      "brier": 0.10128956481249515,
+      "log_loss": 0.32457393673637874,
+      "ece_10_bins": 0.024941633990014908,
+      "reliability_bins": [
+        {
+          "low": 0.0,
+          "high": 0.1,
+          "count": 2325,
+          "predicted": 0.02462850306423578,
+          "observed": 0.03612903225806452
+        },
+        {
+          "low": 0.1,
+          "high": 0.2,
+          "count": 419,
+          "predicted": 0.13866673248337263,
+          "observed": 0.15990453460620524
+        },
+        {
+          "low": 0.2,
+          "high": 0.3,
+          "count": 465,
+          "predicted": 0.24655490023224677,
+          "observed": 0.26881720430107525
+        },
+        {
+          "low": 0.3,
+          "high": 0.4,
+          "count": 271,
+          "predicted": 0.36159719412950814,
+          "observed": 0.4132841328413284
+        },
+        {
+          "low": 0.4,
+          "high": 0.5,
+          "count": 74,
+          "predicted": 0.4485893187254671,
+          "observed": 0.6351351351351351
+        },
+        {
+          "low": 0.5,
+          "high": 0.6,
+          "count": 247,
+          "predicted": 0.5588537141693573,
+          "observed": 0.6032388663967612
+        },
+        {
+          "low": 0.6,
+          "high": 0.7,
+          "count": 109,
+          "predicted": 0.6459917869111133,
+          "observed": 0.7522935779816514
+        },
+        {
+          "low": 0.8,
+          "high": 0.9,
+          "count": 13,
+          "predicted": 0.8073162041252622,
+          "observed": 0.6923076923076923
+        }
+      ]
+    },
+    "5.5": {
+      "brier": 0.0764964874228854,
+      "log_loss": 0.2510232211406371,
+      "ece_10_bins": 0.016524148473377267,
+      "reliability_bins": [
+        {
+          "low": 0.0,
+          "high": 0.1,
+          "count": 2803,
+          "predicted": 0.022402427079025695,
+          "observed": 0.02818408847663218
+        },
+        {
+          "low": 0.1,
+          "high": 0.2,
+          "count": 387,
+          "predicted": 0.13733276397049193,
+          "observed": 0.16795865633074936
+        },
+        {
+          "low": 0.2,
+          "high": 0.3,
+          "count": 314,
+          "predicted": 0.24935591440882585,
+          "observed": 0.321656050955414
+        },
+        {
+          "low": 0.3,
+          "high": 0.4,
+          "count": 221,
+          "predicted": 0.3561579901309094,
+          "observed": 0.3891402714932127
+        },
+        {
+          "low": 0.4,
+          "high": 0.5,
+          "count": 49,
+          "predicted": 0.4473061513934098,
+          "observed": 0.4897959183673469
+        },
+        {
+          "low": 0.5,
+          "high": 0.6,
+          "count": 131,
+          "predicted": 0.5582938626580674,
+          "observed": 0.5419847328244275
+        },
+        {
+          "low": 0.6,
+          "high": 0.7,
+          "count": 18,
+          "predicted": 0.6357669125821682,
+          "observed": 0.7777777777777778
+        }
+      ]
+    },
+    "6.5": {
+      "brier": 0.05476767577986342,
+      "log_loss": 0.18593791833243528,
+      "ece_10_bins": 0.01046900623976533,
+      "reliability_bins": [
+        {
+          "low": 0.0,
+          "high": 0.1,
+          "count": 3183,
+          "predicted": 0.01952988173139762,
+          "observed": 0.02544769085768143
+        },
+        {
+          "low": 0.1,
+          "high": 0.2,
+          "count": 268,
+          "predicted": 0.1368213638691801,
+          "observed": 0.16044776119402984
+        },
+        {
+          "low": 0.2,
+          "high": 0.3,
+          "count": 270,
+          "predicted": 0.24534084589239677,
+          "observed": 0.27037037037037037
+        },
+        {
+          "low": 0.3,
+          "high": 0.4,
+          "count": 132,
+          "predicted": 0.35716336883250854,
+          "observed": 0.38636363636363635
+        },
+        {
+          "low": 0.4,
+          "high": 0.5,
+          "count": 28,
+          "predicted": 0.44811320754716977,
+          "observed": 0.4642857142857143
+        },
+        {
+          "low": 0.5,
+          "high": 0.6,
+          "count": 41,
+          "predicted": 0.5474077895319599,
+          "observed": 0.43902439024390244
+        },
+        {
+          "low": 0.6,
+          "high": 0.7,
+          "count": 1,
+          "predicted": 0.6073059360730594,
+          "observed": 1.0
+        }
+      ]
+    },
+    "7.5": {
+      "brier": 0.03607381661757303,
+      "log_loss": 0.1342397318052987,
+      "ece_10_bins": 0.00906979879978605,
+      "reliability_bins": [
+        {
+          "low": 0.0,
+          "high": 0.1,
+          "count": 3423,
+          "predicted": 0.015458734164959177,
+          "observed": 0.018989190768331873
+        },
+        {
+          "low": 0.1,
+          "high": 0.2,
+          "count": 247,
+          "predicted": 0.13719715724819562,
+          "observed": 0.1700404858299595
+        },
+        {
+          "low": 0.2,
+          "high": 0.3,
+          "count": 168,
+          "predicted": 0.24548291683453136,
+          "observed": 0.20238095238095238
+        },
+        {
+          "low": 0.3,
+          "high": 0.4,
+          "count": 72,
+          "predicted": 0.35097500866667075,
+          "observed": 0.2777777777777778
+        },
+        {
+          "low": 0.4,
+          "high": 0.5,
+          "count": 9,
+          "predicted": 0.44811320754716977,
+          "observed": 0.2222222222222222
+        },
+        {
+          "low": 0.5,
+          "high": 0.6,
+          "count": 4,
+          "predicted": 0.5401459854014599,
+          "observed": 0.75
+        }
+      ]
+    },
+    "8.5": {
+      "brier": 0.020700151528712515,
+      "log_loss": 0.08040048874505533,
+      "ece_10_bins": 0.003710122684944747,
+      "reliability_bins": [
+        {
+          "low": 0.0,
+          "high": 0.1,
+          "count": 3624,
+          "predicted": 0.012936929343152865,
+          "observed": 0.012693156732891833
+        },
+        {
+          "low": 0.1,
+          "high": 0.2,
+          "count": 171,
+          "predicted": 0.13592493035531814,
+          "observed": 0.1286549707602339
+        },
+        {
+          "low": 0.2,
+          "high": 0.3,
+          "count": 110,
+          "predicted": 0.24595227985206117,
+          "observed": 0.15454545454545454
+        },
+        {
+          "low": 0.3,
+          "high": 0.4,
+          "count": 17,
+          "predicted": 0.34244580508901756,
+          "observed": 0.23529411764705882
+        },
+        {
+          "low": 0.4,
+          "high": 0.5,
+          "count": 1,
+          "predicted": 0.44811320754716977,
+          "observed": 1.0
+        }
+      ]
+    },
+    "9.5": {
+      "brier": 0.01258672822339354,
+      "log_loss": 0.05741390930811652,
+      "ece_10_bins": 0.003924923798441853,
+      "reliability_bins": [
+        {
+          "low": 0.0,
+          "high": 0.1,
+          "count": 3756,
+          "predicted": 0.010431433386233657,
+          "observed": 0.00878594249201278
+        },
+        {
+          "low": 0.1,
+          "high": 0.2,
+          "count": 114,
+          "predicted": 0.13677925255019785,
+          "observed": 0.13157894736842105
+        },
+        {
+          "low": 0.2,
+          "high": 0.3,
+          "count": 49,
+          "predicted": 0.22938166488561307,
+          "observed": 0.061224489795918366
+        },
+        {
+          "low": 0.3,
+          "high": 0.4,
+          "count": 4,
+          "predicted": 0.3461189731190442,
+          "observed": 0.25
+        }
+      ]
+    }
+  },
+  "per_position": {
+    "RB": {
+      "brier": 0.07375855127119825,
+      "log_loss": 0.234560795246784,
+      "ece_10_bins": 0.007506387372763689,
+      "reliability_bins": [
+        {
+          "low": 0.0,
+          "high": 0.1,
+          "count": 6966,
+          "predicted": 0.01837211820030719,
+          "observed": 0.017226528854435832
+        },
+        {
+          "low": 0.1,
+          "high": 0.2,
+          "count": 678,
+          "predicted": 0.1376588293219075,
+          "observed": 0.13864306784660768
+        },
+        {
+          "low": 0.2,
+          "high": 0.3,
+          "count": 661,
+          "predicted": 0.24994944843902644,
+          "observed": 0.24508320726172467
+        },
+        {
+          "low": 0.3,
+          "high": 0.4,
+          "count": 487,
+          "predicted": 0.3628523030784423,
+          "observed": 0.3347022587268994
+        },
+        {
+          "low": 0.4,
+          "high": 0.5,
+          "count": 141,
+          "predicted": 0.44837540554746996,
+          "observed": 0.475177304964539
+        },
+        {
+          "low": 0.5,
+          "high": 0.6,
+          "count": 575,
+          "predicted": 0.5628521758073317,
+          "observed": 0.5060869565217392
+        },
+        {
+          "low": 0.6,
+          "high": 0.7,
+          "count": 435,
+          "predicted": 0.6490261419181867,
+          "observed": 0.6275862068965518
+        },
+        {
+          "low": 0.7,
+          "high": 0.8,
+          "count": 1,
+          "predicted": 0.7436450003823867,
+          "observed": 0.0
+        },
+        {
+          "low": 0.8,
+          "high": 0.9,
+          "count": 422,
+          "predicted": 0.839368381096716,
+          "observed": 0.8246445497630331
+        },
+        {
+          "low": 0.9,
+          "high": 1.0,
+          "count": 204,
+          "predicted": 0.9366020879656741,
+          "observed": 0.9313725490196079
+        }
+      ]
+    },
+    "TE": {
+      "brier": 0.08255901969028497,
+      "log_loss": 0.2657694930703724,
+      "ece_10_bins": 0.012395799165528697,
+      "reliability_bins": [
+        {
+          "low": 0.0,
+          "high": 0.1,
+          "count": 7336,
+          "predicted": 0.018326662422436375,
+          "observed": 0.025763358778625955
+        },
+        {
+          "low": 0.1,
+          "high": 0.2,
+          "count": 730,
+          "predicted": 0.13699569424416275,
+          "observed": 0.1684931506849315
+        },
+        {
+          "low": 0.2,
+          "high": 0.3,
+          "count": 786,
+          "predicted": 0.24747092939313864,
+          "observed": 0.26717557251908397
+        },
+        {
+          "low": 0.3,
+          "high": 0.4,
+          "count": 591,
+          "predicted": 0.3596324594272449,
+          "observed": 0.377326565143824
+        },
+        {
+          "low": 0.4,
+          "high": 0.5,
+          "count": 135,
+          "predicted": 0.44736217095619973,
+          "observed": 0.4666666666666667
+        },
+        {
+          "low": 0.5,
+          "high": 0.6,
+          "count": 652,
+          "predicted": 0.5622596847142665,
+          "observed": 0.549079754601227
+        },
+        {
+          "low": 0.6,
+          "high": 0.7,
+          "count": 487,
+          "predicted": 0.6493919291094897,
+          "observed": 0.6981519507186859
+        },
+        {
+          "low": 0.8,
+          "high": 0.9,
+          "count": 487,
+          "predicted": 0.8322600815382372,
+          "observed": 0.8275154004106776
+        },
+        {
+          "low": 0.9,
+          "high": 1.0,
+          "count": 346,
+          "predicted": 0.9467588002075652,
+          "observed": 0.953757225433526
+        }
+      ]
+    },
+    "WR": {
+      "brier": 0.10208120046128352,
+      "log_loss": 0.32698733687750203,
+      "ece_10_bins": 0.011406398699762404,
+      "reliability_bins": [
+        {
+          "low": 0.0,
+          "high": 0.1,
+          "count": 8186,
+          "predicted": 0.025052878424981762,
+          "observed": 0.03188370388468116
+        },
+        {
+          "low": 0.1,
+          "high": 0.2,
+          "count": 1384,
+          "predicted": 0.13774837294743594,
+          "observed": 0.1596820809248555
+        },
+        {
+          "low": 0.2,
+          "high": 0.3,
+          "count": 1460,
+          "predicted": 0.24798529109176298,
+          "observed": 0.25068493150684934
+        },
+        {
+          "low": 0.3,
+          "high": 0.4,
+          "count": 1155,
+          "predicted": 0.36088160124982394,
+          "observed": 0.3645021645021645
+        },
+        {
+          "low": 0.4,
+          "high": 0.5,
+          "count": 282,
+          "predicted": 0.44808969328930404,
+          "observed": 0.4326241134751773
+        },
+        {
+          "low": 0.5,
+          "high": 0.6,
+          "count": 1234,
+          "predicted": 0.5605920051011917,
+          "observed": 0.5526742301458671
+        },
+        {
+          "low": 0.6,
+          "high": 0.7,
+          "count": 1019,
+          "predicted": 0.6532963238485278,
+          "observed": 0.7105004906771345
+        },
+        {
+          "low": 0.7,
+          "high": 0.8,
+          "count": 3,
+          "predicted": 0.732589615580046,
+          "observed": 0.6666666666666666
+        },
+        {
+          "low": 0.8,
+          "high": 0.9,
+          "count": 1192,
+          "predicted": 0.8350594576298648,
+          "observed": 0.8473154362416108
+        },
+        {
+          "low": 0.9,
+          "high": 1.0,
+          "count": 1195,
+          "predicted": 0.9560359012687352,
+          "observed": 0.9673640167364017
+        }
+      ]
+    }
+  },
+  "market_benchmark": null,
+  "roi": null,
+  "clv": null,
+  "evaluation_warning": "Fixed thresholds on eligible player games, not a replay of actually offered wagers; no evidence of betting profitability.",
+  "brier_improvement_over_baseline": {
+    "point": 0.0016142967360235183,
+    "game_block_bootstrap_95pct": [
+      0.0006607002474439595,
+      0.0025510474302294565
+    ],
+    "method_limit": "clusters preserve same-game dependence; adjacent games and repeat players can remain dependent"
+  },
+  "population_audit": {
+    "active_offensive_player_games": 23843,
+    "zero_reception_games": 8335,
+    "zero_stats_rows_restored_from_snap_population": 3529,
+    "unmapped_rows_excluded": 35,
+    "excluded_identity_rows": [
+      {
+        "player": "Cody White",
+        "pfr_player_id": "WhitCo05",
+        "season": 2021,
+        "game_id": "2021_03_CIN_PIT"
+      },
+      {
+        "player": "Cody White",
+        "pfr_player_id": "WhitCo05",
+        "season": 2021,
+        "game_id": "2021_04_PIT_GB"
+      },
+      {
+        "player": "Cody White",
+        "pfr_player_id": "WhitCo05",
+        "season": 2021,
+        "game_id": "2021_05_DEN_PIT"
+      },
+      {
+        "player": "Cody White",
+        "pfr_player_id": "WhitCo05",
+        "season": 2021,
+        "game_id": "2021_09_CHI_PIT"
+      },
+      {
+        "player": "Cody White",
+        "pfr_player_id": "WhitCo05",
+        "season": 2021,
+        "game_id": "2021_10_DET_PIT"
+      },
+      {
+        "player": "Cody White",
+        "pfr_player_id": "WhitCo05",
+        "season": 2021,
+        "game_id": "2021_13_BAL_PIT"
+      },
+      {
+        "player": "Cody White",
+        "pfr_player_id": "WhitCo05",
+        "season": 2021,
+        "game_id": "2021_16_PIT_KC"
+      },
+      {
+        "player": "Cody White",
+        "pfr_player_id": "WhitCo05",
+        "season": 2021,
+        "game_id": "2021_18_PIT_BAL"
+      },
+      {
+        "player": "Cody White",
+        "pfr_player_id": "WhitCo05",
+        "season": 2022,
+        "game_id": "2022_12_PIT_IND"
+      },
+      {
+        "player": "Rodney Williams",
+        "pfr_player_id": "WillRo08",
+        "season": 2023,
+        "game_id": "2023_05_BAL_PIT"
+      },
+      {
+        "player": "Rodney Williams",
+        "pfr_player_id": "WillRo08",
+        "season": 2023,
+        "game_id": "2023_07_PIT_LA"
+      },
+      {
+        "player": "Rodney Williams",
+        "pfr_player_id": "WillRo08",
+        "season": 2023,
+        "game_id": "2023_08_JAX_PIT"
+      },
+      {
+        "player": "Rodney Williams",
+        "pfr_player_id": "WillRo08",
+        "season": 2023,
+        "game_id": "2023_09_TEN_PIT"
+      },
+      {
+        "player": "Rodney Williams",
+        "pfr_player_id": "WillRo08",
+        "season": 2023,
+        "game_id": "2023_10_GB_PIT"
+      },
+      {
+        "player": "Rodney Williams",
+        "pfr_player_id": "WillRo08",
+        "season": 2023,
+        "game_id": "2023_12_PIT_CIN"
+      },
+      {
+        "player": "Rodney Williams",
+        "pfr_player_id": "WillRo08",
+        "season": 2023,
+        "game_id": "2023_13_ARI_PIT"
+      },
+      {
+        "player": "Rodney Williams",
+        "pfr_player_id": "WillRo08",
+        "season": 2023,
+        "game_id": "2023_14_NE_PIT"
+      },
+      {
+        "player": "Rodney Williams",
+        "pfr_player_id": "WillRo08",
+        "season": 2023,
+        "game_id": "2023_15_PIT_IND"
+      },
+      {
+        "player": "Rodney Williams",
+        "pfr_player_id": "WillRo08",
+        "season": 2023,
+        "game_id": "2023_16_CIN_PIT"
+      },
+      {
+        "player": "Rodney Williams",
+        "pfr_player_id": "WillRo08",
+        "season": 2023,
+        "game_id": "2023_17_PIT_SEA"
+      },
+      {
+        "player": "Rodney Williams",
+        "pfr_player_id": "WillRo08",
+        "season": 2023,
+        "game_id": "2023_18_PIT_BAL"
+      },
+      {
+        "player": "Rodney Williams",
+        "pfr_player_id": "WillRo08",
+        "season": 2024,
+        "game_id": "2024_03_LAC_PIT"
+      },
+      {
+        "player": "John Samuel Shenker",
+        "pfr_player_id": "ShenJo00",
+        "season": 2024,
+        "game_id": "2024_04_CLE_LV"
+      },
+      {
+        "player": "John Samuel Shenker",
+        "pfr_player_id": "ShenJo00",
+        "season": 2024,
+        "game_id": "2024_05_LV_DEN"
+      },
+      {
+        "player": "John Samuel Shenker",
+        "pfr_player_id": "ShenJo00",
+        "season": 2024,
+        "game_id": "2024_06_PIT_LV"
+      },
+      {
+        "player": "Rodney Williams",
+        "pfr_player_id": "WillRo08",
+        "season": 2024,
+        "game_id": "2024_06_PIT_LV"
+      },
+      {
+        "player": "John Samuel Shenker",
+        "pfr_player_id": "ShenJo00",
+        "season": 2024,
+        "game_id": "2024_07_LV_LA"
+      },
+      {
+        "player": "John Samuel Shenker",
+        "pfr_player_id": "ShenJo00",
+        "season": 2024,
+        "game_id": "2024_08_KC_LV"
+      },
+      {
+        "player": "Rodney Williams",
+        "pfr_player_id": "WillRo08",
+        "season": 2024,
+        "game_id": "2024_08_NYG_PIT"
+      },
+      {
+        "player": "Cody White",
+        "pfr_player_id": "WhitCo05",
+        "season": 2024,
+        "game_id": "2024_09_LA_SEA"
+      },
+      {
+        "player": "Cody White",
+        "pfr_player_id": "WhitCo05",
+        "season": 2024,
+        "game_id": "2024_11_SEA_SF"
+      },
+      {
+        "player": "Cody White",
+        "pfr_player_id": "WhitCo05",
+        "season": 2024,
+        "game_id": "2024_12_ARI_SEA"
+      },
+      {
+        "player": "Cody White",
+        "pfr_player_id": "WhitCo05",
+        "season": 2024,
+        "game_id": "2024_13_SEA_NYJ"
+      },
+      {
+        "player": "John Samuel Shenker",
+        "pfr_player_id": "ShenJo00",
+        "season": 2024,
+        "game_id": "2024_16_JAX_LV"
+      },
+      {
+        "player": "John Samuel Shenker",
+        "pfr_player_id": "ShenJo00",
+        "season": 2024,
+        "game_id": "2024_17_LV_NO"
+      }
+    ],
+    "timestamp_mode": "retrospective_current_vintage_with_assumed_30h_delay",
+    "population": "WR/TE/RB/FB regular-season player games with at least one offensive snap"
+  },
+  "feature_audit": {
+    "modeled_player_games": 13877,
+    "skipped": {
+      "fewer_than_8_player_games": 6381,
+      "player_history_exceeds_400_days": 660,
+      "player_history_stale_45_days": 999,
+      "player_inputs_not_yet_usable": 0,
+      "recent_team_change": 1926,
+      "opponent_history_missing_or_stale": 0
+    }
+  },
+  "partitions": {
+    "train": "2021-2022 regular season",
+    "calibration": "2023 weeks 1-9",
+    "embargo": "2023 week 10",
+    "uncertainty": "2023 weeks 11-18",
+    "test": "2024 regular season"
+  },
+  "limitations": [
+    "current-vintage retrospective data; historical publication times unknown",
+    "30-hour input-availability lag is assumed, not verified",
+    "population conditional on at least one offensive snap; sportsbook participation rules may differ",
+    "no contemporaneous injury, weather, quarterback or depth-chart model",
+    "no historical sportsbook prop prices, CLV, realized ROI or prospective validation",
+    "stress bands are pooled calibration-sensitivity ranges, not per-event confidence intervals",
+    "no parlay joint distribution; only pregame NFL reception counts"
+  ],
+  "source_files": [
+    {
+      "file": "player_stats_2022.csv",
+      "url": "https://github.com/nflverse/nflverse-data/releases/download/stats_player/stats_player_week_2022.csv",
+      "bytes": 8408729,
+      "sha256": "ad426c3fe5bf1cc30c3f137fdfe96d054e19d400879ee4413129da49fa7b54be",
+      "used_by_adapter": true,
+      "bytes_verified_at": "2026-10-23T00:55:38.288530+00:00"
+    },
+    {
+      "file": "snap_counts_2021.csv",
+      "url": "https://github.com/nflverse/nflverse-data/releases/download/snap_counts/snap_counts_2021.csv",
+      "bytes": 2388493,
+      "sha256": "8e4dae054a4749cf2d4919508d9161a6068fd67509979aefa385bfb3803d0ee5",
+      "used_by_adapter": true,
+      "bytes_verified_at": "2026-10-23T00:55:38.290837+00:00"
+    },
+    {
+      "file": "player_stats_2021.csv",
+      "url": "https://github.com/nflverse/nflverse-data/releases/download/stats_player/stats_player_week_2021.csv",
+      "bytes": 8477784,
+      "sha256": "41915fb49238902ad1f129ebf0405b11a1e710454ae0fe8f7b3e4f9145875f48",
+      "used_by_adapter": true,
+      "bytes_verified_at": "2026-10-23T00:55:38.310027+00:00"
+    },
+    {
+      "file": "player_stats_2023.csv",
+      "url": "https://github.com/nflverse/nflverse-data/releases/download/stats_player/stats_player_week_2023.csv",
+      "bytes": 8332874,
+      "sha256": "f19cb71a5de0dce7fd09376026237c9ee9d5a93fe13815a2ea3ec2d37204cb17",
+      "used_by_adapter": true,
+      "bytes_verified_at": "2026-10-23T00:55:38.326280+00:00"
+    },
+    {
+      "file": "player_stats_2024.csv",
+      "url": "https://github.com/nflverse/nflverse-data/releases/download/stats_player/stats_player_week_2024.csv",
+      "bytes": 8470040,
+      "sha256": "3ddc45a84f759aa348ce465ae001752c530575455717657cdfe1f8abfcdb4759",
+      "used_by_adapter": true,
+      "bytes_verified_at": "2026-10-23T00:55:38.333278+00:00"
+    },
+    {
+      "file": "snap_counts_2022.csv",
+      "url": "https://github.com/nflverse/nflverse-data/releases/download/snap_counts/snap_counts_2022.csv",
+      "bytes": 2379719,
+      "sha256": "0018a4833fbf0f825286c1c27450c6254391b548d6c55bcde728e93e4816815a",
+      "used_by_adapter": true,
+      "bytes_verified_at": "2026-10-23T00:55:38.335953+00:00"
+    },
+    {
+      "file": "snap_counts_2024.csv",
+      "url": "https://github.com/nflverse/nflverse-data/releases/download/snap_counts/snap_counts_2024.csv",
+      "bytes": 2402841,
+      "sha256": "a2aa58efe093f8aa0ad5aadf09f81d8ec690a1183bd2dde68d20e7f109a9c335",
+      "used_by_adapter": true,
+      "bytes_verified_at": "2026-10-23T00:55:38.337531+00:00"
+    },
+    {
+      "file": "snap_counts_2023.csv",
+      "url": "https://github.com/nflverse/nflverse-data/releases/download/snap_counts/snap_counts_2023.csv",
+      "bytes": 2394875,
+      "sha256": "303b61aa5c33ffda863f93a750fc14483f397f9187ad502b1ce71e9b516a64c0",
+      "used_by_adapter": true,
+      "bytes_verified_at": "2026-10-23T00:55:38.339176+00:00"
+    },
+    {
+      "file": "games.csv",
+      "url": "https://github.com/nflverse/nflverse-data/releases/download/schedules/games.csv",
+      "bytes": 2186404,
+      "sha256": "0381006a68fe6ff5d5a0775015ae30cebe27da51fe67c6e3b8f119d82c932217",
+      "used_by_adapter": true,
+      "bytes_verified_at": "2026-10-23T00:55:38.340598+00:00"
+    },
+    {
+      "file": "players.csv",
+      "url": "https://github.com/nflverse/nflverse-data/releases/download/players/players.csv",
+      "bytes": 7305662,
+      "sha256": "c5239e1480b397732d004f81c87dbb07565ff6ea4b2a0e6382cbb7ed35f6481e",
+      "used_by_adapter": true,
+      "bytes_verified_at": "2026-10-23T00:55:38.346886+00:00"
+    },
+    {
+      "file": "roster_2021.csv",
+      "url": "https://github.com/nflverse/nflverse-data/releases/download/rosters/roster_2021.csv",
+      "bytes": 953822,
+      "sha256": "a95e57ebe1df25224a4d19ed43aaffc5c2097a8b369954178b8592537ff77d34",
+      "used_by_adapter": false
+    },
+    {
+      "file": "roster_2023.csv",
+      "url": "https://github.com/nflverse/nflverse-data/releases/download/rosters/roster_2023.csv",
+      "bytes": 967354,
+      "sha256": "f98283e6ef420babc597092b5483109a4570f9b5f63b7bfcce69643290960b6c",
+      "used_by_adapter": false
+    },
+    {
+      "file": "roster_2024.csv",
+      "url": "https://github.com/nflverse/nflverse-data/releases/download/rosters/roster_2024.csv",
+      "bytes": 1005701,
+      "sha256": "97721aa9092edb15c1357f2dac359dba72f63c81cc0e69408c65c229c91f50c1",
+      "used_by_adapter": false
+    },
+    {
+      "file": "roster_2022.csv",
+      "url": "https://github.com/nflverse/nflverse-data/releases/download/rosters/roster_2022.csv",
+      "bytes": 980115,
+      "sha256": "864719595d14909c73bd14110adcdcfc304c6621de9ba34feafb83666fac43c9",
+      "used_by_adapter": false
+    }
+  ]
+}

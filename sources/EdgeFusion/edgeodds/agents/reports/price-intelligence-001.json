@@ -1,0 +1,29 @@
+{
+  "agent": "price-intelligence",
+  "task_id": "price-intelligence-001",
+  "base_sha": "f5eaa23fa9db3afa1fe201ab04c9d0cd7b49f7f3",
+  "head_sha": "02dc9e7319fac3f551288a21d07088f758f94435",
+  "changed_paths": [
+    "edgeodds/price_intelligence.py",
+    "edgeodds/tests/test_price_intelligence.py",
+    "docs/pricing/README.md"
+  ],
+  "changed_contracts": [],
+  "tests_run": [
+    "python -m unittest discover -s edgeodds/tests -v"
+  ],
+  "live_data_used": false,
+  "claims": [
+    {
+      "claim": "No-vig calculation requires exactly two matched open outcomes from one provider/bookmaker",
+      "evidence": "test_no_vig_requires_complete_matched_two_way_market; test_complete_market_rejects_missing_or_cross_book_outcome"
+    },
+    {
+      "claim": "Closing quote selection rejects post-start and conflicting same-time candidates",
+      "evidence": "test_closing_quote_is_last_exact_prestart_quote; test_conflicting_same_time_close_fails_closed"
+    }
+  ],
+  "blockers": [
+    "Provider quote timestamps remain unavailable for the current Sportradar normalized feed, so live CLV stays unavailable."
+  ]
+}

@@ -1,0 +1,204 @@
+{
+  "status": "HALFTIME_RESEARCH_ONLY",
+  "method": "training-only gamma-Poisson intensity update conditioned on observed first-half receptions; separate halftime CDF calibration",
+  "parent_model_id": "nfl-receptions-nb2-v1-cc50b1f7c6ba76af4f91",
+  "first_half_exposure_fraction": 0.5149797570850202,
+  "train_rows": 5996,
+  "calibration_rows": 1468,
+  "uncertainty_rows": 2259,
+  "test_rows": 3923,
+  "test_games": 256,
+  "calibrated_model": {
+    "brier": 0.05856899473422088,
+    "log_loss": 0.1900553607591192,
+    "ece_10_bins": 0.00980826312382739,
+    "reliability_bins": [
+      {
+        "low": 0.0,
+        "high": 0.1,
+        "count": 30199,
+        "predicted": 0.012909783123435726,
+        "observed": 0.01817940991423557
+      },
+      {
+        "low": 0.1,
+        "high": 0.2,
+        "count": 1699,
+        "predicted": 0.14993356932068186,
+        "observed": 0.18069452619187756
+      },
+      {
+        "low": 0.2,
+        "high": 0.3,
+        "count": 1723,
+        "predicted": 0.23688607328801642,
+        "observed": 0.24956471271038885
+      },
+      {
+        "low": 0.3,
+        "high": 0.4,
+        "count": 1338,
+        "predicted": 0.3477816345358373,
+        "observed": 0.3542600896860987
+      },
+      {
+        "low": 0.4,
+        "high": 0.5,
+        "count": 1533,
+        "predicted": 0.42728807426776844,
+        "observed": 0.46053489889106325
+      },
+      {
+        "low": 0.5,
+        "high": 0.6,
+        "count": 841,
+        "predicted": 0.5519087461921911,
+        "observed": 0.5897740784780023
+      },
+      {
+        "low": 0.6,
+        "high": 0.7,
+        "count": 542,
+        "predicted": 0.6747421941900926,
+        "observed": 0.7250922509225092
+      },
+      {
+        "low": 0.7,
+        "high": 0.8,
+        "count": 793,
+        "predicted": 0.7690053516207813,
+        "observed": 0.7477931904161412
+      },
+      {
+        "low": 0.8,
+        "high": 0.9,
+        "count": 300,
+        "predicted": 0.882565266321742,
+        "observed": 0.8433333333333334
+      },
+      {
+        "low": 0.9,
+        "high": 1.0,
+        "count": 262,
+        "predicted": 0.939586593022042,
+        "observed": 0.9236641221374046
+      }
+    ]
+  },
+  "prior_only_baseline": {
+    "brier": 0.05958430719680582,
+    "log_loss": 0.19826739463921192,
+    "ece_10_bins": 0.016154832513063797,
+    "reliability_bins": [
+      {
+        "low": 0.0,
+        "high": 0.1,
+        "count": 30047,
+        "predicted": 0.008564334550482137,
+        "observed": 0.018138250074882685
+      },
+      {
+        "low": 0.1,
+        "high": 0.2,
+        "count": 2130,
+        "predicted": 0.14340086889233936,
+        "observed": 0.18544600938967137
+      },
+      {
+        "low": 0.2,
+        "high": 0.3,
+        "count": 1442,
+        "predicted": 0.24521015179942632,
+        "observed": 0.2621359223300971
+      },
+      {
+        "low": 0.3,
+        "high": 0.4,
+        "count": 1204,
+        "predicted": 0.3466436211861871,
+        "observed": 0.3546511627906977
+      },
+      {
+        "low": 0.4,
+        "high": 0.5,
+        "count": 967,
+        "predicted": 0.4487954792146499,
+        "observed": 0.4043433298862461
+      },
+      {
+        "low": 0.5,
+        "high": 0.6,
+        "count": 885,
+        "predicted": 0.5533949733085521,
+        "observed": 0.5062146892655367
+      },
+      {
+        "low": 0.6,
+        "high": 0.7,
+        "count": 674,
+        "predicted": 0.6523680925147401,
+        "observed": 0.612759643916914
+      },
+      {
+        "low": 0.7,
+        "high": 0.8,
+        "count": 756,
+        "predicted": 0.7491415041651465,
+        "observed": 0.6825396825396826
+      },
+      {
+        "low": 0.8,
+        "high": 0.9,
+        "count": 700,
+        "predicted": 0.846550297632347,
+        "observed": 0.7928571428571428
+      },
+      {
+        "low": 0.9,
+        "high": 1.0,
+        "count": 425,
+        "predicted": 0.9367303285750368,
+        "observed": 0.8823529411764706
+      }
+    ]
+  },
+  "point_in_time_vintages_verified": false,
+  "market_prices_tested": false,
+  "live_approved": false,
+  "roi": null,
+  "sources": [
+    {
+      "season": 2021,
+      "url": "https://github.com/nflverse/nflverse-data/releases/download/pbp/play_by_play_2021.csv.gz",
+      "sha256": "e8743a568f99667a8bdcd29ba12224ee1782ad2b7916bee78ee335c099383739"
+    },
+    {
+      "season": 2022,
+      "url": "https://github.com/nflverse/nflverse-data/releases/download/pbp/play_by_play_2022.csv.gz",
+      "sha256": "0c69a71eb39498956c7b1d5c1ca52ce7fe679934a95d1af249facb5ea9829ea4"
+    },
+    {
+      "season": 2023,
+      "url": "https://github.com/nflverse/nflverse-data/releases/download/pbp/play_by_play_2023.csv.gz",
+      "sha256": "4649804ee0f0a40b41e51ec75a1ce921949d7fab5459213488656b92f78560e8"
+    },
+    {
+      "season": 2024,
+      "url": "https://github.com/nflverse/nflverse-data/releases/download/pbp/play_by_play_2024.csv.gz",
+      "sha256": "23370d5d10f8104d80d46a1fc5e61f4f6f5a3263fe96fe2dd629913cfcb08c06"
+    }
+  ],
+  "data_audit": {
+    "feature_rows": 13877,
+    "full_game_stat_mismatches_excluded": 0,
+    "mismatch_examples": []
+  },
+  "limitations": [
+    "Only halftime before second-half play; no remaining-game time model",
+    "Second half includes overtime in research labels",
+    "Historical current-vintage stats with assumed 30h delay",
+    "Conditional on observed full-game offensive participation; injuries and halftime role changes unmodeled",
+    "Shared-intensity independent-increment assumption is approximate; game script and clock effects omitted",
+    "No matched sportsbook benchmark, individual probability CI or parlay correlation validation"
+  ]
+}

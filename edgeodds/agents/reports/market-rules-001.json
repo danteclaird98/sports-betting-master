@@ -1,0 +1,29 @@
+{
+  "agent": "market-rules",
+  "task_id": "market-rules-001",
+  "base_sha": "f5eaa23fa9db3afa1fe201ab04c9d0cd7b49f7f3",
+  "head_sha": "254c2e560393606f4e5dfd69a0733c61dfb33f1a",
+  "changed_paths": [
+    "edgeodds/settlement_rules.py",
+    "edgeodds/tests/test_settlement_rules.py",
+    "docs/rules/README.md"
+  ],
+  "changed_contracts": [],
+  "tests_run": [
+    "python -m unittest discover -s edgeodds/tests -v"
+  ],
+  "live_data_used": false,
+  "claims": [
+    {
+      "claim": "Unknown or unverified settlement semantics cannot be execution-equivalent",
+      "evidence": "test_unknown_semantics_fail_closed; test_unverified_rules_are_not_execution_equivalent"
+    },
+    {
+      "claim": "Conflicting content under one rule ID/version is rejected",
+      "evidence": "test_version_conflict_rejected"
+    }
+  ],
+  "blockers": [
+    "Book/provider-specific rule records still require source-backed rule documentation."
+  ]
+}

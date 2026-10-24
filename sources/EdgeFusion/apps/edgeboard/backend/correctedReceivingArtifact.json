@@ -1,0 +1,61 @@
+{
+  "calibration": {
+    "intercept": 0.43940450248155744,
+    "selected": true,
+    "slope": 1.2315251257587996
+  },
+  "coefficients": [
+    0.13944025509585853,
+    1.2180327554502393,
+    -0.016883492866365153,
+    -0.14327233031467165,
+    -0.019995574442320984
+  ],
+  "evaluation_status": "2025 already consumed diagnostic; no untouched test; no source-time availability proof",
+  "features": [
+    "past3avg",
+    "past8avg",
+    "past3hit",
+    "past8hit",
+    "priorgames"
+  ],
+  "intercept": -2.342088421670114,
+  "mean": [
+    26.110786370903263,
+    26.311047233641627,
+    0.1362659872102293,
+    0.13868101947013814,
+    17.462455035971225
+  ],
+  "pipeline_sha256": "db9f2a52a35cde8e6c92bc61d0bae2a2dca5c34dbf17c091cc6d7d23d99f2402",
+  "production_enabled": false,
+  "protocol": {
+    "diagnostic": "2025 consumed; not untouched",
+    "fit": "2021-2023 REG",
+    "platt_fit_and_choice": "2024 REG weeks10-18 in-sample log_loss",
+    "regularization_selection": "2024 REG weeks1-9 raw log_loss"
+  },
+  "regularization": 0.01,
+  "scale": [
+    25.11635874047068,
+    22.87822942854056,
+    0.2460893022971829,
+    0.21136346751559293,
+    11.249750829817936
+  ],
+  "scope": "Retrospective REG WR/RB/TE recorded-player rows; >=3 prior rows across seasons; no odds features",
+  "source_hashes": {
+    "stats_player_week_2021.csv": "41915fb49238902ad1f129ebf0405b11a1e710454ae0fe8f7b3e4f9145875f48",
+    "stats_player_week_2022.csv": "ad426c3fe5bf1cc30c3f137fdfe96d054e19d400879ee4413129da49fa7b54be",
+    "stats_player_week_2023.csv": "f19cb71a5de0dce7fd09376026237c9ee9d5a93fe13815a2ea3ec2d37204cb17",
+    "stats_player_week_2024.csv": "3ddc45a84f759aa348ce465ae001752c530575455717657cdfe1f8abfcdb4759",
+    "stats_player_week_2025.csv": "e5e0615b3d96a3eaebfaee91e55afb4a4e7fe0caf057454177bcd7d6ad4bcfc2"
+  },
+  "status": "HOLD",
+  "target": {
+    "comparison": ">=",
+    "stat": "receiving_yards",
+    "threshold": 60
+  },
+  "version": "receiving60-logistic-v1"
+}

@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>About Oddsify Labs — AI-Powered Betting Technology</title>
+    <meta name="description" content="Oddsify Labs builds AI-powered sports betting tools. A Collins & Collins Technologies company powered by the Hermes Agent Engine.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #0a0a0f;
+            --bg-elevated: #12121a;
+            --bg-card: #1a1a25;
+            --border: #2a2a3a;
+            --text: #e8e8f0;
+            --text-dim: #8a8aa0;
+            --accent: #00e676;
+            --accent-dim: rgba(0,230,118,0.15);
+            --accent-glow: rgba(0,230,118,0.3);
+            --oddsify: #00e5ff;
+            --gradient: linear-gradient(135deg, #00e676 0%, #00b0ff 100%);
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Inter', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            line-height: 1.7;
+            overflow-x: hidden;
+        }
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background-image:
+                linear-gradient(rgba(255,255,255,0.02) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255,255,255,0.02) 1px, transparent 1px);
+            background-size: 60px 60px;
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        nav {
+            position: sticky;
+            top: 0; left: 0; right: 0;
+            z-index: 100;
+            background: rgba(10,10,15,0.95);
+            backdrop-filter: blur(20px);
+            border-bottom: 1px solid var(--border);
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .logo {
+            font-weight: 800;
+            font-size: 1.2rem;
+            letter-spacing: -0.5px;
+            color: var(--text);
+            text-decoration: none;
+        }
+        .logo span { color: var(--oddsify); }
+        .nav-links { display: flex; gap: 2rem; align-items: center; }
+        .nav-links a {
+            color: var(--text-dim);
+            text-decoration: none;
+            font-weight: 500;
+            font-size: 0.9rem;
+            transition: color 0.2s;
+        }
+        .nav-links a:hover { color: var(--text); }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.75rem 1.5rem;
+            border-radius: 10px;
+            font-weight: 700;
+            font-size: 0.9rem;
+            text-decoration: none;
+            transition: all 0.2s;
+            border: none;
+            cursor: pointer;
+        }
+        .btn-primary {
+            background: var(--gradient);
+            color: var(--bg);
+        }
+        .btn-primary:hover { transform: translateY(-1px); }
+        .btn-secondary {
+            background: var(--bg-card);
+            color: var(--text);
+            border: 1px solid var(--border);
+        }
+
+        section {
+            position: relative;
+            z-index: 1;
+            padding: 5rem 2rem;
+            max-width: 900px;
+            margin: 0 auto;
+        }
+
+        .hero {
+            text-align: center;
+            padding-top: 6rem;
+        }
+        .hero h1 {
+            font-size: clamp(2rem, 5vw, 3.5rem);
+            font-weight: 900;
+            letter-spacing: -1px;
+            margin-bottom: 1rem;
+        }
+        .hero h1 .gradient-text {
+            background: var(--gradient);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        .hero p {
+            color: var(--text-dim);
+            font-size: 1.1rem;
+            max-width: 600px;
+            margin: 0 auto 2rem;
+        }
+
+        h2 {
+            font-size: 1.8rem;
+            font-weight: 800;
+            margin: 3rem 0 1rem;
+            letter-spacing: -0.5px;
+        }
+        h2 .gradient-text {
+            background: var(--gradient);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        p { margin-bottom: 1.2rem; color: var(--text-dim); }
+        strong { color: var(--text); }
+
+        .card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 2rem;
+            margin: 1.5rem 0;
+        }
+        .card h3 {
+            font-size: 1.2rem;
+            font-weight: 700;
+            margin-bottom: 0.75rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .team-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-top: 1.5rem;
+        }
+        .team-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 1.5rem;
+            text-align: center;
+            transition: all 0.2s;
+        }
+        .team-card:hover {
+            border-color: var(--accent);
+            transform: translateY(-2px);
+        }
+        .team-card .emoji {
+            font-size: 2rem;
+            margin-bottom: 0.5rem;
+        }
+        .team-card .name {
+            font-weight: 700;
+            color: var(--text);
+            margin-bottom: 0.25rem;
+        }
+        .team-card .role {
+            font-size: 0.8rem;
+            color: var(--text-dim);
+        }
+        .team-card .engine {
+            font-size: 0.7rem;
+            color: var(--accent);
+            margin-top: 0.5rem;
+            font-weight: 600;
+        }
+
+        .leadership {
+            display: flex;
+            gap: 2rem;
+            flex-wrap: wrap;
+            margin-top: 1.5rem;
+        }
+        .leader {
+            flex: 1;
+            min-width: 250px;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 1.5rem;
+        }
+        .leader h4 {
+            font-size: 1rem;
+            font-weight: 700;
+            margin-bottom: 0.25rem;
+        }
+        .leader .title {
+            font-size: 0.85rem;
+            color: var(--accent);
+            font-weight: 600;
+            margin-bottom: 0.75rem;
+        }
+        .leader p {
+            font-size: 0.9rem;
+            margin-bottom: 0;
+        }
+
+        footer {
+            border-top: 1px solid var(--border);
+            padding: 3rem 2rem;
+            text-align: center;
+            color: var(--text-dim);
+            font-size: 0.85rem;
+        }
+        footer a { color: var(--text-dim); text-decoration: none; margin: 0 1rem; }
+        footer a:hover { color: var(--accent); }
+
+        @media (max-width: 768px) {
+            .nav-links { display: none; }
+        }
+    </style>
+</head>
+<body>
+
+<nav>
+    <a href="/" class="logo">Oddsify<span>Labs</span></a>
+    <div class="nav-links">
+        <a href="/">Products</a>
+        <a href="/about">About</a>
+        <a href="mailto:hello@oddsifylabs.com">Contact</a>
+    </div>
+</nav>
+
+<section class="hero">
+    <h1>We Build <span class="gradient-text">AI-Powered Betting Tools</span></h1>
+    <p>Oddsify Labs is a sports betting technology company based in Queen Creek, Arizona. We're building the future of betting analytics — not with hunches, but with math, data, and artificial intelligence.</p>
+    <a href="https://t.me/AlexBetSharp_v2_Bot" class="btn btn-primary">🚀 Try AlexBET Sharp</a>
+</section>
+
+<section>
+    <h2>Our <span class="gradient-text">Story</span></h2>
+    <p>Oddsify Labs was founded by <strong>Collins & Collins Technologies</strong>, a family-run technology holding company with a simple mission: build tools that give everyday people an edge.</p>
+    <p>We don't sell picks. We don't have a "lock of the week." What we do is build software that finds +EV (positive expected value) opportunities in sports betting markets — the same way hedge funds find alpha in financial markets.</p>
+    <p>Every product we ship is built on the <strong>Hermes Agent Engine</strong>, our proprietary multi-agent AI system. That means our software is coded, designed, written, and marketed by a team of specialized AI agents working together — each with a distinct skill set and personality.</p>
+    <p>Why agents? Because one generalist AI can't outwork a team of specialists. And when those specialists never sleep, never miss a detail, and iterate in real-time, you get products that move faster than anything else in the space.</p>
+</section>
+
+<section>
+    <h2>The Hermes <span class="gradient-text">Agent Engine</span></h2>
+    <p>The Hermes Agent Engine is the operating system behind every Oddsify Labs product. It's not just one AI — it's a coordinated team of autonomous agents, each trained for a specific domain:</p>
+
+    <div class="team-grid">
+        <div class="team-card">
+            <div class="emoji">💻</div>
+            <div class="name">Miah Hermes</div>
+            <div class="role">Software Engineer</div>
+            <div class="engine">Codes the backend, API, and integrations</div>
+        </div>
+        <div class="team-card">
+            <div class="emoji">📱</div>
+            <div class="name">Markus Hermes</div>
+            <div class="role">Social Media Manager</div>
+            <div class="engine">Runs content, engagement, and growth</div>
+        </div>
+        <div class="team-card">
+            <div class="emoji">🎨</div>
+            <div class="name">Ruth Hermes</div>
+            <div class="role">Web Developer</div>
+            <div class="engine">Designs and builds front-end experiences</div>
+        </div>
+        <div class="team-card">
+            <div class="emoji">✍️</div>
+            <div class="name">Octavia Hermes</div>
+            <div class="role">Writer & Researcher</div>
+            <div class="engine">Creates copy, docs, and research reports</div>
+        </div>
+        <div class="team-card">
+            <div class="emoji">💼</div>
+            <div class="name">Mitch Hermes</div>
+            <div class="role">Sales & Marketing</div>
+            <div class="engine">Strategizes launches, funnels, and conversions</div>
+        </div>
+    </div>
+
+    <p style="margin-top:2rem;">Together, the Hermes agents can take a product from idea to launch in days — not months. They don't get tired. They don't miss deadlines. And they iterate based on live user feedback, constantly improving the product while you sleep.</p>
+</section>
+
+<section>
+    <h2>Our <span class="gradient-text">Products</span></h2>
+
+    <div class="card">
+        <h3>🎯 AlexBET Sharp</h3>
+        <p>A Telegram-based +EV scanner that analyzes 6 sports in real-time. Uses Claude AI for edge detection, Kelly Criterion for bankroll sizing, and tracks CLV to prove you're beating the market. Freemium model with free, Sharp ($49/mo), and Elite ($99/mo) tiers.</p>
+        <a href="https://t.me/AlexBetSharp_v2_Bot" class="btn btn-secondary" style="margin-top:0.5rem;">Open in Telegram</a>
+    </div>
+
+    <div class="card">
+        <h3>📖 Educational Products</h3>
+        <p>eBooks, video courses, and automation guides for bettors who want to understand the math behind the edge. We don't just give you fish — we teach you how to build the boat.</p>
+    </div>
+
+    <div class="card">
+        <h3>🤖 Automation Tools</h3>
+        <p>Betting bots, odds trackers, and bankroll management systems. Everything we build is designed to remove emotion from betting and replace it with discipline and data.</p>
+    </div>
+</section>
+
+<section>
+    <h2>Our <span class="gradient-text">Leadership</span></h2>
+    <div class="leadership">
+        <div class="leader">
+            <h4>Parris Collins</h4>
+            <div class="title">CEO & CFO</div>
+            <p>Oversees company strategy, financial operations, and investor relations. The architect behind Collins & Collins Technologies.</p>
+        </div>
+        <div class="leader">
+            <h4>Jesse J. Collins</h4>
+            <div class="title">CTO & Operations Manager</div>
+            <p>Runs product development, AI agent orchestration, and day-to-day operations. The builder who shipped AlexBET Sharp from concept to production.</p>
+        </div>
+    </div>
+</section>
+
+<section>
+    <h2>Why <span class="gradient-text">Queen Creek?</span></h2>
+    <p>We're based in <strong>Queen Creek, Arizona</strong> — because the best ideas don't come from cubicles in Manhattan. They come from focused teams with low overhead and high ambition. We're building a betting tech company the same way startups used to be built: lean, fast, and obsessed with the product.</p>
+    <p>Our location lets us stay close to our users (sports bettors are everywhere) while keeping costs low so we can pass savings on to you. No fancy office. No bloated payroll. Just engineers, agents, and a mission to give bettors the tools they deserve.</p>
+</section>
+
+<section style="text-align:center;">
+    <h2>Work With <span class="gradient-text">Us</span></h2>
+    <p>We're always looking for sharp people — and sharp partnerships. Whether you're a bettor with feedback, a developer with skills, or a sportsbook looking for analytics integration, we want to hear from you.</p>
+    <div style="margin-top:1.5rem; display:flex; gap:1rem; justify-content:center; flex-wrap:wrap;">
+        <a href="mailto:hello@oddsifylabs.com" class="btn btn-primary">📧 Contact Us</a>
+        <a href="https://t.me/AlexBetSharp_v2_Bot" class="btn btn-secondary">🚀 Try the Bot</a>
+    </div>
+</section>
+
+<footer>
+    <p style="margin-bottom:1rem;"><strong>Oddsify Labs</strong> — A Collins & Collins Technologies Company</p>
+    <p style="margin-bottom:1rem; font-size:0.8rem;">Queen Creek, AZ — Powered by the Hermes Agent Engine</p>
+    <div style="margin-bottom:1rem;">
+        <a href="https://www.oddsifylabs.com">Home</a>
+        <a href="/about">About</a>
+        <a href="https://t.me/AlexBetSharp_v2_Bot">AlexBET Sharp</a>
+        <a href="mailto:hello@oddsifylabs.com">Contact</a>
+    </div>
+    <p style="font-size:0.75rem; opacity:0.6;">
+        © 2026 Oddsify Labs. All rights reserved.
+    </p>
+</footer>
+
+</body>
+</html>

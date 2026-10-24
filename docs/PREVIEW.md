@@ -34,6 +34,24 @@ Slip drafts and risk-limit preferences use tab-lifetime memory rather than brows
 
 The production build and all automated suites pass locally: 183 tests passed and one historical-data test skipped because its external dataset is absent. Additional preview tests verify mandatory identity, distinct visitor routing, rejection of caller-supplied cookies, restricted routes and coalesced startup.
 
-The actual preview adapter was checked locally: missing visitor identity returns HTTP 401, two synthetic visitors start with separate empty workspaces, and model integrity inspection succeeds with the model still marked HOLD. Hosted-proxy checks are recorded separately after deployment.
+The actual preview adapter was checked locally: missing visitor identity returns HTTP 401, and model integrity inspection succeeds with the model still marked HOLD. After six snapshots were imported by synthetic visitor A, visitor B still had zero snapshots and zero markets.
+
+## Hosted preview checks
+
+The private app preview was deployed on October 24, 2026 UTC (October 23 in America/Los_Angeles). Its artifact ID is `4324457f-1aa3-41f5-8a87-f1e708166a3d`, and its canonical viewer is https://www.perplexity.ai/computer/a/sports-betting-master-QyRFfxqjQfWKh_HnCBZqPQ.
+
+The hosted app content was opened in a fresh browser context using the platform's signed private-preview route. The canonical Perplexity viewer challenged the automated browser with Cloudflare verification; the signed app route loaded and its real backend operations passed.
+
+- Hosted reads, odds conversion, sample import, league filtering and refresh passed.
+- A fictional QA journal entry saved, settled, persisted on reload and exported with the expected values.
+- Malformed JSON showed an error while preserving saved data.
+- The full EdgeBoard app opened, all six workspaces and all three advanced sections rendered, and model hash routing survived reload.
+- Model artifact inspection returned verified integrity, while approval correctly remained HOLD.
+- The return link opened the master workspace.
+- Both applications rendered at desktop and 375px without horizontal page overflow; no app page errors were recorded.
+- A sandboxed iframe without same-origin/storage access also passed backend reads, sample import, odds conversion, model inspection, a journal write and JSON download.
+- Provider sync was disabled because no key was configured.
+
+All records created during these checks were fictional QA data in isolated preview workspaces. No real wager, paid feed, production record migration or deployment to an external hosting account occurred.
 
 Live sportsbook credentials are not configured. The preview does not enable paid feeds, billing, automated wagers, bot messaging or unattended scraping.

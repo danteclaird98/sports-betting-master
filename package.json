@@ -9,6 +9,8 @@
   "scripts": {
     "build": "vite build --config apps/edgeboard/vite.config.ts && esbuild runtime/server.ts --bundle --platform=node --format=esm --outfile=dist/server.mjs --external:node:*",
     "start": "node --env-file-if-exists=.env dist/server.mjs",
+    "build:preview": "npm run build && node scripts/build-preview.mjs",
+    "start:preview": "node runtime/preview-server.mjs",
     "test:node": "node --test tests/node/*.test.ts",
     "test:models": "node --test apps/edgeboard/tests/correctedReceiving.test.ts apps/edgeboard/tests/historicalCohort.test.ts",
     "verify:sources": "node scripts/verify-sources.mjs",

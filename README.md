@@ -4,6 +4,8 @@ The combined home for all eight sports-research repositories: the latest EdgeBoa
 
 Public master: https://github.com/danteclaird98/sports-betting-master
 
+For the private interactive Computer preview, see [preview startup and security](docs/PREVIEW.md). That path runs the combined app without exposing provider keys and keeps visitor records separate; it is not permanent application hosting.
+
 All eight filtered source snapshots are preserved under `sources/`, with exact commits and file hashes in [the consolidation manifest](docs/consolidation-manifest.json). Original repositories remain unchanged. See [the consolidation guide](docs/CONSOLIDATION.md) for the source map, excluded sensitive files, licensing and integration boundaries.
 
 ## Run locally

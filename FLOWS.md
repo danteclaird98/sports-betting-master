@@ -37,3 +37,13 @@
 - The production gateway builds on Node 24; all existing regression suites pass.
 - Inspect root and EdgeBoard at desktop and 375px, including console errors.
 - Original repositories and existing deployed services remain unchanged.
+
+## Private preview
+- Deploy the existing master and EdgeBoard frontends, not a replacement mock dashboard.
+- Backend requests require the private proxy's X-Visitor-Id; missing identity is rejected.
+- Each visitor gets separate SQLite files and an internally password-protected gateway.
+- Confirm imports, manual journal writes, exports and model inspection through the hosted link.
+- Verify reload persistence and isolation with two synthetic visitor identities.
+- Malformed imports and invalid odds must show errors without corrupting saved records.
+- Provider sync stays disabled with no credentials configured.
+- Label preview storage as temporary; do not promise permanent hosting or backup.

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { api, auth } from '../../../runtime/client.ts';
+import { transientStore } from '../../../runtime/transient-store.ts';
 import { ClipboardList, ShieldCheck } from 'lucide-react';
 
 type WagerStatus = 'open' | 'win' | 'loss' | 'push' | 'void' | 'cashout' | 'partial';
@@ -49,7 +50,7 @@ const LIMIT_KEY = 'edgeboard:risk-limits:v1';
 
 function readStored<T>(key: string, fallback: T): T {
   try {
-    const raw = localStorage.getItem(key);
+    const raw = transientStore.getItem(key);
     return raw ? JSON.parse(raw) as T : fallback;
   } catch {
     return fallback;
@@ -57,7 +58,7 @@ function readStored<T>(key: string, fallback: T): T {
 }
 
 function writeStored<T>(key: string, value: T) {
-  localStorage.setItem(key, JSON.stringify(value));
+  transientStore.setItem(key, JSON.stringify(value));
 }
 
 function localDateKey(value: string) {
@@ -322,6 +323,7 @@ function WagerTracker() {
         {signedIn && <button type='button' onClick={() => void loadRemote()} disabled={saving}>Reload saved ledger</button>}
         {loaded && legacyWagers.length > 0 && <button type='button' onClick={() => void importLegacy()} disabled={saving}>Import old browser wagers ({legacyWagers.length})</button>}
       </div>
+      <p className="hint">Risk-limit preferences last for this tab only and reset on refresh. Saved wager records remain on the server.</p>
       <div className="controlGrid">
         <label className="field">
           Daily actual-wager limit

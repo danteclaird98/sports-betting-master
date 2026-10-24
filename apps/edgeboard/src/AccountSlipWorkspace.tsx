@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { api } from '../../../runtime/client.ts';
+import { transientStore } from '../../../runtime/transient-store.ts';
 import {
   MARKET_LABELS,
   marketKey,
@@ -91,7 +92,7 @@ function emptyDraft(): Draft {
 function initialDraft(): Draft {
   try {
     const saved = JSON.parse(
-      localStorage.getItem(STORAGE_KEY) ?? 'null',
+      transientStore.getItem(STORAGE_KEY) ?? 'null',
     ) as Draft | null;
     if (
       saved &&
@@ -150,17 +151,17 @@ export default function AccountSlipWorkspace() {
   const [audit, setAudit] = useState<Audit | null>(null);
   const [auditError, setAuditError] = useState('');
   const [storageNotice, setStorageNotice] = useState(
-    'Draft selections stay in this browser until you run a check.',
+    'Draft selections stay in this tab only. Reloading clears them; copy your checked report.',
   );
   const revision = useRef(0);
   const searchRequest = useRef(0);
 
   useEffect(() => {
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(draft));
+      transientStore.setItem(STORAGE_KEY, JSON.stringify(draft));
     } catch {
       setStorageNotice(
-        'Browser draft saving is unavailable. Copy the checked report before leaving.',
+        'Tab draft saving is unavailable. Copy the checked report before leaving.',
       );
     }
   }, [draft]);

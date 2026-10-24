@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 const root = process.cwd();
 const output = path.join(root, 'dist/preview');
+fs.rmSync(output, {recursive: true, force: true}); // Generated frontend only, never visitor data.
 fs.mkdirSync(output, {recursive: true});
 for (const file of ['style.css', 'app.js']) fs.copyFileSync(path.join(root, 'web', file), path.join(output, file));
 fs.copyFileSync(path.join(root, 'runtime/preview-bridge.js'), path.join(output, 'preview-bridge.js'));

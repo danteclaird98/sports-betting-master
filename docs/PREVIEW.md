@@ -28,6 +28,8 @@ Idle visitor processes stop after 30 minutes and can restart using their existin
 
 Preview files live in ignored `data/private-preview/`. They are not committed to GitHub and are not a permanent backup. Permanent hosting should use the original password-protected gateway, persistent storage and a reviewed hosting configuration.
 
+Slip drafts and risk-limit preferences use tab-lifetime memory rather than browser storage, which the embedded preview does not support. They reset on a full reload; copy checked reports and recheck limits before use. The actual wager ledger remains server-backed and is not replaced with temporary tab state.
+
 ## Validation
 
 The production build and all automated suites pass locally: 183 tests passed and one historical-data test skipped because its external dataset is absent. Additional preview tests verify mandatory identity, distinct visitor routing, rejection of caller-supplied cookies, restricted routes and coalesced startup.

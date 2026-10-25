@@ -139,6 +139,7 @@ function App() {
           <DailyDashboard
             onAdvanced={() => open('advanced')}
             onLive={() => open('live')}
+            onModel={() => open('model')}
             onResearchReceiver={openReceiver}
           />
         )}

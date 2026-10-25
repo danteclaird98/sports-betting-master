@@ -1,4 +1,5 @@
 import { buildAssistantReport, dayWindow } from './assistantReport';
+import { dailyScanStatus } from '../shared/dailyScanStatus';
 
 const SPORTS = [
   ['baseball_mlb', 'MLB'],
@@ -19,8 +20,8 @@ export async function scanAllSports(date?: string, timezone?: string) {
         sport,
         date: window.date,
         timezone: window.timezone,
-      }),
-    ),
+      })
+    )
   );
   const now = Date.now();
   const sports = results.map((result, index) => {
@@ -30,6 +31,9 @@ export async function scanAllSports(date?: string, timezone?: string) {
         sport,
         name,
         status: 'UNAVAILABLE',
+        sourceHealth: [{ source: 'Sport scan', status: 'UNAVAILABLE', retrievedAt: null }],
+        model: { status: 'NOT_EVALUATED', liveApproved: false },
+        decisionReasons: ['The sport scan failed. Retry before drawing conclusions.'],
         eventCount: 0,
         gamePrices: 0,
         propSides: 0,
@@ -41,13 +45,13 @@ export async function scanAllSports(date?: string, timezone?: string) {
     const report = result.value;
     const gameWatch = report.gamePrices
       .filter(
-        (q) =>
+        q =>
           Number.isFinite(Date.parse(q.startTime)) &&
           Date.parse(q.startTime) > now &&
-          Number.isFinite(q.americanOdds),
+          Number.isFinite(q.americanOdds)
       )
       .slice(0, 6)
-      .map((q) => ({
+      .map(q => ({
         sport,
         sportName: name,
         event: q.event,
@@ -70,15 +74,15 @@ export async function scanAllSports(date?: string, timezone?: string) {
       }));
     const propWatch = (report.propPriceSamples ?? [])
       .filter(
-        (q) =>
+        q =>
           Number.isFinite(Date.parse(q.startTime)) &&
           Date.parse(q.startTime) > now &&
           q.publicUnderdogDecimalPrice !== null &&
           Number.isFinite(q.publicUnderdogDecimalPrice) &&
-          q.publicUnderdogDecimalPrice > 1,
+          q.publicUnderdogDecimalPrice > 1
       )
       .slice(0, 6)
-      .map((q) => ({
+      .map(q => ({
         sport,
         sportName: name,
         event: q.event,
@@ -106,11 +110,19 @@ export async function scanAllSports(date?: string, timezone?: string) {
       sport,
       name,
       status: report.decision,
+      dataStatus: dailyScanStatus(
+        [{ status: report.decision, sourceHealth: report.sourceHealth }],
+        gameWatch.length + propWatch.length,
+        report.qualifyingOpportunities.length,
+      ).status,
+      sourceHealth: report.sourceHealth,
+      model: report.model,
+      decisionReasons: report.decisionReasons,
       eventCount: report.scope.gameEvents,
       gamePrices: report.scope.gameQuotes,
       propSides: report.scope.propMarketSidesScreened,
       qualifyingCount: report.qualifyingOpportunities.length,
-      samples: gameWatch.slice(0, 4).map((price) => ({
+      samples: gameWatch.slice(0, 4).map(price => ({
         event: price.event,
         market: price.market,
         selection: price.selection,
@@ -124,12 +136,12 @@ export async function scanAllSports(date?: string, timezone?: string) {
     };
   });
   const reviewQueue = sports
-    .flatMap((s) => s.reviewQueue)
+    .flatMap(s => s.reviewQueue)
     .sort(
       (a, b) =>
         Date.parse(a.startTime) - Date.parse(b.startTime) ||
         a.sportName.localeCompare(b.sportName) ||
-        a.event.localeCompare(b.event),
+        a.event.localeCompare(b.event)
     );
   return {
     schemaVersion: 'edgeboard.all-sports.v2',
@@ -138,6 +150,7 @@ export async function scanAllSports(date?: string, timezone?: string) {
     researchOnly: true,
     paidProviderRequests: 0,
     status: 'NO_APPROVED_LIVE_MODEL',
+    dataStatus: dailyScanStatus(sports, reviewQueue.length).status,
     wagersPlaced: 0,
     caution:
       'WATCH entries are public quote observations, never betting picks. Missing price timestamps, independent probability estimates and settlement verification prohibit EV claims.',

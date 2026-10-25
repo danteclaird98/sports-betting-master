@@ -1,4 +1,5 @@
 import PropVerification from './PropVerification';
+import { dailyScanStatus, type ScanSourceHealth } from '../shared/dailyScanStatus';
 import type { PropObservation } from '../shared/propEvidence';
 import { MARKET_LABELS, marketKey } from '../shared/accountSlip';
 import { useState } from 'react';
@@ -41,6 +42,9 @@ type SportRow = {
   gamePrices: number;
   propSides: number;
   qualifyingCount: number;
+  sourceHealth?: ScanSourceHealth[];
+  model?: { status: string; liveApproved: boolean };
+  decisionReasons?: string[];
 };
 type DailyReport = {
   generatedAt: string;
@@ -101,10 +105,12 @@ function selectionLabel(sample: MarketSample) {
 export default function DailyDashboard({
   onAdvanced,
   onLive,
+  onModel,
   onResearchReceiver,
 }: {
   onAdvanced: () => void;
   onLive: () => void;
+  onModel: () => void;
   onResearchReceiver: (pick: {
     player: string;
     event: string;
@@ -124,14 +130,14 @@ export default function DailyDashboard({
     try {
       const params = new URLSearchParams({ timezone: 'America/Los_Angeles' });
       const result = await api.get(
-        '/api/all-sports-report?' + params.toString(),
+        '/api/all-sports-report?' + params.toString()
       );
       setReport(result.data as DailyReport);
     } catch (error) {
       setMessage(
         error instanceof Error
           ? error.message
-          : 'Research source unavailable. No bets approved.',
+          : 'Research source unavailable. No bets approved.'
       );
     } finally {
       setBusy(false);
@@ -142,26 +148,28 @@ export default function DailyDashboard({
     try {
       await navigator.clipboard.writeText(JSON.stringify(report, null, 2));
       setMessage(
-        'Research report copied. It contains observed prices, sources and reasons to HOLD.',
+        'Research report copied. It contains observed prices, sources and reasons to HOLD.'
       );
     } catch {
       setMessage(
-        'Copy unavailable in this browser. Open Advanced Research to export an assistant report.',
+        'Copy unavailable in this browser. Open Advanced Research to export an assistant report.'
       );
     }
   }
-  const visible = (report?.reviewQueue ?? [])
-    .filter((row) => selectedSport === 'all' || row.sport === selectedSport)
-    .slice(0, 12);
-  const relevantSports = (report?.sports ?? []).filter(
-    (row) => selectedSport === 'all' || row.sport === selectedSport,
+  const selectedPrices = (report?.reviewQueue ?? []).filter(
+    row => selectedSport === 'all' || row.sport === selectedSport
   );
-  const sourceFailures = relevantSports.filter(
-    (row) => row.status === 'UNAVAILABLE',
-  ).length;
+  const visible = selectedPrices.slice(0, 12);
+  const relevantSports = (report?.sports ?? []).filter(
+    row => selectedSport === 'all' || row.sport === selectedSport
+  );
+  const candidateCount = selectedSport === 'all'
+    ? report?.qualifyingOpportunities.length ?? 0
+    : relevantSports.reduce((sum, row) => sum + row.qualifyingCount, 0);
+  const scanState = dailyScanStatus(relevantSports, selectedPrices.length, candidateCount);
   const scanned = relevantSports.reduce(
     (sum, row) => sum + row.gamePrices + row.propSides,
-    0,
+    0
   );
   return (
     <div className="simpleHome">
@@ -197,8 +205,7 @@ export default function DailyDashboard({
           </button>
         </div>
         <small>
-          No provider credits spent by this scan. No wagers placed. Caesars
-          account availability must be verified separately.
+          No provider credits spent by this scan. No wagers placed. Caesars          account availability must be verified separately.
         </small>
       </section>
       {message && (
@@ -226,31 +233,32 @@ export default function DailyDashboard({
           >
             <div>
               <span className="simpleEyebrow">TODAY'S DECISION</span>
-              <h2>
-                {report.qualifyingOpportunities.length > 0
-                  ? 'Research requires additional verification'
-                  : 'HOLD — no verified +EV bets'}
-              </h2>
+              <h2>{scanState.title}</h2>
+              <p>{scanState.description}</p>
               <p>
-                {report.qualifyingOpportunities.length > 0
-                  ? 'Research candidates were returned, but account-specific prices, uncertainty and execution must be verified before wagering.'
-                  : 'Prices are available for research, but no approved independent probability model has established a profitable wager.'}
+                {scanState.unavailableSources > 0 &&
+                  'Coverage is incomplete: some sources failed. Review their status below. '}
+                Independent research forecasts are available separately; they do
+                not approve wagers.
               </p>
+              <button type="button" className="simpleSecondary" onClick={onModel}>
+                Inspect receiving probability model <ArrowRight size={16} />
+              </button>
             </div>
             <strong className="simpleStake">Recommended stake: $0</strong>
           </section>
           <div className="simpleStats">
             <div>
-              <span>Market sides screened</span>
+              <span>Market sides observed</span>
               <strong>{scanned.toLocaleString()}</strong>
             </div>
             <div>
-              <span>Research-qualified bets</span>
-              <strong>{report.qualifyingOpportunities.length}</strong>
+              <span>Research candidates</span>
+              <strong>{candidateCount}</strong>
             </div>
             <div>
               <span>Sources unavailable</span>
-              <strong>{sourceFailures}</strong>
+              <strong>{scanState.unavailableSources}</strong>
             </div>
             <div>
               <span>Provider credits used</span>
@@ -298,11 +306,33 @@ export default function DailyDashboard({
                 </button>
               ))}
             </div>
+            <details className="simpleCaution">
+              <summary>View scan blockers and source status</summary>
+              {relevantSports.map(row => (
+                <div key={row.sport}>
+                  <strong>{row.name}</strong>
+                  {(row.sourceHealth ?? []).map(source => (
+                    <p key={source.source}>
+                      {source.source}: {source.status.replaceAll('_', ' ')}
+                    </p>
+                  ))}
+                  {!row.sourceHealth?.length && (
+                    <p>Detailed source status was not returned. Retry the scan.</p>
+                  )}
+                  <p>
+                    Model: {row.model?.status ?? 'Approval not established'} ·
+                    Betting approval: {row.model?.liveApproved === true
+                      ? 'Additional market and execution checks required'
+                      : 'Not approved'}
+                  </p>
+                  {(row.decisionReasons ?? []).map((reason, index) => (
+                    <p key={index}>{reason}</p>
+                  ))}
+                </div>
+              ))}
+            </details>
             {visible.length === 0 ? (
-              <p className="simpleEmpty">
-                No usable upcoming public prices were returned for this filter.
-                The correct action is HOLD.
-              </p>
+              <p className="simpleEmpty">{scanState.description}</p>
             ) : (
               <div className="simpleMarketList">
                 {visible.map((row, index) => (
@@ -326,11 +356,12 @@ export default function DailyDashboard({
                     </div>
                     <h3>{selectionLabel(row)}</h3>
                     <p>{row.event}</p>
+                    <p>{row.reason}</p>
                     {row.sport === 'americanfootball_nfl' &&
                       row.type === 'prop' &&
                       row.player &&
                       /^(receptions?|receiving[_ -]?yards?|rec[_ -]?yards?)$/i.test(
-                        row.market.trim(),
+                        row.market.trim()
                       ) && (
                         <button
                           type="button"

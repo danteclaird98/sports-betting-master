@@ -124,7 +124,10 @@
       "full rushing and receiving touchdown label",
       "source availability separated from model approval",
       "source outages reflected in per-filter counts",
-      "direct receiving-model navigation from daily status"
+      "direct receiving-model navigation from daily status",
+      "60-second snapshot expiry and started-game removal",
+      "separate report and source retrieval times",
+      "unknown source diagnostics"
     ],
     "description": "Default mobile screen is simple, does not call paid providers, and never presents a price observation as an approved bet.",
     "steps": [
@@ -132,6 +135,7 @@
       "Click Scan today's games and wait for market coverage or a plainly displayed upstream error.",
       "When the scan returns, confirm the decision identifies HOLD or requires additional verification; a $0 stake is shown.",
       "Inspect the decision for the selected sport: returned prices, unavailable sources, unsupported coverage and successful empty results must have distinct explanations. Expand View scan blockers and source status and inspect per-feed status and betting approval. Filtering an empty sport must not inherit prices from other sports. Open Inspect receiving probability model; verify the frozen receiving model workspace opens, then return to Today's Board. HOLD and zero stake must remain.",
+      "Inspect report generation and per-source retrieval times; do not confuse them with sportsbook update times. Keep the returned report open until its displayed refresh time (at most 60 seconds). Require HOLD — scan needs refresh, no price cards, zero candidates and disabled Copy research. No automatic provider refresh may occur. Rescan and verify a new report or a visible retryable source error.",
       "Inspect a WATCH card and confirm exact book/source and price are labeled observations with EV unavailable; filter to NFL and back to All sports.",
       "For a visible public player prop, wait for the automatic verification summary, expand View verification evidence and missing requirements, and inspect the twelve separate checks. Current public selection and independent event/roster may be confirmed; account offer, bookmaker timestamp, game-day availability, equivalent rules, two reference books, approved model and EV must remain missing unless supported. Confirm HOLD and stake $0.",
       "If a Rushing + Receiving Touchdowns card is shown, confirm the full market label and that a college-football prop cannot inherit the NFL reception model. Use Refresh evidence and verify a newly checked report or a visible source failure. No paid provider request may be made.",

@@ -4,6 +4,7 @@ import { mkdtemp, mkdir, readFile, writeFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
+import { parseDailyReport } from '../../apps/edgeboard/shared/dailyReport.ts';
 
 const folder = await mkdtemp(join(tmpdir(), 'daily-scan-'));
 await mkdir(join(folder, 'backend'));
@@ -38,7 +39,9 @@ function report(statuses: string[], withPrice = false) {
 test('aggregate exposes ordinary feed failures and keeps legacy approval status', async () => {
   stub.setFixture(() => report(['UNAVAILABLE','UNAVAILABLE']));
   const result = await scanAllSports();
+  assert.doesNotThrow(() => parseDailyReport(result));
   assert.equal(result.status,'NO_APPROVED_LIVE_MODEL');
+  assert.equal(Date.parse(result.refreshAfter)-Date.parse(result.generatedAt),60000);
   assert.equal(result.dataStatus,'SOURCE_UNAVAILABLE');
   assert.equal(result.sports.length,8);
   assert.ok(result.sports.every(row => row.dataStatus === 'SOURCE_UNAVAILABLE'));
@@ -50,6 +53,7 @@ test('partial feed failure retains real report observations and model blockers',
   stub.setFixture(sport => report(sport === 'baseball_mlb' ? ['RETRIEVED','UNAVAILABLE'] : ['RETRIEVED'], sport === 'baseball_mlb'));
   const result = await scanAllSports();
   assert.equal(result.dataStatus,'RESEARCH_ONLY');
+  assert.doesNotThrow(() => parseDailyReport(result));
   assert.equal(result.reviewQueue.length,1);
   assert.equal(result.reviewQueue[0].estimatedEv,null);
   assert.equal(result.reviewQueue[0].accountVerified,false);
@@ -65,6 +69,8 @@ test('rejected sport scan is distinct from fulfilled empty report', async () => 
   });
   const result = await scanAllSports();
   assert.equal(result.sports.find(row => row.sport === 'tennis').status,'UNAVAILABLE');
+  assert.doesNotThrow(() => parseDailyReport(result));
+  assert.equal(result.sports.find(row => row.sport === 'tennis').dataStatus,'SOURCE_UNAVAILABLE');
   assert.equal(result.sports.find(row => row.sport === 'tennis').model.status,'NOT_EVALUATED');
   assert.equal(result.dataStatus,'NO_UPCOMING_PRICES');
 });

@@ -47,5 +47,16 @@ test('candidates do not bypass the verification requirement', () => {
 });
 test('legacy reports fail conservatively without inventing prices', () => {
   assert.equal(dailyScanStatus([{status:'UNAVAILABLE'}], 0).status, 'SOURCE_UNAVAILABLE');
-  assert.equal(dailyScanStatus([{status:'NO_QUALIFYING_OPPORTUNITIES'}], 0).status, 'NO_UPCOMING_PRICES');
+  assert.equal(dailyScanStatus([{status:'NO_QUALIFYING_OPPORTUNITIES'}], 0).status, 'DATA_UNAVAILABLE');
+});
+
+test('absent and unknown diagnostics never masquerade as a successful empty scan', () => {
+  assert.equal(dailyScanStatus([],0).status,'DATA_UNAVAILABLE');
+  assert.equal(dailyScanStatus([sport('BROKEN')],0).status,'DATA_UNAVAILABLE');
+  assert.equal(dailyScanStatus([sport('SPORT_UNSUPPORTED','BROKEN')],0).status,'DATA_UNAVAILABLE');
+});
+test('unknown diagnostics remain visible alongside a retrieved feed', () => {
+  const result = dailyScanStatus([sport('RETRIEVED','UNKNOWN')],0);
+  assert.equal(result.status,'NO_UPCOMING_PRICES');
+  assert.equal(result.unknownSources,1);
 });

@@ -31,7 +31,13 @@ export function dailyScanStatus(
   const unsupportedSources = sources.filter(
     (source) => source.status === 'SPORT_UNSUPPORTED',
   ).length;
-  const evidence = { unavailableSources, retrievedSources, unsupportedSources };
+  const unknownSources = sports.reduce((sum, sport) => {
+    if (!sport.sourceHealth?.length) return sum + (sport.status === 'UNAVAILABLE' ? 0 : 1);
+    return sum + sport.sourceHealth.filter(source =>
+      !['RETRIEVED', 'UNAVAILABLE', 'SPORT_UNSUPPORTED'].includes(source.status)
+    ).length;
+  }, 0);
+  const evidence = { unavailableSources, retrievedSources, unsupportedSources, unknownSources };
 
   if (candidateCount > 0) {
     return {
@@ -49,6 +55,15 @@ export function dailyScanStatus(
       title: 'HOLD — prices need verification',
       description:
         'Public prices were returned for research. Betting value is not established. Review the independent model evidence and exact account offer; quote freshness, uncertainty and settlement checks remain required.',
+    };
+  }
+  if ((sports.length === 0 || unknownSources > 0) && retrievedSources === 0) {
+    return {
+      ...evidence,
+      status: 'DATA_UNAVAILABLE',
+      title: 'HOLD — scan evidence incomplete',
+      description:
+        'Source diagnostics are missing or unrecognized. Retry the scan before interpreting an empty board as no available prices or drawing a model conclusion.',
     };
   }
   if (unavailableSources > 0 && retrievedSources === 0) {

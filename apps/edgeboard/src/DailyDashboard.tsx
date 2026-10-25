@@ -1,8 +1,9 @@
 import PropVerification from './PropVerification';
-import { dailyScanStatus, type ScanSourceHealth } from '../shared/dailyScanStatus';
+import { dailyScanStatus } from '../shared/dailyScanStatus';
+import { dailyReportView, parseDailyReport, type DailyReport, type MarketSample } from '../shared/dailyReport';
 import type { PropObservation } from '../shared/propEvidence';
 import { MARKET_LABELS, marketKey } from '../shared/accountSlip';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { api } from '../../../runtime/client.ts';
 import {
   Activity,
@@ -12,50 +13,6 @@ import {
   ShieldCheck,
 } from 'lucide-react';
 
-type MarketSample = {
-  sport: string;
-  sportName: string;
-  event: string;
-  startTime: string;
-  type: 'game' | 'prop';
-  player: string | null;
-  market: string;
-  selection: string;
-  line: number | null;
-  source: string;
-  americanOdds: number | null;
-  publicDecimalPrice: number | null;
-  retrievedAt: string | null;
-  lineId?: string;
-  period?: string;
-  offeredOddsTimestampVerified: false;
-  accountVerified: false;
-  estimatedEv: null;
-  researchStatus: 'WATCH_ONLY';
-  reason: string;
-};
-type SportRow = {
-  sport: string;
-  name: string;
-  status: string;
-  eventCount: number;
-  gamePrices: number;
-  propSides: number;
-  qualifyingCount: number;
-  sourceHealth?: ScanSourceHealth[];
-  model?: { status: string; liveApproved: boolean };
-  decisionReasons?: string[];
-};
-type DailyReport = {
-  generatedAt: string;
-  requested: { date: string; timezone: string };
-  paidProviderRequests: number;
-  status: string;
-  caution: string;
-  sports: SportRow[];
-  reviewQueue: MarketSample[];
-  qualifyingOpportunities: unknown[];
-};
 const filters = [
   ['all', 'All sports'],
   ['americanfootball_nfl', 'NFL'],
@@ -123,6 +80,19 @@ export default function DailyDashboard({
   const [selectedSport, setSelectedSport] = useState('all');
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState('');
+  const [now, setNow] = useState(Date.now);
+  useEffect(() => {
+    if (!report) return;
+    const tick = () => setNow(Date.now());
+    const timer = window.setInterval(tick, 1_000);
+    window.addEventListener('focus', tick);
+    document.addEventListener('visibilitychange', tick);
+    return () => {
+      window.clearInterval(timer);
+      window.removeEventListener('focus', tick);
+      document.removeEventListener('visibilitychange', tick);
+    };
+  }, [report]);
   async function scan() {
     setBusy(true);
     setMessage('');
@@ -132,7 +102,9 @@ export default function DailyDashboard({
       const result = await api.get(
         '/api/all-sports-report?' + params.toString()
       );
-      setReport(result.data as DailyReport);
+      const checked = parseDailyReport(result.data);
+      setNow(Date.now());
+      setReport(checked);
     } catch (error) {
       setMessage(
         error instanceof Error
@@ -145,10 +117,14 @@ export default function DailyDashboard({
   }
   async function copyReport() {
     if (!report) return;
+    if (dailyReportView(report, selectedSport, Date.now()).expired) {
+      setMessage('This scan has expired. Refresh before copying research.');
+      return;
+    }
     try {
       await navigator.clipboard.writeText(JSON.stringify(report, null, 2));
       setMessage(
-        'Research report copied. It contains observed prices, sources and reasons to HOLD.'
+        'Original all-sports scan snapshot copied. It reflects report-generation time, not the current filtered board; events may have since started. No bets approved.'
       );
     } catch {
       setMessage(
@@ -156,17 +132,17 @@ export default function DailyDashboard({
       );
     }
   }
-  const selectedPrices = (report?.reviewQueue ?? []).filter(
-    row => selectedSport === 'all' || row.sport === selectedSport
-  );
+  const view = report ? dailyReportView(report, selectedSport, now) : null;
+  const selectedPrices = view?.prices ?? [];
   const visible = selectedPrices.slice(0, 12);
-  const relevantSports = (report?.sports ?? []).filter(
-    row => selectedSport === 'all' || row.sport === selectedSport
-  );
-  const candidateCount = selectedSport === 'all'
-    ? report?.qualifyingOpportunities.length ?? 0
-    : relevantSports.reduce((sum, row) => sum + row.qualifyingCount, 0);
-  const scanState = dailyScanStatus(relevantSports, selectedPrices.length, candidateCount);
+  const relevantSports = view?.sports ?? [];
+  const candidateCount = view?.candidateCount ?? 0;
+  const availability = dailyScanStatus(relevantSports, selectedPrices.length, candidateCount);
+  const scanState = view?.expired ? {
+    ...availability,
+    title: 'HOLD — scan needs refresh',
+    description: 'This scan is past its refresh time (at most 60 seconds) or its time cannot be verified. Refresh the scan to load upcoming observations. Quote freshness and betting value remain unverified.',
+  } : availability;
   const scanned = relevantSports.reduce(
     (sum, row) => sum + row.gamePrices + row.propSides,
     0
@@ -205,7 +181,8 @@ export default function DailyDashboard({
           </button>
         </div>
         <small>
-          No provider credits spent by this scan. No wagers placed. Caesars          account availability must be verified separately.
+          No provider credits spent by this scan. No wagers placed. Caesars
+          account availability must be verified separately.
         </small>
       </section>
       {message && (
@@ -238,6 +215,8 @@ export default function DailyDashboard({
               <p>
                 {scanState.unavailableSources > 0 &&
                   'Coverage is incomplete: some sources failed. Review their status below. '}
+                {scanState.unknownSources > 0 &&
+                  'Some source diagnostics are missing or unrecognized. '}
                 Independent research forecasts are available separately; they do
                 not approve wagers.
               </p>
@@ -281,6 +260,8 @@ export default function DailyDashboard({
                 className="simpleSecondary"
                 type="button"
                 onClick={copyReport}
+                title="Copies the original all-sports scan snapshot, not the current filtered board"
+                disabled={view?.expired ?? true}
               >
                 <ClipboardCopy size={16} /> Copy research
               </button>
@@ -314,6 +295,7 @@ export default function DailyDashboard({
                   {(row.sourceHealth ?? []).map(source => (
                     <p key={source.source}>
                       {source.source}: {source.status.replaceAll('_', ' ')}
+                      {' · '}Retrieved: {source.retrievedAt ? timeLabel(source.retrievedAt) : 'Unavailable'}
                     </p>
                   ))}
                   {!row.sourceHealth?.length && (
@@ -382,6 +364,7 @@ export default function DailyDashboard({
                     <div className="simpleMarketBottom">
                       <span>
                         {row.source} · {priceLabel(row)}
+                        {' · '}Retrieved: {row.retrievedAt ? timeLabel(row.retrievedAt) : 'Unavailable'}
                       </span>
                       <span>EV not established</span>
                     </div>
@@ -400,7 +383,8 @@ export default function DailyDashboard({
               </div>
             )}
             <p className="simpleCaution">
-              Data obtained at {timeLabel(report.generatedAt)}. Source retrieval
+              Report generated at {timeLabel(report.generatedAt)}. Scan expires at {timeLabel(new Date(view!.expiresAt).toISOString())}.
+              This 60-second display limit does not verify quote freshness. Source retrieval
               time is not the sportsbook's live odds timestamp. Always recheck
               the exact line, price, player availability and rules before a
               wager.

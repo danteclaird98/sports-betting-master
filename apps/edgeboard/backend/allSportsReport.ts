@@ -31,6 +31,7 @@ export async function scanAllSports(date?: string, timezone?: string) {
         sport,
         name,
         status: 'UNAVAILABLE',
+        dataStatus: 'SOURCE_UNAVAILABLE',
         sourceHealth: [{ source: 'Sport scan', status: 'UNAVAILABLE', retrievedAt: null }],
         model: { status: 'NOT_EVALUATED', liveApproved: false },
         decisionReasons: ['The sport scan failed. Retry before drawing conclusions.'],
@@ -143,9 +144,11 @@ export async function scanAllSports(date?: string, timezone?: string) {
         a.sportName.localeCompare(b.sportName) ||
         a.event.localeCompare(b.event)
     );
+  const generatedAt = new Date().toISOString();
   return {
     schemaVersion: 'edgeboard.all-sports.v2',
-    generatedAt: new Date().toISOString(),
+    generatedAt,
+    refreshAfter: new Date(Date.parse(generatedAt) + 60_000).toISOString(),
     requested: window,
     researchOnly: true,
     paidProviderRequests: 0,

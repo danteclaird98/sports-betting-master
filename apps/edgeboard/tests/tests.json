@@ -33,11 +33,19 @@
       "GET /api/corrected-receiving-report frozen cohort and diagnostics",
       "audit JSON export",
       "source provenance link",
-      "browser back and refresh navigation"
+      "browser back and refresh navigation",
+      "source-backed next-fixture receiving forecast",
+      "frozen 2026 validation evidence",
+      "private first-receipt forward log",
+      "plain-language model blockers and next steps",
+      "raw blocker codes retained in export"
     ],
     "description": "The existing market research and historical model workflows remain available with their research-only safeguards.",
     "steps": [
       "Open Independent model from the main navigation. Click Inspect frozen receiving model; inspect the actual installed artifact readiness and frozen report.",
+      "Open Independent model and load source-backed players & games. Accept actual current-season players and their next team fixture or a clear source error; do not invent selections. Calculate a conditional forecast when data is available and require HOLD with readable explanations for forward validation, participation, executable price/EV and historical timing. Each explanation must show a next action and the original evidence code.",
+      "Change the player or game and verify the old probability/download disappear. Inspect 2026 validation as retrospective evidence without granting approval. Export the original receipt and confirm unchanged blocker codes and false approval/execution flags.",
+      "Inspect Forward forecast log. Anonymous access must require sign-in. With an authorized QA session and only a genuine eligible future selection, save one server-calculated research forecast, reload it and confirm the first receipt remains unchanged on repeat save. Never submit a fabricated live record. Verify owner-mismatched requests are denied; any unconfirmed save must require history reload rather than blind retries. Local automated fixtures cover private record persistence and duplicates without writing production data.",
       "Confirm artifact verification passes while status remains Research only / HOLD. Verify train 13,344, selection 2,419, calibration 2,490, reused 2025 diagnostic 5,064, retained negatives 299 and corrected warmup 2,780.",
       "Confirm raw, calibrated and baseline Brier/log-loss metrics render and calibration deterioration is disclosed. Expand the artifact audit, inspect the source provenance link and use Download audit JSON to download the already loaded report.",
       "Refresh and verify the Independent model workspace remains selected. Open Today’s Board then use browser Back and confirm the model workspace returns.",

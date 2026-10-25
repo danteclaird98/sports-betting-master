@@ -1,0 +1,32 @@
+{
+  "schemaVersion": 1,
+  "id": "receiving60-forward-v1",
+  "frozenAt": "2026-10-25T20:47:14.467Z",
+  "modelVersion": "receiving60-logistic-v1",
+  "artifactSha256": "9ef7dee9e2df9a75be1d7faeece0132e101d5d5acb876c5a3e6352141964b0c1",
+  "target": {
+    "stat": "receiving_yards",
+    "threshold": 60,
+    "comparison": ">="
+  },
+  "scope": "NFL REG WR/RB/TE conditional recorded-player outcomes; manually selected forecasts, not an exhaustive board",
+  "variants": [
+    "selected",
+    "raw",
+    "trainBaseRate"
+  ],
+  "baselineProbability": 0.1345173860911271,
+  "selection": "First server-calculated saved receipt per account, frozen model, player and game; subsequent saves replay the first receipt. Never select rows by outcome.",
+  "minimumLeadSeconds": 120,
+  "maximumCalculationAgeSeconds": 120,
+  "evaluation": "Brier and clipped log loss for all uniquely archived receipts with exactly one matching published REG WR/RB/TE outcome; missing rows remain unresolved, never losses. Report scored and unresolved counts and source hashes. Do not pool different owners or model versions.",
+  "calibration": "Keep the selected late-2024 Platt mapping frozen; preserve raw probabilities alongside it. No selection or refitting using 2025, 2026 or these future labels.",
+  "approval": "Descriptive monitoring only; no automatic production, EV or betting approval. A later model change requires a new artifact and new prospective cohort.",
+  "limitations": [
+    "A manually selected private cohort does not establish population-wide model performance.",
+    "SavedAt is the server submission clock; database commit time and an independent external timestamp are unavailable.",
+    "SHA-256 detects accidental changes; administrators could replace records. The application offers no edit/delete endpoint.",
+    "Source hashes and retrieval clocks are retained; original historical publication clocks and active-roster participation remain unverified.",
+    "No game winner, spread, total, alternate receiving line, uncertainty interval or betting edge is supported."
+  ]
+}

@@ -47,6 +47,8 @@ The full EdgeBoard workspace includes today's board, account-slip checks, live/s
 
 Telegram delivery, subscription billing, outbound webhooks and unattended scraping are not started by this app. Model artifacts retain their original HOLD status. No automatic wagering or profitable-model claim is included.
 
+Source-backed receiving forecasts, separate frozen 2026 validation evidence and the private forward forecast log are now included in the independent runtime. Model blockers have readable explanations and next actions. [Workflow synchronization and storage details](docs/MODEL_WORKFLOW_SYNC.md) document the source versions, append-only receipts and limitations. No AppDeploy private records were transferred.
+
 ## Data imports and provider setup
 
 Under **Data sources**, choose normalized JSON, SportsGameOdds snapshots, The Odds API responses, OddsHarvester exports or the versioned EdgeOdds→EdgeBoard contract. Samples remain historical demo fixtures, excluded from best-price selection.

@@ -15,6 +15,8 @@ import NflPropLab from './NflPropLab';
 import BlockerAudit from './BlockerAudit';
 import PlayerBacktest from './PlayerBacktest';
 import CorrectedReceivingLab from './CorrectedReceivingLab';
+import ReceivingForecast from './ReceivingForecast';
+import ReceivingValidation from './ReceivingValidation';
 import LineAwarePropLab from './LineAwarePropLab';
 import HistoricalPropPriceAudit from './HistoricalPropPriceAudit';
 import HistoricalNflOddsV4Panel from './HistoricalNflOddsV4Panel';
@@ -150,8 +152,10 @@ function App() {
             <div className="advancedIntro">
               <span className="simpleEyebrow">INDEPENDENT OF MARKET ODDS</span>
               <h1>Independent probability model</h1>
-              <p>Inspect the frozen historical model, trace its training cohort and calculate conditional probabilities from documented history. Forward validation is still required.</p>
+              <p>Choose a real player and next fixture to calculate a conditional receiving forecast, inspect the frozen model and review separate 2026 evidence. Prospective validation and market checks remain required for betting approval.</p>
             </div>
+            <ReceivingForecast />
+            <ReceivingValidation />
             <CorrectedReceivingLab />
           </div>
         )}

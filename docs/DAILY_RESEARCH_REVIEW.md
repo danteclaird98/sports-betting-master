@@ -17,17 +17,17 @@ The follow-up review found five implementation gaps: malformed successful HTTP r
 
 ## Next milestones, in order
 
-### 1. Reconcile model workflow source versions
+### 1. Reconcile model workflow source versions — implemented
 
-The live app has source-backed receiving forecasts and a 2026 validation panel that are absent from the reviewed consolidated master. Inventory the live module/dependency hashes, port only those modules and routes, adapt the master's independent runtime imports, then run forecast parity fixtures and a production build. Do not overwrite source snapshots under `sources/` or claim private records were migrated. This is a separate integration task, not completed by this daily-scan patch.
+The live app has source-backed receiving forecasts and a 2026 validation panel that are absent from the reviewed consolidated master. Inventory the live module/dependency hashes, port only those modules and routes, adapt the master's independent runtime imports, then run forecast parity fixtures and a production build. Do not overwrite source snapshots under `sources/` or claim private records were migrated. The follow-up [model workflow synchronization](MODEL_WORKFLOW_SYNC.md) implements this dependency closure and an isolated owner-scoped append-only SQLite adapter. Existing private records are not migrated.
 
-### 2. Explain model blockers with useful actions
+### 2. Explain model blockers with useful actions — implemented
 
-Translate source-error and approval-blocker codes into plain language while retaining exact codes in exported receipts. Distinguish retryable data retrieval from methodological requirements. A source retry may restore calculation; it cannot grant betting approval.
+Translate source-error and approval-blocker codes into plain language while retaining exact codes in exported receipts. Distinguish retryable data retrieval from methodological requirements. A source retry may restore calculation; it cannot grant betting approval. The receiving forecast panel now shows plain-language explanations and next steps while preserving original codes in receipts.
 
 ### 3. Establish forward evidence
 
-Choose one exact target (currently the receiving model is conditional full-game receiving 60+), freeze the artifact, define the eligible cohort and record predictions before events. Preserve decision times, feature availability, participation assumptions, model hashes and eventual settlement. Add source-backed accepted prices and verified rules before evaluating betting returns. No retrospective statistic substitutes for this prospective record.
+The forward log now retains the first manually selected server-calculated receipt under a frozen protocol; no prospective outcome evidence is claimed. Choose one exact target (currently the receiving model is conditional full-game receiving 60+), freeze the artifact, define the eligible cohort and record predictions before events. Preserve decision times, feature availability, participation assumptions, model hashes and eventual settlement. Add source-backed accepted prices and verified rules before evaluating betting returns. No retrospective statistic substitutes for this prospective record.
 
 ### 4. Evaluate before any approval change
 

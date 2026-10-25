@@ -1,0 +1,269 @@
+{
+  "artifactAvailableAt": "2026-10-23T22:13:13.352Z",
+  "artifactSha256": "9ef7dee9e2df9a75be1d7faeece0132e101d5d5acb876c5a3e6352141964b0c1",
+  "baseline": {
+    "fitPartition": "2021-2023 scored REG WR/RB/TE rows",
+    "n": 13344,
+    "probability": 0.1345173860911271
+  },
+  "byWeek": {
+    "1": {
+      "rows": 271,
+      "selected": {
+        "brier": 0.0865770078705509,
+        "log_loss": 0.28201297473792913,
+        "n": 271
+      }
+    },
+    "2": {
+      "rows": 277,
+      "selected": {
+        "brier": 0.09342836513252642,
+        "log_loss": 0.3151038579011989,
+        "n": 277
+      }
+    },
+    "3": {
+      "rows": 276,
+      "selected": {
+        "brier": 0.09653130537064385,
+        "log_loss": 0.31650012219534795,
+        "n": 276
+      }
+    },
+    "4": {
+      "rows": 296,
+      "selected": {
+        "brier": 0.10160253496759615,
+        "log_loss": 0.32661776809153215,
+        "n": 296
+      }
+    },
+    "5": {
+      "rows": 293,
+      "selected": {
+        "brier": 0.09924930245806679,
+        "log_loss": 0.32104719797454623,
+        "n": 293
+      }
+    },
+    "6": {
+      "rows": 275,
+      "selected": {
+        "brier": 0.08208164272736176,
+        "log_loss": 0.27607354985488086,
+        "n": 275
+      }
+    },
+    "7": {
+      "rows": 19,
+      "selected": {
+        "brier": 0.17285437700341796,
+        "log_loss": 0.49745158822819474,
+        "n": 19
+      }
+    }
+  },
+  "calibrationBinsSelected": [
+    {
+      "lower": 0.0,
+      "meanPrediction": 0.037583060307902386,
+      "n": 1180,
+      "observedRate": 0.048305084745762714,
+      "upper": 0.1
+    },
+    {
+      "lower": 0.1,
+      "meanPrediction": 0.14117308028647893,
+      "n": 228,
+      "observedRate": 0.2324561403508772,
+      "upper": 0.2
+    },
+    {
+      "lower": 0.2,
+      "meanPrediction": 0.24339243220321197,
+      "n": 104,
+      "observedRate": 0.22115384615384615,
+      "upper": 0.3
+    },
+    {
+      "lower": 0.3,
+      "meanPrediction": 0.35284925247435894,
+      "n": 59,
+      "observedRate": 0.3898305084745763,
+      "upper": 0.4
+    },
+    {
+      "lower": 0.4,
+      "meanPrediction": 0.45409751385220537,
+      "n": 35,
+      "observedRate": 0.4857142857142857,
+      "upper": 0.5
+    },
+    {
+      "lower": 0.5,
+      "meanPrediction": 0.5460972536647436,
+      "n": 29,
+      "observedRate": 0.5517241379310345,
+      "upper": 0.6
+    },
+    {
+      "lower": 0.6,
+      "meanPrediction": 0.6471448657322637,
+      "n": 27,
+      "observedRate": 0.4444444444444444,
+      "upper": 0.7
+    },
+    {
+      "lower": 0.7,
+      "meanPrediction": 0.7499445839415955,
+      "n": 20,
+      "observedRate": 0.6,
+      "upper": 0.8
+    },
+    {
+      "lower": 0.8,
+      "meanPrediction": 0.8444142892793622,
+      "n": 13,
+      "observedRate": 0.7692307692307693,
+      "upper": 0.9
+    },
+    {
+      "lower": 0.9,
+      "meanPrediction": 0.9397170274172879,
+      "n": 12,
+      "observedRate": 0.75,
+      "upper": 1.0
+    }
+  ],
+  "canonicalArtifactSha256": "7852516f02ee5eaf6337feedaadaf41b930af5931ca6181614ff92794c0f54f8",
+  "counts": {
+    "eligibleGames": 94,
+    "eligiblePlayers": 456,
+    "eligibleRows": 1899,
+    "exclusions": {
+      "outside_regular_season_position_scope": 4659
+    },
+    "negativeYardRowsRetained": 28,
+    "scoredGames": 94,
+    "scoredPlayers": 410,
+    "scoredRows": 1707,
+    "seasonComplete": false,
+    "snapshotCoverage": "Partial 2026 season; latest week can be incomplete",
+    "warmupRows": 192,
+    "weeks": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7
+    ]
+  },
+  "dataAvailable": true,
+  "descriptiveEventRateSEAssumingRowsIndependent": 0.008294490631039066,
+  "evaluatedAt": "2026-10-24T04:34:29.912469+00:00",
+  "evaluationCompletionNote": "Completion timestamp follows independent full-row scoring reproduction; predictions, source bytes, model selection and metrics unchanged.",
+  "evaluationScriptSha256": "018df8983a452e9a84711e61af80c7865ad5bb5ddf40d73d0ac2d65c41c700b6",
+  "evaluationStartedAt": "2026-10-24T04:30:11.537289+00:00",
+  "evaluationStatus": "RETROSPECTIVE_2026_FROZEN_EVALUATION",
+  "executionEnabled": false,
+  "independentOfOdds": true,
+  "limitations": [
+    "Newly inspected 2026 outcomes are retrospective, not proven globally untouched.",
+    "2026 archived rows lack original historical publication clocks; week order is a proxy.",
+    "Recorded-player rows condition on eventual participation, not a prospective active roster.",
+    "The artifact was frozen 2026-10-23; earlier completed games are not prospective forecasts of this release.",
+    "Platt calibration was fitted and selected on the same late2024 partition; do not reselect using 2026.",
+    "No market prices, fees, settlement identity, eligibility verification, or live positive EV evidence."
+  ],
+  "liveApproved": false,
+  "metrics": {
+    "calibrated": {
+      "brier": 0.09431502486270571,
+      "log_loss": 0.3088346884982954,
+      "n": 1707
+    },
+    "raw": {
+      "brier": 0.09393078054002998,
+      "log_loss": 0.30810673532794786,
+      "n": 1707
+    },
+    "selected": {
+      "brier": 0.09431502486270571,
+      "log_loss": 0.3088346884982954,
+      "n": 1707
+    },
+    "trainBaseRate": {
+      "brier": 0.11744110926607573,
+      "log_loss": 0.39747898770119794,
+      "n": 1707
+    }
+  },
+  "modelParametersChanged": false,
+  "modelVersion": "receiving60-logistic-v1",
+  "nextRequiredEvidence": [
+    "Persist timestamped predictions before kickoff using the frozen model.",
+    "Verify provider history was published before decisionAt and validate participation scope.",
+    "Preregister prospective evaluation/approval criteria before resolving future labels.",
+    "Align exact executable quote, market settlement, fees and uncertainty before any EV approval."
+  ],
+  "observedEventRate": 0.13591095489162272,
+  "pairedGameBootstrap": {
+    "draws": 2000,
+    "games": 94,
+    "method": "paired game-cluster percentile bootstrap; descriptive only",
+    "seed": 20261023,
+    "selectedMinusBaselineBrier95": [
+      -0.03048432820390802,
+      -0.015926214274011294
+    ],
+    "selectedMinusBaselineLogLoss95": [
+      -0.11054107914279153,
+      -0.06761126440816988
+    ]
+  },
+  "predictionRowsSha256": "de76bcd4b2a5bdd2316698c298e5aee93e524a5df0442f27eb600053376d9cf9",
+  "productionEnabled": false,
+  "prospectiveValidationAvailable": false,
+  "protocolSha256": "53606ea5ab892b5a02ccbdd90256eb07d30120b47773ec584b00137291bcbdf6",
+  "schemaVersion": 1,
+  "selectedCalibrationChanged": false,
+  "source": {
+    "bytes": 2919609,
+    "finalUrl": "https://release-assets.githubusercontent.com/github-production-release-asset/452908115/dfa0cf16-02f0-4067-9a3f-3e57906de7f5",
+    "httpStatus": 200,
+    "officialAssetDigestMatches": true,
+    "officialRelease": {
+      "asset": {
+        "browser_download_url": "https://github.com/nflverse/nflverse-data/releases/download/stats_player/stats_player_week_2026.csv",
+        "created_at": "2026-10-23T14:36:17Z",
+        "digest": "sha256:6ccbb9b4c897e1e27452a6bbecb8a45b77757af6af9e1101ad4b1c5271437cb4",
+        "id": 669399184,
+        "name": "stats_player_week_2026.csv",
+        "size": 2919609,
+        "updated_at": "2026-10-23T14:36:18Z"
+      },
+      "releaseId": 236670328,
+      "releaseUpdatedAt": "2026-10-23T14:36:42Z",
+      "request": {
+        "bytes": 828809,
+        "finalUrl": "https://api.github.com/repos/nflverse/nflverse-data/releases/tags/stats_player",
+        "httpStatus": 200,
+        "requestedAt": "2026-10-24T04:30:11.537799+00:00",
+        "retrievedAt": "2026-10-24T04:30:12.876524+00:00",
+        "sha256": "9464dfea637ddde2035566aadef54f3b92a7c45ab7aef0968c3d103ce21020b7",
+        "url": "https://api.github.com/repos/nflverse/nflverse-data/releases/tags/stats_player"
+      }
+    },
+    "requestedAt": "2026-10-24T04:30:12.890007+00:00",
+    "retrievedAt": "2026-10-24T04:30:14.778541+00:00",
+    "sha256": "6ccbb9b4c897e1e27452a6bbecb8a45b77757af6af9e1101ad4b1c5271437cb4",
+    "url": "https://github.com/nflverse/nflverse-data/releases/download/stats_player/stats_player_week_2026.csv"
+  },
+  "sourceHashes2021To2025Verified": true,
+  "status": "HOLD",
+  "untouchedHoldout": false,
+  "verifiedPositiveEv": false
+}

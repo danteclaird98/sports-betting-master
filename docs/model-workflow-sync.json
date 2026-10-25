@@ -1,0 +1,161 @@
+{
+  "schemaVersion": 1,
+  "sourceAppId": "edgeboard-research-ai9jat",
+  "sourceSnapshotVersion": "1792961655063",
+  "masterBaseCommit": "1a085fdb831c809ac9bb5e6e5e1ff20e4c56eb99",
+  "files": [
+    {
+      "path": "apps/edgeboard/src/ReceivingForecast.tsx",
+      "sha256": "f7781aa7f5bffa2ff96bfaf7a2400b46d5189d5c4f066342522edc13529f7f5a",
+      "sourcePath": "src/ReceivingForecast.tsx",
+      "sourceSha256": "16d11d4789e4f2839698e85ace52ceaeb6818342244e94db00f056a5ab1021bd",
+      "adaptation": "independent runtime plus plain-language blocker guidance",
+      "sourceSnapshotVersion": "1792962032682"
+    },
+    {
+      "path": "apps/edgeboard/src/ReceivingValidation.tsx",
+      "sha256": "48aff868292efd5e1bd8f1d605347901dcfcdc79ee264ba40b4989f49fb4293a",
+      "sourcePath": "src/ReceivingValidation.tsx",
+      "sourceSha256": "6a9180959c1338fdad2dfdd1698295477651ea847ec93b4f78a8b22bc23aad94",
+      "adaptation": "independent-runtime"
+    },
+    {
+      "path": "apps/edgeboard/src/ReceivingForwardLog.tsx",
+      "sha256": "3a27d78088576623f37302b4e17a9aadcff171b59acbf27d5e818107a4984156",
+      "sourcePath": "src/ReceivingForwardLog.tsx",
+      "sourceSha256": "bc3c26e21ccb9cd7552e618d1d8ccc76ef315b2baa7d79bfac3712c9e8470bad",
+      "adaptation": "independent-runtime"
+    },
+    {
+      "path": "apps/edgeboard/backend/receivingForecast.ts",
+      "sha256": "79116d6cf546744d8a1124b5cf00852f48b7729cc03877f3a6f91bf815da0f68",
+      "sourcePath": "backend/receivingForecast.ts",
+      "sourceSha256": "79116d6cf546744d8a1124b5cf00852f48b7729cc03877f3a6f91bf815da0f68",
+      "adaptation": "exact source copy"
+    },
+    {
+      "path": "apps/edgeboard/backend/receivingValidation.ts",
+      "sha256": "250dd6a835d8696982964dced50c91a6031a8232842a03e176975285d578c30b",
+      "sourcePath": "backend/receivingValidation.ts",
+      "sourceSha256": "250dd6a835d8696982964dced50c91a6031a8232842a03e176975285d578c30b",
+      "adaptation": "exact source copy"
+    },
+    {
+      "path": "apps/edgeboard/backend/receivingHistorySeed.json",
+      "sha256": "b74a834fc9b172b92aa7afde800b1f75087ea0da65bf626a2138e8ff14f49f86",
+      "sourcePath": "backend/receivingHistorySeed.json",
+      "sourceSha256": "b74a834fc9b172b92aa7afde800b1f75087ea0da65bf626a2138e8ff14f49f86",
+      "adaptation": "exact source copy"
+    },
+    {
+      "path": "apps/edgeboard/backend/receiving2026Validation.json",
+      "sha256": "2e313cd9862dfb9c299a59948fc805dd055966afb313c580922c1089ce6a5701",
+      "sourcePath": "backend/receiving2026Validation.json",
+      "sourceSha256": "2e313cd9862dfb9c299a59948fc805dd055966afb313c580922c1089ce6a5701",
+      "adaptation": "exact source copy"
+    },
+    {
+      "path": "apps/edgeboard/backend/receivingForwardCore.ts",
+      "sha256": "cb24830f18134a1a88f59fce58fc5810c513ab89d55666fe1596c6df4e657620",
+      "sourcePath": "backend/receivingForwardCore.ts",
+      "sourceSha256": "cb24830f18134a1a88f59fce58fc5810c513ab89d55666fe1596c6df4e657620",
+      "adaptation": "exact source copy"
+    },
+    {
+      "path": "apps/edgeboard/backend/receivingForwardProtocol.json",
+      "sha256": "97aac21f10a1bafd08921819a65dd2b3754ea24ad5b9ff3290eb6019a28b98e9",
+      "sourcePath": "backend/receivingForwardProtocol.json",
+      "sourceSha256": "97aac21f10a1bafd08921819a65dd2b3754ea24ad5b9ff3290eb6019a28b98e9",
+      "adaptation": "exact source copy"
+    },
+    {
+      "path": "apps/edgeboard/shared/sgoOwner.ts",
+      "sha256": "b7e18c9d07d209d3ac14472eb4ff6c9a0cb7056e16e8eb2d777b2ff5b9d6417e",
+      "sourcePath": "shared/sgoOwner.ts",
+      "sourceSha256": "b7e18c9d07d209d3ac14472eb4ff6c9a0cb7056e16e8eb2d777b2ff5b9d6417e",
+      "adaptation": "exact source copy"
+    },
+    {
+      "path": "apps/edgeboard/src/App.tsx",
+      "sha256": "07f7971adce9f10b6e1e4ce6b8899a77bcb6f9ad02d8de8c9895a310eba7fa41",
+      "sourcePath": "src/App.tsx",
+      "sourceSha256": "f2d9d7bcb7731cea31414d6e350d21d5b09cf338925a22c14d901da776e528a9",
+      "adaptation": "independent-runtime"
+    },
+    {
+      "path": "apps/edgeboard/backend/index.ts",
+      "sha256": "42806900c98c2774101b0550dbc9e8abee68b944dc07498094421bae22c4a598",
+      "sourcePath": "backend/index.ts",
+      "sourceSha256": "d5e963cc2e9d9f203d5e0b2fbf39a74b3873d70a3b826cfb24b24604b4d37789",
+      "adaptation": "independent-runtime"
+    },
+    {
+      "path": "apps/edgeboard/backend/receivingForward.ts",
+      "sha256": "c17ac963ef608e6e2071b65d02c41bdc610422867dd77c87525051a2851886ee",
+      "sourcePath": "backend/receivingForward.ts",
+      "sourceSha256": "9685abf93f0ed3c43bb2ec894c746cfdf0a730c27e5cd1687a850375ef35b198",
+      "adaptation": "independent-runtime"
+    },
+    {
+      "path": "apps/edgeboard/backend/receivingForwardSqlite.ts",
+      "sha256": "0bdd6caf37c21c980dbf61f922cf63ef7d0fa8a2a8b557981807ae430774c918",
+      "sourcePath": null,
+      "sourceSha256": null,
+      "adaptation": "local SQLite adapter or regression test"
+    },
+    {
+      "path": "tests/node/receivingForecast.test.ts",
+      "sha256": "d2bb821e658ec746542a44b3c3ffa14aa14d91ec9f5953947a1998051bd6f0a1",
+      "sourcePath": null,
+      "sourceSha256": null,
+      "adaptation": "local SQLite adapter or regression test"
+    },
+    {
+      "path": "tests/node/receivingForwardSqlite.test.ts",
+      "sha256": "63a56c0f15a1b643cb5421559aa3980f8a9529d9c8069358dccfee3a21d057e4",
+      "sourcePath": null,
+      "sourceSha256": null,
+      "adaptation": "local SQLite adapter or regression test"
+    },
+    {
+      "path": "tests/node/receivingValidation.test.ts",
+      "sha256": "d330551028165fe501bd2fcae245fb4fa7f37f791e735519d68813d9b7b440a4",
+      "sourcePath": null,
+      "sourceSha256": null,
+      "adaptation": "local SQLite adapter or regression test"
+    },
+    {
+      "path": "apps/edgeboard/shared/receivingBlockers.ts",
+      "sourcePath": "shared/receivingBlockers.ts",
+      "sourceSha256": "ca2b0719037e78a8f29753138c17bd2f9e23299f7d399827007dbc620409aa10",
+      "adaptation": "exact presentation helper copy",
+      "sha256": "ca2b0719037e78a8f29753138c17bd2f9e23299f7d399827007dbc620409aa10",
+      "sourceSnapshotVersion": "1792962032682"
+    },
+    {
+      "path": "tests/node/receivingBlockers.test.ts",
+      "sourcePath": null,
+      "sourceSha256": null,
+      "adaptation": "local regression tests or QA assertions",
+      "sha256": "2b2f91d2056339f5affccaa1436670e3a9ae1eac4bb32b3318f4eb416e4160d8"
+    },
+    {
+      "path": "tests/node/receivingGateway.test.ts",
+      "sourcePath": null,
+      "sourceSha256": null,
+      "adaptation": "local regression tests or QA assertions",
+      "sha256": "526dc12f4f00fd7b8f737559a02a849a97ff0a82b3a9216f2cf5d271886a9e5d"
+    },
+    {
+      "path": "apps/edgeboard/tests/tests.json",
+      "sourcePath": null,
+      "sourceSha256": null,
+      "adaptation": "local regression tests or QA assertions",
+      "sha256": "28d215e8cee1f12b104d494e89f514db20059cc4208c6e34e9352ff34cebc65f"
+    }
+  ],
+  "noPrivateRecordsMigrated": true,
+  "modelApprovalChanged": false,
+  "providerKeysIncluded": false,
+  "presentationSnapshotVersion": "1792962032682"
+}

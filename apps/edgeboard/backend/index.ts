@@ -80,8 +80,32 @@ import { halftimeOutlook } from './halftimeOutlook';
 import { checkAccountSlip } from './accountSlipAudit';
 import { verifyPublicProp } from './verifyProp';
 import { correctedReceivingReadiness, correctedReceivingReport, correctedReceivingScore } from './correctedReceiving';
+import { receivingForecastOptions, receivingForecast } from './receivingForecast';
+import { receivingValidationReport } from './receivingValidation';
+import { saveReceivingForward, receivingForwardHistory } from './receivingForward';
+import { receivingForwardProtocol } from './receivingForwardCore';
 
 export const handler = router({
+  'GET /api/receiving-forward-protocol': [async () => json(await receivingForwardProtocol())],
+  'POST /api/receiving-forward': [requireAuth(), async ctx => {
+    if (!ctx.query.owner || ctx.query.owner !== ctx.user!.userId) return error('Account changed. Reload the forecast log.', 403);
+    try { return json(await saveReceivingForward(ctx.user!.userId, ctx.body)); }
+    catch { return error('Forecast save could not be confirmed. Reload the saved log; retry the same selection only. No probability was overwritten.', 400); }
+  }],
+  'GET /api/receiving-forward': [requireAuth(), async ctx => {
+    if (!ctx.query.owner || ctx.query.owner !== ctx.user!.userId) return error('Account changed. Reload the forecast log.', 403);
+    try { return json(await receivingForwardHistory(ctx.user!.userId, ctx.query.nextToken)); }
+    catch { return error('Saved forecast log unavailable. Retry reload; absence is not confirmed.', 502); }
+  }],
+  'GET /api/receiving-forecast-options': [
+    async ({ query }) => json(await receivingForecastOptions(query.query)),
+  ],
+  'POST /api/receiving-forecast': [
+    async ({ body }) => json(await receivingForecast(body)),
+  ],
+  'GET /api/receiving-validation': [
+    async () => json(await receivingValidationReport()),
+  ],
   'GET /api/corrected-receiving-readiness': [async () => json(await correctedReceivingReadiness())],
   'GET /api/corrected-receiving-report': [async () => json(await correctedReceivingReport())],
   'POST /api/corrected-receiving-score': [async ({ body }) => json(await correctedReceivingScore(body))],

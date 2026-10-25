@@ -49,3 +49,4 @@ python -m unittest discover -s edgeodds/tests -v
 4. Normalize moneyline/spread/total into this contract.
 5. Expose a read-only compatibility endpoint for EdgeBoard.
 6. Compare normalized output against the existing EdgeBoard / Sports Research Desk identity and freshness rules.
+7. Add a small Decisions API integration component with its own contract and focused tests, without changing the canonical quote model or replacing the existing parallel-agent lanes.

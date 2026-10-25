@@ -31,17 +31,39 @@ export function easternKickoff(day:string,clock:string):number {
   });
   return matches.length===1?matches[0]:NaN;
 }
-async function publicText(url:string):Promise<string>{
-  const response=await fetch(url,{signal:AbortSignal.timeout(20_000)});
-  if(!response.ok)fail(`PUBLIC_SOURCE_HTTP_${response.status}`);
-  const length=Number(response.headers.get('content-length'));
-  if(Number.isFinite(length)&&length>LIMIT)fail('PUBLIC_SOURCE_TOO_LARGE');
-  if(!response.body)fail('PUBLIC_SOURCE_EMPTY_BODY');
-  const reader=response.body!.getReader(),decoder=new TextDecoder();let bytes=0,text='';
-  try{while(true){const part=await reader.read();if(part.done)break;bytes+=part.value.byteLength;if(bytes>LIMIT)fail('PUBLIC_SOURCE_TOO_LARGE');text+=decoder.decode(part.value,{stream:true});}text+=decoder.decode();}
-  finally{await reader.cancel().catch(()=>{});}
-  return text;
+type ForecastFetch = (url:string,init:RequestInit)=>Promise<Response>;
+
+/** Only fixed public evidence URLs; allow GitHub's signed release asset hop, never arbitrary redirects. */
+export function createForecastReader(fetcher:ForecastFetch=(url,init)=>fetch(url,init)) {
+  return async function publicText(url:string):Promise<string>{
+    if(url!==RECEIVING_SCHEDULE_URL && ![2021,2022,2023,2024,2025,2026].some(year=>url===receivingStatsUrl(year)))fail('PUBLIC_SOURCE_URL_UNSUPPORTED');
+    const signal=AbortSignal.timeout(20_000);
+    let current=url,redirects=0,response:Response;
+    while(true){
+      signal.throwIfAborted();
+      response=await fetcher(current,{signal,redirect:'manual'});
+      if(![301,302,303,307,308].includes(response.status))break;
+      const location=response.headers.get('location');
+      await response.body?.cancel().catch(()=>{});
+      if(url===RECEIVING_SCHEDULE_URL||!location||redirects>=3)fail('PUBLIC_SOURCE_REDIRECT_UNSUPPORTED');
+      let destination:URL;
+      try{destination=new URL(location,current);}catch{fail('PUBLIC_SOURCE_REDIRECT_UNSUPPORTED');}
+      if(destination.protocol!=='https:'||destination.hostname!=='release-assets.githubusercontent.com'
+        ||destination.username||destination.password||destination.port||destination.hash
+        ||!destination.pathname.startsWith('/github-production-release-asset/')
+        ||destination.pathname==='/github-production-release-asset/')fail('PUBLIC_SOURCE_REDIRECT_UNSUPPORTED');
+      current=destination.href;redirects++;
+    }
+    if(!response.ok){await response.body?.cancel().catch(()=>{});fail(`PUBLIC_SOURCE_HTTP_${response.status}`);}
+    if(Number(response.headers.get('content-length'))>LIMIT){await response.body?.cancel().catch(()=>{});fail('PUBLIC_SOURCE_TOO_LARGE');}
+    if(!response.body)fail('PUBLIC_SOURCE_EMPTY_BODY');
+    const reader=response.body.getReader(),decoder=new TextDecoder();let bytes=0,text='';
+    try{while(true){signal.throwIfAborted();const part=await reader.read();if(part.done)break;bytes+=part.value.byteLength;if(bytes>LIMIT)fail('PUBLIC_SOURCE_TOO_LARGE');text+=decoder.decode(part.value,{stream:true});}text+=decoder.decode();}
+    finally{await reader.cancel().catch(()=>{});}
+    return text;
+  };
 }
+const publicText=createForecastReader();
 function records(text:string,required:string[]):Record<string,string>[] {
   const [headers,...rows]=csvRows(text);
   if(!headers||required.some(k=>!headers.includes(k))||new Set(headers).size!==headers.length)fail('PUBLIC_SOURCE_SCHEMA_MISMATCH');
@@ -107,7 +129,7 @@ export function createReceivingForecastService(deps:Dependencies={}) {
           priorOffsets.set(playerId,count-last8.length);
           for(const [gameId,yards,recordedTeam] of last8){
             const game=gameMap.get(gameId);
-            if(!id(gameId)||!game||game.season>2025||!game.completed||Date.parse(game.kickoffAt)>=loadedAt||![game.homeTeam,game.awayTeam].includes(team(recordedTeam))||!Number.isInteger(yards)||seenGame.has(`${playerId}|${gameId}`))fail('HISTORICAL_SEED_SCHEDULE_MISMATCH');
+            if(!id(gameId)||!game||game.season>2025||!game.completed||Date.parse(game.kickoffAt)>=loadedAt||![game.homeTeam,game.awayTeam].includes(team(recordedTeam))||!Number.isSafeInteger(yards)||seenGame.has(`${playerId}|${gameId}`))fail('HISTORICAL_SEED_SCHEDULE_MISMATCH');
             seenGame.add(`${playerId}|${gameId}`);seenWeek.add(`${playerId}|${game.season}|${game.week}`);
             rows.push({playerId,name:playerId,position:'WR',team:team(recordedTeam),season:game.season,week:game.week,gameId,yards,kickoff:Date.parse(game.kickoffAt)});
           }
@@ -121,7 +143,7 @@ export function createReceivingForecastService(deps:Dependencies={}) {
         if(seenGame.has(gameKey)||seenWeek.has(weekKey))fail('DUPLICATE_PLAYER_GAME_OR_WEEK');
         seenGame.add(gameKey);seenWeek.add(weekKey);
         if(r.receiving_yards.trim()==='')continue;
-        const yards=Number(r.receiving_yards);if(!Number.isFinite(yards)||!Number.isInteger(yards))fail('INVALID_RECEIVING_YARDS');
+        const yards=Number(r.receiving_yards);if(!Number.isFinite(yards)||!Number.isSafeInteger(yards))fail('INVALID_RECEIVING_YARDS');
         const game=gameMap.get(r.game_id);if(!game||game.season!==season||game.week!==week)fail('HISTORICAL_GAME_NOT_JOINABLE');
         const recordedTeam=team(r.team);if(![game.homeTeam,game.awayTeam].includes(recordedTeam))fail('PLAYER_TEAM_SCHEDULE_MISMATCH');
         // Exclude unresolved/current games; their results are unavailable at this observed clock.

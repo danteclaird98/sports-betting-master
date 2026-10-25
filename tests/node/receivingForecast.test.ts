@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import artifact from '../../apps/edgeboard/backend/correctedReceivingArtifact.json' with { type: 'json' };
 import { canonicalJson } from '../../apps/edgeboard/backend/correctedReceiving.ts';
-import { createReceivingForecastService, easternKickoff, RECEIVING_SCHEDULE_URL } from '../../apps/edgeboard/backend/receivingForecast.ts';
+import { createReceivingForecastService, createForecastReader, receivingStatsUrl, easternKickoff, RECEIVING_SCHEDULE_URL } from '../../apps/edgeboard/backend/receivingForecast.ts';
 
 const clock = Date.parse('2026-10-25T21:00:00Z');
 const digest = (value: unknown) => createHash('sha256').update(canonicalJson(value)).digest('hex');
@@ -94,4 +94,63 @@ test('installed compact historical seed matches its pinned canonical digest and 
   assert.equal(digest(installedSeed),'995a1f266c0bfba209b12f4d3bfb80641f42af99e8de5cc3aca82add66bcfe3c');
   assert.equal(installedSeed.throughSeason,2025);
   assert.deepEqual(installedSeed.sourceHashes,artifact.source_hashes);
+});
+
+
+test('unsafe integer receiving yards never enter a forecast', async () => {
+  const unsafe = current.replace('current1,LAR,40','current1,LAR,9007199254740993');
+  assert.notEqual(unsafe,current);
+  const model = service({loadText:async (url:string)=>url===RECEIVING_SCHEDULE_URL?schedule:unsafe});
+  assert.equal((await model.options()).reason,'INVALID_RECEIVING_YARDS');
+});
+
+test('forecast transport accepts only canonical sources and bounded signed GitHub release redirects', async () => {
+  const seen:Array<{url:string,init:RequestInit}>=[];
+  const target='https://release-assets.githubusercontent.com/github-production-release-asset/123/asset?sig=test';
+  const read=createForecastReader(async(url,init)=>{
+    seen.push({url,init});
+    return url===receivingStatsUrl(2026)?new Response(null,{status:302,headers:{location:target}}):new Response('fixture');
+  });
+  assert.equal(await read(receivingStatsUrl(2026)),'fixture');
+  assert.equal(seen.length,2);
+  assert.equal(seen[0].init.redirect,'manual');
+  assert.equal(seen[1].init.signal,seen[0].init.signal);
+  await assert.rejects(read('http://127.0.0.1:8091/private'),/PUBLIC_SOURCE_URL_UNSUPPORTED/);
+  assert.equal(seen.length,2);
+});
+
+test('forecast transport refuses arbitrary origins and unsafe redirects before following',async()=>{
+  for(const target of ['http://127.0.0.1/private','https://example.com/file',
+    'https://user:secret@release-assets.githubusercontent.com/github-production-release-asset/123/file',
+    'https://release-assets.githubusercontent.com:444/github-production-release-asset/123/file',
+    'https://release-assets.githubusercontent.com/github-production-release-asset/123/file#fragment',
+    'https://release-assets.githubusercontent.com/other/file']){
+    let calls=0;
+    const read=createForecastReader(async()=>{calls++;return new Response(null,{status:302,headers:{location:target}});});
+    await assert.rejects(read(receivingStatsUrl(2026)),/PUBLIC_SOURCE_REDIRECT_UNSUPPORTED/);
+    assert.equal(calls,1,target);
+  }
+  let calls=0;
+  const scheduleRead=createForecastReader(async()=>{calls++;return new Response(null,{status:302,headers:{location:'https://release-assets.githubusercontent.com/github-production-release-asset/123/file'}});});
+  await assert.rejects(scheduleRead(RECEIVING_SCHEDULE_URL),/PUBLIC_SOURCE_REDIRECT_UNSUPPORTED/);
+  assert.equal(calls,1);
+  calls=0;
+  const unsupported=createForecastReader(async()=>{calls++;return new Response('fixture');});
+  await assert.rejects(unsupported(receivingStatsUrl(2027)),/PUBLIC_SOURCE_URL_UNSUPPORTED/);
+  assert.equal(calls,0);
+});
+
+test('forecast transport stops redirect loops and cancels oversized response bodies',async()=>{
+  let calls=0;
+  const looping=createForecastReader(async()=>{calls++;return new Response(null,{status:302,headers:{location:'https://release-assets.githubusercontent.com/github-production-release-asset/123/file'}});});
+  await assert.rejects(looping(receivingStatsUrl(2026)),/PUBLIC_SOURCE_REDIRECT_UNSUPPORTED/);
+  assert.equal(calls,4);
+  let cancelled=false;
+  const headerReader=createForecastReader(async()=>new Response(new ReadableStream({cancel(){cancelled=true;}}),{headers:{'content-length':'16000001'}}));
+  await assert.rejects(headerReader(RECEIVING_SCHEDULE_URL),/PUBLIC_SOURCE_TOO_LARGE/);
+  assert.equal(cancelled,true);
+  cancelled=false;
+  const streamed=createForecastReader(async()=>new Response(new ReadableStream({start(controller){controller.enqueue(new Uint8Array(16_000_001));},cancel(){cancelled=true;}})));
+  await assert.rejects(streamed(RECEIVING_SCHEDULE_URL),/PUBLIC_SOURCE_TOO_LARGE/);
+  assert.equal(cancelled,true);
 });

@@ -84,13 +84,18 @@ function WagerTracker() {
   const [wagers, setWagers] = useState<Wager[]>([]);
   const [signedIn, setSignedIn] = useState(false);
   const [loaded, setLoaded] = useState(false);
+  const [ledgerOwner, setLedgerOwner] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [syncMessage, setSyncMessage] = useState('Sign in to load your private cross-device wager ledger.');
   const legacyWagers = readStored<Wager[]>(WAGER_KEY, []);
   async function loadRemote() {
     setLoaded(false);
+    setLedgerOwner(null);
     try {
       const { data } = await api.get('/api/wager-ledger');
+      const current = await auth.getUser();
+      if (!current?.userId || data.owner !== current.userId) throw Error('Account changed.');
+      setLedgerOwner(data.owner);
       setWagers((data as { wagers: Wager[] }).wagers ?? []);
       setLoaded(true);
       setSyncMessage('Private ledger loaded. Changes save to your account.');
@@ -188,10 +193,12 @@ function WagerTracker() {
   }, [confirmedActual]);
 
   async function updateWagers(next: Wager[]) {
-    if (!signedIn || !loaded || saving) { setSyncMessage('Sign in and wait for syncing before editing.'); return; }
+    if (!signedIn || !loaded || !ledgerOwner || saving) { setSyncMessage('Sign in and wait for syncing before editing.'); return; }
     setSaving(true);
     try {
-      await api.post('/api/wager-ledger', { wagers: next });
+      if ((await auth.getUser())?.userId !== ledgerOwner) { setLoaded(false); throw Error('Account changed.'); }
+      await api.post('/api/wager-ledger', { wagers: next, owner: ledgerOwner });
+      if ((await auth.getUser())?.userId !== ledgerOwner) { setLoaded(false); throw Error('Account changed.'); }
       setWagers(next);
       setSyncMessage('Saved to your private account.');
     } catch (error) {

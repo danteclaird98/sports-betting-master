@@ -106,3 +106,14 @@ const installed=createCorrectedReceivingService(installedArtifact,installedRepor
 export const correctedReceivingReadiness=installed.readiness;
 export const correctedReceivingReport=installed.frozenMetrics;
 export const correctedReceivingScore=installed.score;
+
+/** Public API receipt: a conditional research estimate, never live approval. */
+export async function receiving60Prediction(body: unknown) {
+  const result = await correctedReceivingScore(body);
+  return {...result, apiVersion:'v1', estimateAvailable:result.probability!==null,
+    target:{league:'NFL',seasonType:'REG',period:'FULL_GAME',stat:'receiving_yards',threshold:60,comparison:'>='},
+    inputVerification:'UNVERIFIED_CLIENT_SUPPLIED_HISTORY',
+    interpretation:'Conditional on a recorded player row; does not estimate participation or verify current eligibility.',
+    uncertainty:null, expectedValue:null,
+    featureNames:FEATURES};
+}

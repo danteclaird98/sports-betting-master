@@ -1,3 +1,4 @@
+import SportsGameOddsTracker from './SportsGameOddsTracker';
 import { useEffect, useState } from 'react';
 import AccountSlipWorkspace from './AccountSlipWorkspace';
 import DailyDashboard from './DailyDashboard';
@@ -146,7 +147,7 @@ function App() {
           />
         )}
         {workspace === 'account' && <AccountSlipWorkspace />}
-        {workspace === 'live' && <LiveResearchPage />}
+        {workspace === 'live' && <><SportsGameOddsTracker /><LiveResearchPage /></>}
         {workspace === 'model' && (
           <div className="advancedShell independentModelWorkspace">
             <div className="advancedIntro">

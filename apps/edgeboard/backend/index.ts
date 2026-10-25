@@ -1,4 +1,7 @@
-import { router, json, error, requireAuth, auth } from '../../../runtime/sdk.ts';
+import { ledgerRequestOwnerMatches } from '../shared/ledgerOwner';
+import { sgoRequestOwnerMatches } from '../shared/sgoOwner';
+import { sportsGameOddsStatus, refreshSportsGameOdds, sportsGameOddsHistory } from './sportsGameOdds';
+import { router, json, error, requireAuth, auth, secrets } from '../../../runtime/sdk.ts';
 import { getConfig, scanEdges } from './engine';
 import { getNflResearchContext } from './context';
 import { getBankrollPolicy } from './edgePolicy';
@@ -79,14 +82,40 @@ import { saveLiveSnapshot, readLiveSnapshots } from './liveQuoteStorage';
 import { halftimeOutlook } from './halftimeOutlook';
 import { checkAccountSlip } from './accountSlipAudit';
 import { verifyPublicProp } from './verifyProp';
-import { correctedReceivingReadiness, correctedReceivingReport, correctedReceivingScore } from './correctedReceiving';
+import { correctedReceivingReadiness, correctedReceivingReport, correctedReceivingScore, receiving60Prediction } from './correctedReceiving';
 import { receivingForecastOptions, receivingForecast } from './receivingForecast';
 import { receivingValidationReport } from './receivingValidation';
 import { saveReceivingForward, receivingForwardHistory } from './receivingForward';
 import { receivingForwardEvaluation } from './receivingForwardEvaluation';
 import { receivingForwardProtocol } from './receivingForwardCore';
 
+import { makeOddsGateway, type Resource } from './oddsBackend';
+const oddsGateway = makeOddsGateway(async () => {
+  const names = await secrets.listSecretNames();
+  if (!names.includes('ODDS_BACKEND_URL') || !names.includes('ODDS_BACKEND_READ_TOKEN')) return null;
+  return { baseUrl: await secrets.readSecret('ODDS_BACKEND_URL'), token: await secrets.readSecret('ODDS_BACKEND_READ_TOKEN') };
+});
+const oddsRead = (resource: Resource) => async (ctx: { query: Record<string, string>; params: Record<string, string> }) => {
+  const result = await oddsGateway(resource, ctx.query, ctx.params.id);
+  return json(result.body, result.statusCode);
+};
+
 export const handler = router({
+  'GET /api/sgo/status': [async () => {
+    try { return json(await sportsGameOddsStatus()); }
+    catch { return error('SportsGameOdds configuration unavailable; no provider request made.', 502); }
+  }],
+  'POST /api/sgo/refresh': [requireAuth(), async ctx => {
+    if (!sgoRequestOwnerMatches(ctx.user!.userId, ctx.query.owner)) return error('Account changed. Reload the tracker before requesting prices.', 403);
+    try { return json({ ...(await refreshSportsGameOdds(ctx.body, ctx.user!.userId)), owner: ctx.user!.userId }); }
+    catch { return error('Request rejected or reservation unconfirmed. Review saved history and wait for the refresh cooldown before retrying. No automatic provider retry.', 400); }
+  }],
+  'GET /api/sgo/history': [requireAuth(), async ctx => {
+    if (!sgoRequestOwnerMatches(ctx.user!.userId, ctx.query.owner)) return error('Account changed. Reload saved history.', 403);
+    try { return json({ ...(await sportsGameOddsHistory(ctx.user!.userId, ctx.query.league, ctx.query.mode, ctx.query.nextToken)), owner: ctx.user!.userId }); }
+    catch { return error('SportsGameOdds saved history unavailable. No provider request made.', 502); }
+  }],
+
   'POST /api/receiving-forward-evaluation': [requireAuth(), async ctx => {
     if (!ctx.query.owner || ctx.query.owner !== ctx.user!.userId) return error('Account changed. Reload the forecast evaluation.', 403);
     try { return json(await receivingForwardEvaluation(ctx.user!.userId, ctx.body)); }
@@ -116,6 +145,17 @@ export const handler = router({
   'GET /api/receiving-validation': [
     async () => json(await receivingValidationReport()),
   ],
+  'GET /api/odds-backend/status': [oddsRead('status')],
+  'GET /api/odds-backend/events': [requireAuth(), oddsRead('events')],
+  'GET /api/odds-backend/events/:id': [requireAuth(), oddsRead('event')],
+  'GET /api/odds-backend/events/:id/markets': [requireAuth(), oddsRead('markets')],
+  'GET /api/odds-backend/latest': [requireAuth(), oddsRead('latest')],
+  'GET /api/odds-backend/history': [requireAuth(), oddsRead('history')],
+  'GET /api/odds-backend/bookmakers': [requireAuth(), oddsRead('bookmakers')],
+  'POST /api/receiving60/predict': [async ({body}) => {
+    const result=await receiving60Prediction(body);
+    return json(result,result.reason==='ARTIFACT_INTEGRITY_FAILURE'?503:result.estimateAvailable?200:422);
+  }],
   'GET /api/corrected-receiving-readiness': [async () => json(await correctedReceivingReadiness())],
   'GET /api/corrected-receiving-report': [async () => json(await correctedReceivingReport())],
   'POST /api/corrected-receiving-score': [async ({ body }) => json(await correctedReceivingScore(body))],
@@ -613,11 +653,12 @@ export const handler = router({
   ],
   'GET /api/wager-ledger': [
     requireAuth(),
-    async (ctx) => json(await getWagerLedger(ctx.user!.userId)),
+    async (ctx) => json({ ...(await getWagerLedger(ctx.user!.userId)), owner: ctx.user!.userId }),
   ],
   'POST /api/wager-ledger': [
     requireAuth(),
     async (ctx) => {
+      if (!ledgerRequestOwnerMatches(ctx.user!.userId, ctx.body)) return error('Account changed. Reload the private ledger before saving.', 403);
       try {
         return json(
           await saveWagerLedger(

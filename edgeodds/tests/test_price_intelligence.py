@@ -1,4 +1,5 @@
 from datetime import datetime, timedelta, timezone
+from itertools import permutations
 import unittest
 
 from edgeodds.models import MarketKey, MarketStatus, MarketType, NormalizedQuote
@@ -101,6 +102,31 @@ class PriceIntelligenceTests(unittest.TestCase):
                 [q("A", 2.0, at=T0), q("A", 2.1, at=T0)],
                 start_at=start,
             )
+
+    def test_kickoff_quote_is_not_a_pregame_close(self):
+        start = T0 + timedelta(hours=1)
+        before = q("A", 2.0, at=start - timedelta(microseconds=1))
+        kickoff = q("A", 1.8, at=start)
+        self.assertEqual(closing_quote([kickoff, before], start_at=start), before)
+        with self.assertRaisesRegex(PriceIntelligenceError, "no verified pre-start"):
+            closing_quote([kickoff], start_at=start)
+
+    def test_movement_rejects_conflicts_at_any_timestamp_in_any_order(self):
+        for offset in (0, 5, 10):
+            rows = [q("A", 2.0, at=T0),
+                    q("A", 1.9, at=T0 + timedelta(minutes=5)),
+                    q("A", 1.8, at=T0 + timedelta(minutes=10)),
+                    q("A", 2.2, at=T0 + timedelta(minutes=offset))]
+            for ordering in permutations(rows):
+                with self.subTest(offset=offset, ordering=ordering):
+                    with self.assertRaisesRegex(PriceIntelligenceError, "conflicting prices"):
+                        price_movement(ordering)
+
+    def test_movement_allows_identical_repolls(self):
+        rows = [q("A", 2.0, at=T0), q("A", 2.0, at=T0),
+                q("A", 1.8, at=T0 + timedelta(minutes=5))]
+        for ordering in permutations(rows):
+            self.assertAlmostEqual(price_movement(ordering).decimal_ratio_minus_one, -0.1)
 
 
 if __name__ == "__main__":

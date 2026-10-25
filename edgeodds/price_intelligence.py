@@ -103,8 +103,11 @@ def price_movement(quotes: Sequence[NormalizedQuote]) -> PriceMovement:
         raise PriceIntelligenceError("provider quote timestamp unavailable")
     ordered = sorted(rows, key=lambda q: q.source_updated_at)
     first, last = ordered[0], ordered[-1]
-    if first.source_updated_at == last.source_updated_at and first.decimal_price != last.decimal_price:
-        raise PriceIntelligenceError("conflicting prices at identical provider time")
+    prices_by_time = {}
+    for quote in ordered:
+        prior = prices_by_time.setdefault(quote.source_updated_at, quote.decimal_price)
+        if prior != quote.decimal_price:
+            raise PriceIntelligenceError("conflicting prices at identical provider time")
     return PriceMovement(
         first.decimal_price,
         last.decimal_price,
@@ -126,7 +129,7 @@ def closing_quote(quotes: Sequence[NormalizedQuote], *, start_at: datetime) -> N
         raise PriceIntelligenceError("closing candidates are not exact-selection equivalent")
     if any((q.provider, q.bookmaker) != provider_book for q in rows):
         raise PriceIntelligenceError("closing quote must use one provider/bookmaker")
-    eligible = [q for q in rows if q.source_updated_at <= start_at]
+    eligible = [q for q in rows if q.source_updated_at < start_at]
     if not eligible:
         raise PriceIntelligenceError("no verified pre-start quote")
     latest_at = max(q.source_updated_at for q in eligible)

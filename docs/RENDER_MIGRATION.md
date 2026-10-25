@@ -1,5 +1,7 @@
 # Migration from AppDeploy to Render
 
+**Current host recommendation:** Render, because the combined repository already has a Docker Blueprint and persistent SQLite disk configuration. The Blueprint is paid and uses a public HTTPS endpoint protected by the app's password/session login. It is not network-private. No Render service or production URL has been provisioned.
+
 ## Ready in this repository
 
 - EdgeBoard's React frontend, all backend source modules and shared contracts are copied from the pinned GitHub revision.
@@ -12,7 +14,7 @@
 
 ## Deploy
 
-Sign in at https://dashboard.render.com and choose New → Blueprint. Connect GitHub, select `danteclaird98/sports-betting-master` and use `render.yaml`. Supply a password of at least 16 characters and review the paid service/disk plan before deploying.
+Sign in at https://dashboard.render.com and choose New → Blueprint. Connect GitHub, select `danteclaird98/sports-betting-master` and use `render.yaml`. Supply a password of at least 16 characters and review the current paid compute and disk charges before deploying. The current Blueprint uses a paid Starter web service and a 1 GB disk; Starter has 512 MB RAM, which may be tight for the combined Node/Python process.
 
 The username is `owner`; change `WORKSPACE_USER` if desired. Render automatically supplies the public hostname and port. The application uses those to validate Host and protect its session cookie. The public `/health` route reports only service health and verifies that the internal Python process is responding.
 
@@ -51,4 +53,4 @@ Keep database backups before a deployment. Use Render's prior deploy or revert t
 
 For this master, the production application build, regression suites, hosted authentication tests, persistence controls, browser rendering, mobile width and bundled SDK installation were checked. Docker persistent-volume testing was reported for the inherited EdgeFusion baseline only; the combined image has not been rebuilt here.
 
-Not verified: the combined Docker image, Render account provisioning, a deployed Render URL, live provider authorization or parity with unavailable AppDeploy production data. Public GitHub source publication is separate from application hosting; no hosted application deployment is claimed.
+Not verified: the combined Docker image, Render account provisioning, a deployed Render URL, live provider authorization or parity with unavailable AppDeploy production data. Build and inspect the combined Docker image before provisioning a paid service. Public GitHub source publication is separate from application hosting; no hosted application deployment is claimed.

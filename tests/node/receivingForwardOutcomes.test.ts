@@ -176,11 +176,13 @@ test('redirects to arbitrary hosts, credentials, paths and ports are rejected',a
 });
 test('one overall source deadline is shared across reads and stops before stats after expiry',async()=>{
   const data=fixture(),signals:AbortSignal[]=[];let statsRequested=false;
-  const load=createReceivingForwardOutcomeLoader({now:()=>now,deadlineMs:15,loadText:async(url,signal)=>{
+  // Leave enough time for the schedule request and parsing on a busy CI runner;
+  // the delayed summary still exceeds the shared deadline deterministically.
+  const load=createReceivingForwardOutcomeLoader({now:()=>now,deadlineMs:1000,loadText:async(url,signal)=>{
     assert.ok(signal);signals.push(signal);
     if(url.endsWith('/games.csv')) return data.schedule;
     if(url.includes('/summary?')) {
-      await new Promise(resolve=>setTimeout(resolve,40));
+      await new Promise(resolve=>setTimeout(resolve,1500));
       return JSON.stringify(data.summary(url.split('event=')[1]));
     }
     statsRequested=true;return data.stats;

@@ -22,13 +22,13 @@ Open **http://127.0.0.1:3000**. The **Full EdgeBoard workspace** link opens the 
 
 Local loopback mode can run without a password. Hosted mode refuses to start unless `WORKSPACE_PASSWORD` has at least 16 characters. Copy `.env.example` to `.env` for local configuration; `npm start` loads it if present. Keep all provider keys server-side.
 
-## Deploy on Railway
+## Deploy on Render
 
-Railway is the recommended permanent host for the existing Node/Python Docker app. The repository includes `railway.toml` with the Docker build, `/health` startup check and a single replica. Attach a persistent volume at `/var/data` for both SQLite databases.
+Render is the recommended managed host for the combined Node/Python Docker app. The repository includes a Render Blueprint with a single web service, a persistent disk at `/var/data` for both SQLite databases, a `/health` check, and automatic deployments turned off. The current Blueprint uses Render's paid Starter plan; review current compute and disk pricing before creating the service. Its 512 MB of RAM may be tight for Node and Python running together, so monitor memory and choose a larger plan if validation or runtime metrics require it.
 
-Follow the [Railway deployment guide](docs/RAILWAY_DEPLOYMENT.md) to connect this GitHub repository, configure the private workspace password, HTTPS hostname, secure cookies and persistent storage, then deploy and verify the service. No Railway service or public URL has been provisioned by the configuration change; review Railway's account pricing before launch.
+Follow the [Render deployment guide](docs/RENDER_MIGRATION.md) to connect this GitHub repository, set the workspace password, generate the HTTPS hostname, and verify the service. The app is internet-reachable over HTTPS and protected by its own password/session login; it is not a private-network-only service. Keep one instance while using the SQLite disk.
 
-The older [Render migration guide](docs/RENDER_MIGRATION.md) remains as a historical alternative.
+No Render service or production URL has been provisioned. Complete the combined image, health, authentication, and persistence checks before calling launch complete. The older [Railway guide](docs/RAILWAY_DEPLOYMENT.md) is retained as an alternative, not the recommended path.
 
 ## What's integrated
 

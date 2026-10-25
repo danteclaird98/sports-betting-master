@@ -2,36 +2,35 @@
 
 EdgeOdds is the normalized sportsbook market-data layer for EdgeBoard / MarketEdge OS.
 
-## v0.1 foundation
+## Integration roadmap
 
-This branch establishes the data contract before adding live providers.
+See [Decisions API integration roadmap](../docs/EDGEODDS_DECISIONS_INTEGRATION_ROADMAP.md) for the proposed isolated evidence-triage component, its limits, and test gates.
+
+## Current implementation
 
 Implemented:
 - canonical event and market identity primitives;
+- explicit, provenance-backed team/event alias resolution that rejects ambiguity;
 - moneyline, spread, and total market types;
-- provider-native IDs kept alongside canonical IDs;
-- decimal price normalization boundary;
+- provider-native IDs alongside canonical IDs;
+- a read-only Sportradar prematch connector and strict normalization for its supported markets;
 - provider update time kept separate from retrieval time;
-- explicit market status and connector-health states;
-- freshness gating that refuses to substitute retrieval time for a missing provider timestamp;
+- freshness gating that does not substitute retrieval time for a missing provider timestamp;
 - append-only SQLite quote snapshots with exact-repeat deduplication;
-- provider adapter protocol;
+- a read-only EdgeBoard compatibility contract and standalone read API;
 - standard-library regression tests.
 
-Not implemented yet:
-- live sportsbook adapters;
-- player props;
-- event/entity matching;
-- official schedule/roster/injury adapters;
+Not implemented or not connected in the combined runtime:
+- additional sportsbook adapters and broader provider coverage beyond the existing Sportradar connector;
+- player props and official roster/injury adapters;
 - consensus/no-vig service;
-- EdgeBoard API compatibility routes;
-- deployment;
-- betting, account login, or order execution.
+- mounting the standalone EdgeOdds read API inside the combined Node runtime;
+- a separately deployed EdgeOdds service;
+- betting, sportsbook account login, or order execution.
 
 ## Design rule
 
-A connector outage is data unavailability, not evidence that there are no positive-EV opportunities.
-Unknown fields stay unknown. Provider names and display labels never establish market equivalence by themselves.
+A connector outage is data unavailability, not evidence that there are no positive-EV opportunities. Unknown fields stay unknown. Provider names and display labels never establish market equivalence by themselves.
 
 ## Run tests
 
@@ -43,9 +42,4 @@ python -m unittest discover -s edgeodds/tests -v
 
 ## Next vertical slice
 
-1. Add deterministic team/event alias resolution with provenance.
-2. Add one authorized sportsbook-odds adapter.
-3. Archive the raw provider payload and its hash.
-4. Normalize moneyline/spread/total into this contract.
-5. Expose a read-only compatibility endpoint for EdgeBoard.
-6. Compare normalized output against the existing EdgeBoard / Sports Research Desk identity and freshness rules.
+Use the [Decisions API integration roadmap](../docs/EDGEODDS_DECISIONS_INTEGRATION_ROADMAP.md) only after confirming the deterministic normalization path and its archived evidence. Keep the classifier offline/shadow and advisory until its labeled evaluation passes review.

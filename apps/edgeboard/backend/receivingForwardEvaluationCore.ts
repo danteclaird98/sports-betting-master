@@ -145,7 +145,7 @@ export async function evaluateReceivingForward(input: {
     if (eligible.length !== 1) { unresolved('PUBLISHED_PLAYER_ROW_AMBIGUOUS'); continue; }
     const result = eligible[0];
     if (result.finalStatus !== 'FINAL') { unresolved(result.unresolvedReason ?? 'GAME_FINAL_STATUS_UNVERIFIED'); continue; }
-    if (!finite(result.receivingYards) || !Number.isInteger(result.receivingYards)) { unresolved('RECEIVING_YARDS_INVALID'); continue; }
+    if (!finite(result.receivingYards) || !Number.isSafeInteger(result.receivingYards)) { unresolved('RECEIVING_YARDS_INVALID'); continue; }
     if (Date.parse(source.retrievedAt) < Date.parse(f.kickoffAt)
       || source.files.some(file => Date.parse(file.observedAt) < Date.parse(f.kickoffAt))) {
       unresolved('OUTCOME_OBSERVED_BEFORE_KICKOFF'); continue;

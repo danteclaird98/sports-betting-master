@@ -21,10 +21,10 @@
     },
     {
       "path": "apps/edgeboard/src/ReceivingForwardLog.tsx",
-      "sha256": "3a27d78088576623f37302b4e17a9aadcff171b59acbf27d5e818107a4984156",
+      "sha256": "14fab8dae0ea5fea6807058d1be6a39782a8b3752d6d08367ce82eba92ab7e27",
       "sourcePath": "src/ReceivingForwardLog.tsx",
       "sourceSha256": "bc3c26e21ccb9cd7552e618d1d8ccc76ef315b2baa7d79bfac3712c9e8470bad",
-      "adaptation": "independent-runtime"
+      "adaptation": "independent runtime plus authenticated read-only evaluation"
     },
     {
       "path": "apps/edgeboard/backend/receivingForecast.ts",
@@ -56,10 +56,11 @@
     },
     {
       "path": "apps/edgeboard/backend/receivingForwardCore.ts",
-      "sha256": "cb24830f18134a1a88f59fce58fc5810c513ab89d55666fe1596c6df4e657620",
+      "sha256": "4676e956978d887a8b7cbb0b6d28a9e1cb77d4f651bdd21a9e1b48ad7f24a2fb",
       "sourcePath": "backend/receivingForwardCore.ts",
-      "sourceSha256": "cb24830f18134a1a88f59fce58fc5810c513ab89d55666fe1596c6df4e657620",
-      "adaptation": "exact source copy"
+      "sourceSha256": "4676e956978d887a8b7cbb0b6d28a9e1cb77d4f651bdd21a9e1b48ad7f24a2fb",
+      "adaptation": "exact current archive integrity verifier copy",
+      "sourceSnapshotVersion": "1792962118301"
     },
     {
       "path": "apps/edgeboard/backend/receivingForwardProtocol.json",
@@ -84,10 +85,10 @@
     },
     {
       "path": "apps/edgeboard/backend/index.ts",
-      "sha256": "42806900c98c2774101b0550dbc9e8abee68b944dc07498094421bae22c4a598",
+      "sha256": "fb50892129a5278115666a5efbef3222e0efc7512252ad6b510ca50b35661ffc",
       "sourcePath": "backend/index.ts",
       "sourceSha256": "d5e963cc2e9d9f203d5e0b2fbf39a74b3873d70a3b826cfb24b24604b4d37789",
-      "adaptation": "independent-runtime"
+      "adaptation": "independent runtime plus authenticated read-only evaluation"
     },
     {
       "path": "apps/edgeboard/backend/receivingForward.ts",
@@ -112,7 +113,7 @@
     },
     {
       "path": "tests/node/receivingForwardSqlite.test.ts",
-      "sha256": "63a56c0f15a1b643cb5421559aa3980f8a9529d9c8069358dccfee3a21d057e4",
+      "sha256": "9e96ccce3cfb30e873cf8ee9d3001715bd145202e80b5773b95be2ebdb9d803a",
       "sourcePath": null,
       "sourceSha256": null,
       "adaptation": "local SQLite adapter or regression test"
@@ -144,18 +145,75 @@
       "sourcePath": null,
       "sourceSha256": null,
       "adaptation": "local regression tests or QA assertions",
-      "sha256": "526dc12f4f00fd7b8f737559a02a849a97ff0a82b3a9216f2cf5d271886a9e5d"
+      "sha256": "59494c1198a139550ff97d30814897bf7a954a9c0fea1474a5340856458e7efb"
     },
     {
       "path": "apps/edgeboard/tests/tests.json",
       "sourcePath": null,
       "sourceSha256": null,
       "adaptation": "local regression tests or QA assertions",
-      "sha256": "28d215e8cee1f12b104d494e89f514db20059cc4208c6e34e9352ff34cebc65f"
+      "sha256": "700e8407621c5612bcbed15b607376d393f42616094a02c28071bb20a8e62f36"
+    },
+    {
+      "path": "apps/edgeboard/backend/receivingForwardEvaluation.ts",
+      "sourcePath": null,
+      "sourceSha256": null,
+      "adaptation": "read-only forward evaluation or regression tests",
+      "sha256": "c093f5781f67aade6952aad199f5b592edfbe7909ff536410d24e895c37b80b1"
+    },
+    {
+      "path": "apps/edgeboard/shared/receivingEvaluationReport.ts",
+      "sourcePath": null,
+      "sourceSha256": null,
+      "adaptation": "read-only forward evaluation or regression tests",
+      "sha256": "8da6cea5f6015da4c9c01d4e841f841fac98109bc72ebb5dc9917be179910ee6"
+    },
+    {
+      "path": "apps/edgeboard/src/ReceivingForwardEvaluation.tsx",
+      "sourcePath": null,
+      "sourceSha256": null,
+      "adaptation": "read-only forward evaluation or regression tests",
+      "sha256": "a463a4b6caabf6a4b0f177025b3f43b2604be2b77b0a647dadb81d0999dd8e74"
+    },
+    {
+      "path": "apps/edgeboard/backend/receivingForwardEvaluationCore.ts",
+      "sourcePath": null,
+      "sourceSha256": null,
+      "adaptation": "read-only forward evaluation or regression tests",
+      "sha256": "7839ae121c4652b9138eda67eafa1a9581b83c339b5ca2080f349b06b1013a0c"
+    },
+    {
+      "path": "apps/edgeboard/backend/receivingForwardOutcomes.ts",
+      "sourcePath": null,
+      "sourceSha256": null,
+      "adaptation": "read-only forward evaluation or regression tests",
+      "sha256": "69572c4514978d36f096304cad0dfacf45689bde5b9c5e7f0d7f018c86c5bda3"
+    },
+    {
+      "path": "tests/node/receivingForwardEvaluation.test.ts",
+      "sourcePath": null,
+      "sourceSha256": null,
+      "adaptation": "read-only forward evaluation or regression tests",
+      "sha256": "6a7f1e2e6ec1a3374dbda7cadf8d02510d4ace0dd44a79c21d45f5b0be2701b2"
+    },
+    {
+      "path": "tests/node/receivingForwardEvaluationCore.test.ts",
+      "sourcePath": null,
+      "sourceSha256": null,
+      "adaptation": "read-only forward evaluation or regression tests",
+      "sha256": "dcb27925a5e7843281ab64b77e664ec7558559676c9c79d6efba099f37e2a4ec"
+    },
+    {
+      "path": "tests/node/receivingForwardOutcomes.test.ts",
+      "sourcePath": null,
+      "sourceSha256": null,
+      "adaptation": "read-only forward evaluation or regression tests",
+      "sha256": "e674a00b19e9ac99eb8ec2d34fc745afe7dda10a50b2a3dc782f2dcbb9b2f4f9"
     }
   ],
   "noPrivateRecordsMigrated": true,
   "modelApprovalChanged": false,
   "providerKeysIncluded": false,
-  "presentationSnapshotVersion": "1792962032682"
+  "presentationSnapshotVersion": "1792962032682",
+  "forwardEvaluationSnapshotVersion": "1792963422196"
 }

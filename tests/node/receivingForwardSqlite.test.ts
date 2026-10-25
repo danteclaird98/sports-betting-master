@@ -4,6 +4,9 @@ import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
+import artifact from '../../apps/edgeboard/backend/correctedReceivingArtifact.json' with { type: 'json' };
+import { canonicalJson } from '../../apps/edgeboard/backend/correctedReceiving.ts';
+import { forwardHash } from '../../apps/edgeboard/backend/receivingForwardCore.ts';
 import { createForwardSqliteStorage } from '../../apps/edgeboard/backend/receivingForwardSqlite.ts';
 import { createReceivingForwardService, receivingForwardProtocol, ForwardWriteUnconfirmed } from '../../apps/edgeboard/backend/receivingForwardCore.ts';
 
@@ -41,10 +44,16 @@ test('forward service keeps first forecast per owner and reconciles uncertain wr
   const {protocol} = await receivingForwardProtocol();
   const now = Date.parse(protocol.frozenAt) + 60_000;
   let calls = 0;
+  const features = [50,45,0.3,0.2,8];
+  const logit = artifact.intercept + features.reduce((sum,value,i)=>sum+artifact.coefficients[i]*(value-artifact.mean[i])/artifact.scale[i],0);
+  const rawProbability = 1/(1+Math.exp(-logit));
+  const calibratedProbability = 1/(1+Math.exp(-(artifact.calibration.intercept+artifact.calibration.slope*logit)));
   const forecast = async ({playerId,gameId}: {playerId:string;gameId:string}) => {
     calls++;
     return {calculationStatus:'CALCULATED',playerId,gameId,kickoffAt:new Date(now+3_600_000).toISOString(),decisionAt:new Date(now).toISOString(),
-      probability:0.4,rawProbability:0.41,calibratedProbability:0.4,artifactSha256:protocol.artifactSha256,modelVersion:protocol.modelVersion,
+      probability:artifact.calibration.selected ? calibratedProbability : rawProbability,rawProbability,calibratedProbability,features,
+      sourceReceipt:{retrievedAt:new Date(now).toISOString()},scope:'CONDITIONAL_RECORDED_PLAYER_RECEIVING_60_PLUS',
+      artifactSha256:protocol.artifactSha256,modelVersion:protocol.modelVersion,
       bettingDecision:'HOLD',liveApproved:false,executionEnabled:false,verifiedPositiveEv:false};
   };
   try {
@@ -54,6 +63,12 @@ test('forward service keeps first forecast per owner and reconciles uncertain wr
     assert.equal((await alice.save(body)).saveStatus,'SAVED');
     assert.equal((await alice.save(body)).saveStatus,'EXISTING');
     assert.equal(calls,1);
+    const first = (await alice.history()).items[0];
+    const {receiptSha256: _oldHash,...payload} = structuredClone(first);
+    payload.forecast.probability = 0.99;
+    const forged = {...payload,receiptSha256:await forwardHash(canonicalJson(payload))};
+    const tampered = createReceivingForwardService({owner:'alice',store:{get:async()=>forged,add:async()=>false,list:async()=>({items:[forged],nextToken:null})},forecast:forecast as never,now:()=>now});
+    await assert.rejects(tampered.history(),/FORECAST_RECEIPT_INTEGRITY_FAILURE/);
     await assert.rejects(alice.save({...body,probability:0.99}),/INVALID_FORECAST_ARCHIVE_REQUEST/);
     const bob = createReceivingForwardService({owner:'bob',store:storage.forOwner('bob'),forecast:forecast as never,now:()=>now});
     assert.equal((await bob.history()).items.length,0);

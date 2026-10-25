@@ -45,6 +45,7 @@ test('built gateway exposes model research and protects private forecast history
     }
     assert.equal(healthy,true,`Gateway health check failed: ${error}`);
     assert.equal((await fetch(base+'/edgeboard-api/receiving-forward?owner=owner')).status,401);
+    assert.equal((await fetch(base+'/edgeboard-api/receiving-forward-evaluation?owner=owner',{method:'POST',headers:{'Content-Type':'application/json'},body:'{}'})).status,401);
     const login = await fetch(base+'/login',{method:'POST',body:new URLSearchParams({username:'owner',password}),redirect:'manual'});
     assert.equal(login.status,303);
     const cookie = login.headers.get('set-cookie')?.split(';')[0];
@@ -72,6 +73,16 @@ test('built gateway exposes model research and protects private forecast history
     assert.deepEqual(options.players,[]);
 
     assert.equal((await read('/receiving-forward?owner=someone-else')).status,403);
+    assert.equal((await post('/receiving-forward-evaluation?owner=someone-else',{})).status,403);
+    assert.equal((await post('/receiving-forward-evaluation?owner=owner',{probability:1})).status,400);
+    const evaluationResponse=await post('/receiving-forward-evaluation?owner=owner',{});
+    assert.equal(evaluationResponse.status,200);
+    const evaluation=await evaluationResponse.json();
+    assert.equal(evaluation.readOnly,true);
+    assert.equal(evaluation.source.reason,'NO_SAVED_FORECASTS');
+    assert.equal(evaluation.recordsIncluded,0);
+    assert.equal(evaluation.scores.selected,null);
+    assert.equal(evaluation.liveApproved,false);
     const historyResponse = await read('/receiving-forward?owner=owner');
     assert.equal(historyResponse.status,200);
     const history = await historyResponse.json();

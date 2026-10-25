@@ -1,4 +1,6 @@
 import protocol from './receivingForwardProtocol.json' with { type: 'json' };
+import artifact from './correctedReceivingArtifact.json' with { type: 'json' };
+import manifest from './correctedReceivingManifest.json' with { type: 'json' };
 import { canonicalJson } from './correctedReceiving.ts';
 import type { receivingForecast } from './receivingForecast.ts';
 
@@ -25,6 +27,26 @@ const identity = (value: unknown): value is string => typeof value === 'string'
   && /^[A-Za-z0-9][A-Za-z0-9:_.-]{0,159}$/.test(value);
 const probability = (value: unknown): value is number => typeof value === 'number'
   && Number.isFinite(value) && value >= 0 && value <= 1;
+const frozenModel = JSON.parse(JSON.stringify(artifact)) as typeof artifact;
+const sigmoid = (z: number) => z >= 0 ? 1 / (1 + Math.exp(-z)) : Math.exp(z) / (1 + Math.exp(z));
+
+/** Verification only: never overwrite saved probabilities with newly computed values. */
+async function matchesFrozenModel(forecast: Forecast): Promise<boolean> {
+  const features = forecast.features;
+  if (!Array.isArray(features) || features.length !== 5
+    || !features.every(value => typeof value === 'number' && Number.isFinite(value))
+    || !features.slice(2, 4).every(value => value >= 0 && value <= 1)
+    || !Number.isSafeInteger(features[4]) || features[4] < 3
+    || manifest.sourceArtifactSha256 !== protocol.artifactSha256
+    || await forwardHash(canonicalJson(frozenModel)) !== manifest.canonicalArtifactSha256) return false;
+  const logit = frozenModel.intercept + features.reduce((sum, value, i) =>
+    sum + frozenModel.coefficients[i] * (value - frozenModel.mean[i]) / frozenModel.scale[i], 0);
+  const raw = sigmoid(logit);
+  const calibrated = sigmoid(frozenModel.calibration.intercept + frozenModel.calibration.slope * logit);
+  return Math.abs(forecast.rawProbability - raw) <= 1e-12
+    && Math.abs(forecast.calibratedProbability - calibrated) <= 1e-12
+    && Math.abs(forecast.probability - (frozenModel.calibration.selected ? calibrated : raw)) <= 1e-12;
+}
 
 export async function receivingForwardProtocol() {
   return { protocol, protocolSha256: await forwardHash(canonicalJson(protocol)),
@@ -51,13 +73,17 @@ export function createReceivingForwardService(deps: {
       || !f || f.calculationStatus !== 'CALCULATED' || f.artifactSha256 !== protocol.artifactSha256
       || f.modelVersion !== protocol.modelVersion || !identity(f.playerId) || !identity(f.gameId)
       || f.bettingDecision !== 'HOLD' || f.liveApproved !== false || f.executionEnabled !== false
+      || f.verifiedPositiveEv !== false || f.scope !== 'CONDITIONAL_RECORDED_PLAYER_RECEIVING_60_PLUS'
       || ![f.probability, f.rawProbability, f.calibratedProbability, record.baselineProbability].every(probability)
       || record.baselineProbability !== protocol.baselineProbability
       || ![saved, decision, kickoff].every(Number.isFinite)
-      || saved < Date.parse(protocol.frozenAt) || decision > saved
+      || saved < Date.parse(protocol.frozenAt) || decision < Date.parse(protocol.frozenAt) || decision > saved
+      || !Number.isFinite(Date.parse(f.sourceReceipt?.retrievedAt))
+      || Date.parse(f.sourceReceipt.retrievedAt) > decision
       || saved - decision > protocol.maximumCalculationAgeSeconds * 1000
       || kickoff - saved < protocol.minimumLeadSeconds * 1000
       || record.id !== await key(f.playerId, f.gameId)
+      || !await matchesFrozenModel(f)
       || receiptSha256 !== await forwardHash(canonicalJson(payload))) throw Error('FORECAST_RECEIPT_INTEGRITY_FAILURE');
     return record;
   }

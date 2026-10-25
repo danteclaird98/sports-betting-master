@@ -83,9 +83,19 @@ import { correctedReceivingReadiness, correctedReceivingReport, correctedReceivi
 import { receivingForecastOptions, receivingForecast } from './receivingForecast';
 import { receivingValidationReport } from './receivingValidation';
 import { saveReceivingForward, receivingForwardHistory } from './receivingForward';
+import { receivingForwardEvaluation } from './receivingForwardEvaluation';
 import { receivingForwardProtocol } from './receivingForwardCore';
 
 export const handler = router({
+  'POST /api/receiving-forward-evaluation': [requireAuth(), async ctx => {
+    if (!ctx.query.owner || ctx.query.owner !== ctx.user!.userId) return error('Account changed. Reload the forecast evaluation.', 403);
+    try { return json(await receivingForwardEvaluation(ctx.user!.userId, ctx.body)); }
+    catch (failure) {
+      if (failure instanceof Error && ['INVALID_EVALUATION_REQUEST', 'INVALID_HISTORY_TOKEN'].includes(failure.message))
+        return error('Evaluation request invalid. Reload saved history and retry.', 400);
+      return error('Evaluation unavailable. Retry under the current account; no saved forecast was changed.', 502);
+    }
+  }],
   'GET /api/receiving-forward-protocol': [async () => json(await receivingForwardProtocol())],
   'POST /api/receiving-forward': [requireAuth(), async ctx => {
     if (!ctx.query.owner || ctx.query.owner !== ctx.user!.userId) return error('Account changed. Reload the forecast log.', 403);

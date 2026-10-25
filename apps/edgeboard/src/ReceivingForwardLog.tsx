@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { api, auth } from '../../../runtime/client.ts';
+import ReceivingForwardEvaluation from './ReceivingForwardEvaluation';
 import { createSgoOwnerSession as createOwnerSession } from '../shared/sgoOwner';
 
 type Item = {
@@ -118,6 +119,7 @@ export default function ReceivingForwardLog({ playerId, gameId }: { playerId: st
       {download?.page === page && <a href={download.url} download="edgeboard-forward-forecast-page.json">Download saved forecasts and frozen protocol</a>}
       <details><summary>Frozen evaluation protocol and limitations</summary><pre style={{ whiteSpace: 'pre-wrap', maxHeight: 260, overflow: 'auto' }}>{JSON.stringify(page.protocol, null, 2)}</pre></details>
     </>}
+    <ReceivingForwardEvaluation key={owner ?? 'anonymous'} owner={owner} session={session.current!} />
     <p>Betting decision remains HOLD. Forward results do not exist until saved games finish and official outcomes are published.</p>
   </div>;
 }

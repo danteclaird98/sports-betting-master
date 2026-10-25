@@ -38,7 +38,11 @@
       "frozen 2026 validation evidence",
       "private first-receipt forward log",
       "plain-language model blockers and next steps",
-      "raw blocker codes retained in export"
+      "raw blocker codes retained in export",
+      "authenticated read-only forward evaluation",
+      "proper scores only for exact published final outcomes",
+      "bounded cohort and game-window continuation",
+      "private evaluation export and failed-source handling"
     ],
     "description": "The existing market research and historical model workflows remain available with their research-only safeguards.",
     "steps": [
@@ -63,7 +67,10 @@
       "Run the threshold math selftest and verify that a higher requested line does not increase an over probability.",
       "Run the raw historical v4 snapshot pairing selftest; verify missing provider authentication, NFLverse identity joins, and historical ROI stay blocked.",
       "Verify historical diagnostic results remain research-only and no player-prop wager is automatically approved.",
-      "Navigate back to Markets & props to confirm tab switching works."
+      "Navigate back to Markets & props to confirm tab switching works.",
+      "Open Evaluate saved forecasts under Independent model. Anonymous requests must require sign-in. With an authorized QA session, evaluate the real saved log. Empty/future-only records require null metrics and no fabricated outcome. Do not seed fake production forecasts.",
+      "If genuine completed archived records exist, inspect scored/unresolved/unique-game counts, selected/raw/frozen base-rate metrics on the same n, explicit partial archive and eight-game window controls, original source hashes and timestamps, and the downloadable report. Missing/ambiguous/nonfinal rows must remain unresolved; model approval remains HOLD.",
+      "Switch authenticated accounts while a request is pending and confirm private reports/downloads do not cross owners. Fail a source request in an injected QA scenario or inspect a real unavailable state; no stale score may be fabricated and archived forecasts must remain unchanged."
     ],
     "expected": "Verified frozen research metrics and export are usable directly; navigation survives refresh/back; unsupported histories yield HOLD without probability. Existing advanced research tools remain available.",
     "sanity": true

@@ -1,6 +1,6 @@
-# Deploy Sports Betting Master on Railway
+# Legacy deployment option: Railway
 
-Railway is the recommended permanent host for this application's existing Docker runtime. One container runs the Node gateway and internal Python service; a persistent volume holds both SQLite databases. No serverless rewrite or database migration is required.
+This guide is retained as an alternative. The repository's current recommended deployment path is Render; see [the Render migration guide](RENDER_MIGRATION.md). Railway has not been provisioned or verified for this app. One container runs the Node gateway and internal Python service; a persistent volume holds both SQLite databases.
 
 Status: configuration prepared; no Railway project, service, volume or production URL has been provisioned or verified by this change. Railway usage and storage may incur charges; review your account's pricing before provisioning.
 

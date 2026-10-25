@@ -208,3 +208,46 @@ test('public fetch receives cancellation from the overall source deadline',async
 test('overall deadlines cannot be configured above the gateway-safe bound',()=>{
   for(const deadlineMs of [0,-1,24_001,NaN,Infinity]) assert.throws(()=>createReceivingForwardOutcomeLoader({deadlineMs}),/OUTCOME_DEADLINE_INVALID/);
 });
+
+test('evaluation cancellation is combined with the source deadline and stops before player stats',async()=>{
+  const data=fixture(),evaluation=new AbortController();
+  let observed:AbortSignal|undefined,statsRequested=false;
+  const load=createReceivingForwardOutcomeLoader({now:()=>now,loadText:async(url,signal)=>{
+    observed=signal;
+    if(url.endsWith('/games.csv'))return data.schedule;
+    if(url.includes('/summary?')){
+      evaluation.abort(Error('EVALUATION_TIMEOUT'));
+      return new Promise<string>(()=>{});
+    }
+    statsRequested=true;return data.stats;
+  }});
+  const result=await load(data.receipts,0,evaluation.signal);
+  assert.equal(result.source.status,'UNAVAILABLE');
+  assert.equal(result.source.reason,'OUTCOME_SOURCE_TIMEOUT');
+  assert.equal(observed?.aborted,true);
+  assert.equal(statsRequested,false);
+});
+
+
+test('malformed or truncated CSV quoting never becomes a scored numeric outcome',async()=>{
+  const data=fixture();
+  for (const malformed of ['"60','6"0"','"60"x','"60" "']) {
+    const result=await loader(data,{stats:data.stats.replace(/,60$/,','+malformed)}).load(data.receipts);
+    assert.equal(result.source.status,'UNAVAILABLE',malformed);
+    assert.equal(result.source.reason,'OUTCOME_SOURCE_SCHEMA_INVALID',malformed);
+    assert.deepEqual(result.outcomes,[],malformed);
+    assert.equal(result.source.files.length,3);
+  }
+  const brokenSchedule=data.schedule.replace('24,17','2"4",17');
+  const result=await loader(data,{schedule:brokenSchedule}).load(data.receipts);
+  assert.equal(result.source.reason,'OUTCOME_SOURCE_SCHEMA_INVALID');
+  assert.deepEqual(result.outcomes,[]);
+});
+test('strict outcome CSV supports valid quoted cells, escaped quotes and CRLF',async()=>{
+  const data=fixture();
+  const stats=data.stats.replace('receiving_yards','receiving_yards,unused').replace(/,60$/,',"60","quoted ""label"", with comma\nand newline"').replace(/\n/g,'\r\n')+'\r\n';
+  const result=await loader(data,{stats}).load(data.receipts);
+  assert.equal(result.source.status,'AVAILABLE');
+  assert.equal(result.outcomes[0].finalStatus,'FINAL');
+  assert.equal(result.outcomes[0].receivingYards,60);
+});

@@ -14,7 +14,7 @@ The Independent model workspace can evaluate the signed-in owner's archived preg
 
 The loader reads NFLverse's games.csv and follows its documented `espn` event identifier to the ESPN game summary. It requires exact event identity, 2026 regular-season identity, matching home/away teams, matching kickoff and scores, and `completed: true` with state `post`. A past kickoff or nonblank score alone never establishes finality.
 
-Only after these checks does it fetch NFLverse's published weekly player file. The exact player ID and game ID must have one REG WR/RB/TE row. The frozen target is receiving yards >=60, conditional on a recorded player row. Missing players are unresolved, not assumed to have zero yards. Duplicate, invalid, unsupported, nonfinal and unchecked outcomes remain unresolved. Negative recorded yards are valid; missing yards are not fabricated.
+Only after these checks does it fetch NFLverse's published weekly player file. The exact player ID and game ID must have one REG WR/RB/TE row. The frozen target is receiving yards >=60, conditional on a recorded player row. Missing players are unresolved, not assumed to have zero yards. Malformed CSV quoting is rejected before values are interpreted. Multiple rows for the same player/game remain ambiguous even when their season type or position differs. Duplicate, invalid, unsupported, nonfinal and unchecked outcomes remain unresolved. Negative recorded yards are valid; missing yards are not fabricated.
 
 These are public data observations, not bookmaker settlement confirmations. Retrieval clocks and text SHA-256 values are retained for the schedule, finality summaries and outcome file. Original publication clocks remain unverified. Signed release-asset redirect URLs are neither logged nor exported. Raw public files are not persisted by this first read-only iteration; retaining a report alone does not archive the underlying dataset.
 
@@ -22,7 +22,8 @@ These are public data observations, not bookmaker settlement confirmations. Retr
 
 - Each request verifies at most 20 private history pages / 200 receipts. Failed history verification aborts evaluation; invalid stored records are not silently excluded.
 - At most eight due-game IDs are checked in a deterministic sorted window, with at most four concurrent requests. Explicit continuation can check later game windows in the same private archive batch.
-- The public-source stage has an overall 24-second deadline, in addition to per-request body and time limits. A timeout or unavailable outcome file leaves outcomes unresolved; no older substitute is used.
+- The entire evaluation has a 26-second deadline covering protocol loading, verified archive reads, public sources and scoring. A request timeout returns an explicit retryable failure with no partial report. Late archive reads cannot start source requests or produce scores. Public fetches receive the shared cancellation signal.
+- Within that request, the public-source stage retains its 24-second maximum and per-request body and time limits. An unavailable outcome file leaves outcomes unresolved; no older substitute is used. The request-wide deadline takes precedence if the archive consumed part of the budget.
 - CSV responses are bounded at 16 MB and ESPN summaries at 2 MB. GitHub release redirects are followed manually only to approved HTTPS release-asset destinations; schedule and ESPN redirects are rejected.
 - A partial private archive batch never claims full-cohort coverage. A fully loaded archive can still have unresolved outcomes or incomplete finality coverage; the two concepts are separate.
 - Account capture/acceptance and request generations prevent a delayed response or private download from crossing an account switch.

@@ -89,3 +89,60 @@ test('an account switch during delayed evaluation invalidates the old receipt ti
   assert.equal(await guard.accepts(ticket,'alice'),false);
   assert.equal(await guard.accepts(await guard.capture(),'alice'),true);
 });
+
+test('evaluation-wide deadline terminates a hung private history read without source requests', async () => {
+  let loads=0;
+  const evaluate=createReceivingForwardEvaluation({
+    deadlineMs:50,
+    readPage:async()=>new Promise<never>(()=>{}),
+    loadOutcomes:async()=>{loads++;return noOutcomes();},
+  });
+  await assert.rejects(evaluate('alice'),/EVALUATION_TIMEOUT/);
+  assert.equal(loads,0);
+});
+test('a history page completing after the deadline cannot start another read or public source load', async () => {
+  let reads=0,loads=0;
+  let release:((value:Awaited<ReturnType<typeof page>>)=>void)|undefined;
+  const evaluate=createReceivingForwardEvaluation({
+    deadlineMs:50,
+    readPage:async()=>{reads++;return new Promise(resolve=>{release=resolve;});},
+    loadOutcomes:async()=>{loads++;return noOutcomes();},
+  });
+  await assert.rejects(evaluate('alice'),/EVALUATION_TIMEOUT/);
+  assert.ok(release);
+  release(await page('alice','later-page'));
+  await new Promise(resolve=>setImmediate(resolve));
+  assert.equal(reads,1);
+  assert.equal(loads,0);
+});
+test('evaluation timeout propagates cancellation to an outstanding outcomes load', async () => {
+  let observed:AbortSignal|undefined;
+  const evaluate=createReceivingForwardEvaluation({
+    deadlineMs:50,
+    readPage:async owner=>page(owner),
+    loadOutcomes:async(_receipts,_offset,signal)=>{
+      observed=signal;
+      return new Promise<never>(()=>{});
+    },
+  });
+  await assert.rejects(evaluate('alice'),/EVALUATION_TIMEOUT/);
+  assert.ok(observed);
+  assert.equal(observed.aborted,true);
+});
+test('fast success clears the overall timer and does not later abort its source signal', async () => {
+  let observed:AbortSignal|undefined;
+  const evaluate=createReceivingForwardEvaluation({
+    deadlineMs:50,
+    readPage:async owner=>page(owner),
+    loadOutcomes:async(_receipts,_offset,signal)=>{observed=signal;return noOutcomes();},
+  });
+  const result=await evaluate('alice');
+  assert.equal(result.bettingDecision,'HOLD');
+  assert.ok(observed);
+  await new Promise(resolve=>setTimeout(resolve,70));
+  assert.equal(observed.aborted,false);
+});
+test('overall evaluation deadlines reject invalid configurations',()=>{
+  for(const deadlineMs of [0,-1,26_001,NaN,Infinity,1.5])
+    assert.throws(()=>createReceivingForwardEvaluation({deadlineMs}),/EVALUATION_DEADLINE_INVALID/);
+});

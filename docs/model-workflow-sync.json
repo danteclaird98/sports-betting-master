@@ -156,10 +156,11 @@
     },
     {
       "path": "apps/edgeboard/backend/receivingForwardEvaluation.ts",
-      "sourcePath": null,
-      "sourceSha256": null,
-      "adaptation": "read-only forward evaluation or regression tests",
-      "sha256": "c093f5781f67aade6952aad199f5b592edfbe7909ff536410d24e895c37b80b1"
+      "sourcePath": "backend/receivingForwardEvaluation.ts",
+      "sourceSha256": "54095c2f613256ad59bb5df2630c8c8c2c055da207e49136be9ff160ab862c16",
+      "adaptation": "exact source copy with evaluation deadline and strict outcome integrity",
+      "sha256": "54095c2f613256ad59bb5df2630c8c8c2c055da207e49136be9ff160ab862c16",
+      "sourceSnapshotVersion": "1792965462348"
     },
     {
       "path": "apps/edgeboard/shared/receivingEvaluationReport.ts",
@@ -177,43 +178,45 @@
     },
     {
       "path": "apps/edgeboard/backend/receivingForwardEvaluationCore.ts",
-      "sourcePath": null,
-      "sourceSha256": null,
-      "adaptation": "read-only forward evaluation or regression tests",
-      "sha256": "7839ae121c4652b9138eda67eafa1a9581b83c339b5ca2080f349b06b1013a0c"
+      "sourcePath": "backend/receivingForwardEvaluationCore.ts",
+      "sourceSha256": "a269ad737926d15627e7f937ee0ed104303b15e8b40dfc2a337d51e152b1aab9",
+      "adaptation": "exact source copy with evaluation deadline and strict outcome integrity",
+      "sha256": "a269ad737926d15627e7f937ee0ed104303b15e8b40dfc2a337d51e152b1aab9",
+      "sourceSnapshotVersion": "1792965462348"
     },
     {
       "path": "apps/edgeboard/backend/receivingForwardOutcomes.ts",
-      "sourcePath": null,
-      "sourceSha256": null,
-      "adaptation": "read-only forward evaluation or regression tests",
-      "sha256": "69572c4514978d36f096304cad0dfacf45689bde5b9c5e7f0d7f018c86c5bda3"
+      "sourcePath": "backend/receivingForwardOutcomes.ts",
+      "sourceSha256": "04e8f5d89606be48c7fe22bfe2a4ed3a27a4fecd504cbd84224c08e298dd38ad",
+      "adaptation": "exact source copy with evaluation deadline and strict outcome integrity",
+      "sha256": "04e8f5d89606be48c7fe22bfe2a4ed3a27a4fecd504cbd84224c08e298dd38ad",
+      "sourceSnapshotVersion": "1792965462348"
     },
     {
       "path": "tests/node/receivingForwardEvaluation.test.ts",
       "sourcePath": null,
       "sourceSha256": null,
       "adaptation": "read-only forward evaluation or regression tests",
-      "sha256": "6a7f1e2e6ec1a3374dbda7cadf8d02510d4ace0dd44a79c21d45f5b0be2701b2"
+      "sha256": "16f3dff9884c00c8bad0cded0714a9afb3dddc39119ab11346e68c9349bd011a"
     },
     {
       "path": "tests/node/receivingForwardEvaluationCore.test.ts",
       "sourcePath": null,
       "sourceSha256": null,
       "adaptation": "read-only forward evaluation or regression tests",
-      "sha256": "dcb27925a5e7843281ab64b77e664ec7558559676c9c79d6efba099f37e2a4ec"
+      "sha256": "effee454445cfa25986b4e2e68c26abf26540e8542798a54df971ed3115d9cf8"
     },
     {
       "path": "tests/node/receivingForwardOutcomes.test.ts",
       "sourcePath": null,
       "sourceSha256": null,
       "adaptation": "read-only forward evaluation or regression tests",
-      "sha256": "e674a00b19e9ac99eb8ec2d34fc745afe7dda10a50b2a3dc782f2dcbb9b2f4f9"
+      "sha256": "15a823eba80df7031ab7d7daa902c652afd813f39a34d9fa2ce5c8b1b433155b"
     }
   ],
   "noPrivateRecordsMigrated": true,
   "modelApprovalChanged": false,
   "providerKeysIncluded": false,
   "presentationSnapshotVersion": "1792962032682",
-  "forwardEvaluationSnapshotVersion": "1792963422196"
+  "forwardEvaluationSnapshotVersion": "1792965462348"
 }

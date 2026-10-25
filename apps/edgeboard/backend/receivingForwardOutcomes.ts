@@ -1,4 +1,3 @@
-import { csvRows } from './historicalNfl.ts';
 import { easternKickoff, RECEIVING_SCHEDULE_URL, receivingStatsUrl } from './receivingForecast.ts';
 import { forwardHash, type ForwardReceipt } from './receivingForwardCore.ts';
 import type { ForwardOutcome, ForwardOutcomeSource } from './receivingForwardEvaluationCore.ts';
@@ -71,7 +70,35 @@ export function createForwardOutcomeReader(fetcher: OutcomeFetch = (url, init) =
 const publicText = createForwardOutcomeReader();
 
 function records(text: string, required: string[]): RecordRow[] {
-  const [header,...rows]=csvRows(text);
+  // Fail closed on truncated quotes or quote characters inside unquoted values.
+  // A published numeric field must not become a different value while parsing.
+  const parsed: string[][] = [];
+  let row: string[] = [], cell = '', state: 'START' | 'BARE' | 'QUOTED' | 'CLOSED' = 'START';
+  const endCell = () => { row.push(cell); cell = ''; state = 'START'; };
+  const endRow = () => { endCell(); if (row.some(Boolean)) parsed.push(row); row = []; };
+  for (let i = 0; i < text.length; i++) {
+    const char = text[i];
+    if (state === 'QUOTED') {
+      if (char === '"') {
+        if (text[i + 1] === '"') { cell += '"'; i++; }
+        else state = 'CLOSED';
+      } else cell += char;
+      continue;
+    }
+    if (char === ',') { endCell(); continue; }
+    if (char === '\n' || char === '\r') {
+      if (char === '\r' && text[i + 1] === '\n') i++;
+      endRow(); continue;
+    }
+    if (state === 'CLOSED') throw Error('OUTCOME_SOURCE_SCHEMA_INVALID');
+    if (char === '"') {
+      if (state !== 'START') throw Error('OUTCOME_SOURCE_SCHEMA_INVALID');
+      state = 'QUOTED';
+    } else { cell += char; state = 'BARE'; }
+  }
+  if (state === 'QUOTED') throw Error('OUTCOME_SOURCE_SCHEMA_INVALID');
+  if (state !== 'START' || row.length) endRow();
+  const [header,...rows]=parsed;
   if(!header || new Set(header).size!==header.length || required.some(key=>!header.includes(key))) throw Error('OUTCOME_SOURCE_SCHEMA_INVALID');
   return rows.map(row=>{
     if(row.length!==header.length) throw Error('OUTCOME_SOURCE_SCHEMA_INVALID');
@@ -106,7 +133,7 @@ export function createReceivingForwardOutcomeLoader(deps: Dependencies = {}) {
   const now=deps.now ?? Date.now, loadText=deps.loadText ?? publicText;
   const deadlineMs=deps.deadlineMs ?? 24_000;
   if (!Number.isSafeInteger(deadlineMs) || deadlineMs < 1 || deadlineMs > 24_000) throw Error('OUTCOME_DEADLINE_INVALID');
-  return async function load(receipts: ForwardReceipt[], finalGameOffset = 0): Promise<{outcomes:ForwardOutcome[];source:ForwardOutcomeSource}> {
+  return async function load(receipts: ForwardReceipt[], finalGameOffset = 0, evaluationSignal?: AbortSignal): Promise<{outcomes:ForwardOutcome[];source:ForwardOutcomeSource}> {
     if (!Number.isSafeInteger(finalGameOffset) || finalGameOffset < 0 || finalGameOffset > 199) throw Error('INVALID_FINAL_GAME_OFFSET');
     let finalGameWindow: { offset: number; maximum: 8; totalDueGames: number; checked: number; nextOffset: number | null } | undefined;
     const files: ForwardOutcomeSource['files']=[];
@@ -117,7 +144,8 @@ export function createReceivingForwardOutcomeLoader(deps: Dependencies = {}) {
     if(!receipts.length) return {outcomes:[],source:source('NOT_REQUESTED','NO_SAVED_FORECASTS')};
     const due=receipts.filter(receipt=>Date.parse(receipt.forecast.kickoffAt)<=now());
     if(!due.length) return {outcomes:[],source:source('NOT_REQUESTED','NO_COMPLETED_GAMES_TO_EVALUATE')};
-    const overallSignal=AbortSignal.timeout(deadlineMs);
+    const sourceSignal=AbortSignal.timeout(deadlineMs);
+    const overallSignal=evaluationSignal ? AbortSignal.any([evaluationSignal,sourceSignal]) : sourceSignal;
     const deadlineAt=performance.now()+deadlineMs;
     const guardDeadline=() => { if(overallSignal.aborted || performance.now()>=deadlineAt) throw Error('OUTCOME_SOURCE_TIMEOUT'); };
     const ids=[...new Set(due.map(receipt=>receipt.forecast.gameId))].sort();

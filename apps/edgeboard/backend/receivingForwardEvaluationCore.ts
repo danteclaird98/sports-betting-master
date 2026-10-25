@@ -130,6 +130,7 @@ export async function evaluateReceivingForward(input: {
       continue;
     }
     const matches = outcomeRows.get(key(f.playerId, f.gameId)) ?? [];
+    if (matches.length > 1) { unresolved('PUBLISHED_PLAYER_ROW_AMBIGUOUS'); continue; }
     if (matches.length === 1 && matches[0].finalStatus !== 'FINAL' && matches[0].unresolvedReason) {
       unresolved(matches[0].unresolvedReason); continue;
     }

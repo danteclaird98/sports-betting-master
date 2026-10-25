@@ -126,3 +126,17 @@ test('explicit final-game windows are preserved without pooling and invalid meta
   const emptyWindow=await run([],[],{source:{...source,status:'NOT_REQUESTED',files:[],finalGameWindow:exhausted}});
   assert.deepEqual(emptyWindow.source.finalGameWindow,exhausted);
 });
+
+test('conflicting scope rows for the same player and game remain ambiguous',async()=>{
+  const receipt=await saved();
+  for(const conflicting of [
+    {...final('player','game',59),seasonType:'POST'},
+    {...final('player','game',59),position:'QB'},
+  ]) {
+    const report=await run([receipt],[final('player','game',60),conflicting]);
+    assert.equal(report.scoredCount,0);
+    assert.equal(report.unresolvedCount,1);
+    assert.equal(report.rows[0].reason,'PUBLISHED_PLAYER_ROW_AMBIGUOUS');
+    assert.equal(report.scores.selected,null);
+  }
+});

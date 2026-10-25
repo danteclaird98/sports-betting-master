@@ -1,8 +1,9 @@
-import { csvRows, HISTORICAL_NFL_SOURCE } from './historicalNfl';
+import { csvRows, HISTORICAL_NFL_SOURCE } from './historicalNfl.ts';
 
 type Game = { date: string; season: number; home: string; away: string; homePoints: number; awayPoints: number; homeOdds: number | null; awayOdds: number | null };
 const logistic = (x: number) => 1 / (1 + Math.exp(-Math.max(-30, Math.min(30, x))));
-const american = (v: string): number | null => {
+const american = (v: string | undefined): number | null => {
+  if (!v?.trim()) return null;
   const n = Number(v);
   return v.trim() && Number.isFinite(n) && Math.abs(n) >= 100 ? (n > 0 ? 1 + n / 100 : 1 + 100 / -n) : null;
 };
@@ -22,18 +23,43 @@ export async function researchNflCalibration() {
   const csv = await response.text();
   if (csv.length > 10000000) throw Error('History too large');
   const [headers, ...raw] = csvRows(csv);
+  if (!headers) throw Error('Missing historical game columns');
   const index = (key: string) => headers.indexOf(key);
   const required = ['season','gameday','home_team','away_team','home_score','away_score'];
   if (required.some(key => index(key) < 0)) throw Error('Missing historical game columns');
-  const games: Game[] = raw.map(row=>({
-    date: row[index('gameday')], season: Number(row[index('season')]), home: row[index('home_team')], away: row[index('away_team')],
-    homePoints: Number(row[index('home_score')]), awayPoints: Number(row[index('away_score')]),
-    homeOdds: index('home_moneyline') >= 0 ? american(row[index('home_moneyline')]) : null,
-    awayOdds: index('away_moneyline') >= 0 ? american(row[index('away_moneyline')]) : null
-  })).filter(g=> /^\d{4}-\d{2}-\d{2}$/.test(g.date) && Number.isFinite(g.season) && g.home && g.away &&
-    Number.isFinite(g.homePoints) && Number.isFinite(g.awayPoints) && g.homePoints !== g.awayPoints &&
-    g.homePoints >= 0 && g.awayPoints >= 0 &&
-    raw !== undefined).sort((a,b)=>a.date.localeCompare(b.date) || a.home.localeCompare(b.home));
+  const wholeNumber = (value: string | undefined): number | null => {
+    // Check source text before Number(): a missing score must never become zero.
+    if (!value || !/^\d+$/.test(value.trim())) return null;
+    const n = Number(value);
+    return Number.isSafeInteger(n) && n >= 0 ? n : null;
+  };
+  const identities = new Set<string>();
+  const today = new Date().toISOString().slice(0,10);
+  const games: Game[] = [];
+  for (const row of raw) {
+    const date = row[index('gameday')]?.trim() ?? '';
+    const season = wholeNumber(row[index('season')]);
+    const home = row[index('home_team')]?.trim() ?? '';
+    const away = row[index('away_team')]?.trim() ?? '';
+    const validDate = /^\d{4}-\d{2}-\d{2}$/.test(date) &&
+      Number.isFinite(Date.parse(date)) && new Date(date).toISOString().slice(0,10) === date;
+    if (!validDate || date > today || season === null || season < 1900 || !home || !away || home === away) continue;
+    // Do not choose between duplicate or conflicting source outcomes, or update
+    // Elo twice for one fixture. Sorting participants also detects reversed rows.
+    const identity = JSON.stringify([season,date,...[home,away].sort()]);
+    if (identities.has(identity)) throw Error('Duplicate historical game fixture');
+    identities.add(identity);
+    const homePoints = wholeNumber(row[index('home_score')]);
+    const awayPoints = wholeNumber(row[index('away_score')]);
+    const statusIndex = index('game_status') >= 0 ? index('game_status') : index('status');
+    if (statusIndex >= 0 && !['final','completed','closed'].includes((row[statusIndex] ?? '').trim().toLowerCase())) continue;
+    // Ties are excluded from this binary win/loss calibration.
+    if (homePoints === null || awayPoints === null || homePoints === awayPoints) continue;
+    games.push({date,season,home,away,homePoints,awayPoints,
+      homeOdds: index('home_moneyline') >= 0 ? american(row[index('home_moneyline')]) : null,
+      awayOdds: index('away_moneyline') >= 0 ? american(row[index('away_moneyline')]) : null});
+  }
+  games.sort((a,b)=>a.date.localeCompare(b.date) || a.home.localeCompare(b.home));
   const seasons = [...new Set(games.map(g=>g.season))].sort((a,b)=>a-b);
   if (seasons.length < 7 || games.length < 700) throw Error('Insufficient chronological history');
   const cut = Math.floor(seasons.length * .6), cut2=Math.floor(seasons.length*.8);
@@ -66,14 +92,19 @@ export async function researchNflCalibration() {
     .sort((a,b)=>a.metric.logLoss-b.metric.logLoss);
   const best=candidates[0];
   const modelRows=test.map(r=>({outcome:r.outcome,p:logistic(best.scale*r.margin+best.intercept)}));
-  const marketRows=test.filter(r=>r.marketP!==null).map(r=>({outcome:r.outcome,p:r.marketP!}));
+  const matched=test.filter(r=>r.marketP!==null);
+  const marketRows=matched.map(r=>({outcome:r.outcome,p:r.marketP!}));
   return {
     status:'RESEARCH_ONLY', liveApproved:false, source:HISTORICAL_NFL_SOURCE, retrievedAt:new Date().toISOString(),
     method:'Pregame Elo updated only after all games on each date; fixed home advantage and rating update. Calibration scale/intercept selected on validation seasons only.',
     chronologicalSplits:{train:trainSeasons,validation:validationSeasons,test:testSeasons},
-    games:games.length, validationCalibration:{scale:best.scale,intercept:best.intercept,metric:best.metric},
+    games:games.length, inputRows:raw.length, excludedGames:raw.length-games.length,
+    validationCalibration:{scale:best.scale,intercept:best.intercept,metric:best.metric},
     heldOut:{model:score(modelRows), uncalibrated:score(test.map(r=>({outcome:r.outcome,p:logistic(r.margin)}))),
-      marketMatched:score(marketRows), marketCoverage:marketRows.length, testGames:test.length},
+      modelMatched:score(matched.map(r=>({outcome:r.outcome,p:logistic(best.scale*r.margin+best.intercept)}))),
+      uncalibratedMatched:score(matched.map(r=>({outcome:r.outcome,p:logistic(r.margin)}))),
+      marketMatched:score(marketRows), matchedGames:matched.length, marketCoverage:marketRows.length, testGames:test.length,
+      comparisonNote:'Compare modelMatched and uncalibratedMatched with marketMatched on the identical moneyline-eligible cohort; model and uncalibrated describe all test games.'},
     blockers:['Source rows and rights require independent validation','Published moneylines lack verified bookmaker and observation time','Elo parameters were not independently fitted or prospectively registered','No verified Caesars offered or accepted prices','No per-pick uncertainty interval or real execution simulation'],
     recommendation:'PASS', noWagersPlaced:true
   };

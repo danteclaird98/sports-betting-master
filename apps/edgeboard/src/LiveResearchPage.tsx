@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { api, auth } from '../../../runtime/client.ts';
 import { RefreshCw, Radio, ClipboardCopy } from 'lucide-react';
+import SportsGameOddsTracker from './SportsGameOddsTracker';
 import type { liveBoard, publicLiveResearch } from '../backend/liveResearch';
 import type { auditLiveSlip } from '../backend/liveSlip';
 import type { halftimeOutlook } from '../backend/halftimeOutlook';
@@ -22,7 +23,7 @@ const price = (quote: Quote) =>
     : (quote.americanOdds > 0 ? '+' : '') + quote.americanOdds;
 const label = (quote: Quote) =>
   [quote.player, quote.side, quote.line, quote.market.replaceAll('_', ' ')]
-    .filter((value) => value !== null && value !== '')
+    .filter(value => value !== null && value !== '')
     .join(' ');
 function quoteAge(quote: Quote) {
   return quote.oddsAt
@@ -67,14 +68,21 @@ export default function LiveResearchPage() {
     selectedGame = useRef('');
   const armed = useRef('');
   const paidRequest = useRef(false);
+  const auditGeneration = useRef(0);
+  function invalidateAudit() {
+    auditGeneration.current += 1;
+    setAudit(null);
+    setAuditBusy(false);
+  }
   const game = board?.context?.game;
   async function load(id = '', background = false) {
+    invalidateAudit();
     const request = ++generation.current;
     if (!background) setBusy(true);
     setMessage('');
     try {
       const response = await api.get(
-        '/api/live-board' + (id ? '?eventId=' + encodeURIComponent(id) : ''),
+        '/api/live-board' + (id ? '?eventId=' + encodeURIComponent(id) : '')
       );
       if (request !== generation.current) return;
       const next = response.data as Board;
@@ -84,11 +92,11 @@ export default function LiveResearchPage() {
         setResearch(null);
         setOutlook(null);
         setSelected([]);
-        setAudit(null);
         setCombined('');
         armed.current = '';
         setArmedGame('');
       }
+      invalidateAudit();
       selectedGame.current = nextId;
       setGameId(nextId);
       setBoard(next);
@@ -110,17 +118,18 @@ export default function LiveResearchPage() {
           armed.current = '';
           setArmedGame('');
           setMessage(
-            'The halftime window closed before the one-shot request ran. No automatic retry will spend credits.',
+            'The halftime window closed before the one-shot request ran. No automatic retry will spend credits.'
           );
         }
         if (paidRequest.current) return;
         setPricesBusy(true);
         try {
           const publicResult = await api.get(
-            '/api/live-public-lines?eventId=' + encodeURIComponent(nextId),
+            '/api/live-public-lines?eventId=' + encodeURIComponent(nextId)
           );
           if (request !== generation.current || paidRequest.current) return;
           const value = publicResult.data as Research;
+          invalidateAudit();
           setResearch(value);
           setQuotes(value.quotes);
           setProviderMessage(
@@ -129,16 +138,14 @@ export default function LiveResearchPage() {
               ' · ' +
               value.publicSource.matchedQuotes +
               ' observed sides. ' +
-              (value.publicSource.truncated
-                ? 'Source board is truncated.'
-                : ''),
+              (value.publicSource.truncated ? 'Source board is truncated.' : '')
           );
         } catch (error) {
           if (request === generation.current)
             setProviderMessage(
               error instanceof Error
                 ? error.message
-                : 'Public prices unavailable; scoreboard remains available.',
+                : 'Public prices unavailable; scoreboard remains available.'
             );
         } finally {
           if (request === generation.current && !paidRequest.current)
@@ -150,7 +157,7 @@ export default function LiveResearchPage() {
         setMessage(
           error instanceof Error
             ? error.message
-            : 'Live source unavailable. Retry without inventing a slip.',
+            : 'Live source unavailable. Retry without inventing a slip.'
         );
     } finally {
       if (request === generation.current) setBusy(false);
@@ -160,7 +167,7 @@ export default function LiveResearchPage() {
     setOutlookMessage('Checking halftime model inputs…');
     try {
       const response = await api.get(
-        '/api/halftime-outlook?eventId=' + encodeURIComponent(id),
+        '/api/halftime-outlook?eventId=' + encodeURIComponent(id)
       );
       if (request !== generation.current || selectedGame.current !== id) return;
       setOutlook(response.data as Outlook);
@@ -170,7 +177,7 @@ export default function LiveResearchPage() {
         setOutlookMessage(
           error instanceof Error
             ? error.message
-            : 'Independent outlook unavailable. Game and quote checks continue separately.',
+            : 'Independent outlook unavailable. Game and quote checks continue separately.'
         );
     }
   }
@@ -180,12 +187,10 @@ export default function LiveResearchPage() {
       if (document.visibilityState === 'visible')
         void load(selectedGame.current, true);
     }, 30_000);
-    const clock = window.setInterval(
-      () => setTick((value) => value + 1),
-      1_000,
-    );
+    const clock = window.setInterval(() => setTick(value => value + 1), 1_000);
     return () => {
       generation.current++;
+      auditGeneration.current++;
       armed.current = '';
       window.clearInterval(refresh);
       window.clearInterval(clock);
@@ -194,34 +199,35 @@ export default function LiveResearchPage() {
   const visible = useMemo(
     () =>
       quotes.filter(
-        (quote) =>
-          quote.period === period && (book === 'all' || quote.book === book),
+        quote =>
+          quote.period === period && (book === 'all' || quote.book === book)
       ),
-    [quotes, period, book],
+    [quotes, period, book]
   );
-  const books = [...new Set(['caesars', ...quotes.map((quote) => quote.book)])];
-  const selectedQuotes = quotes.filter((quote) => selected.includes(quote.id));
+  const books = [...new Set(['caesars', ...quotes.map(quote => quote.book)])];
+  const selectedQuotes = quotes.filter(quote => selected.includes(quote.id));
   async function signIn() {
     try {
       await auth.signIn();
       setSignedIn(auth.isSignedIn());
       setMessage(
-        'Signed in. Loading provider prices remains an explicit choice.',
+        'Signed in. Loading provider prices remains an explicit choice.'
       );
     } catch (error) {
       setMessage(
         error instanceof Error
           ? error.message
-          : 'Sign-in was cancelled or the popup was blocked.',
+          : 'Sign-in was cancelled or the popup was blocked.'
       );
     }
   }
   async function providerPrices(
     kind: 'periods' | 'props',
     target = selectedGame.current,
-    requireHalftime = false,
+    requireHalftime = false
   ) {
     if (!target || !auth.isSignedIn() || paidRequest.current) return;
+    invalidateAudit();
     paidRequest.current = true;
     setPricesBusy(true);
     setMessage('');
@@ -239,15 +245,16 @@ export default function LiveResearchPage() {
         };
       };
       if (selectedGame.current !== target) return;
+      invalidateAudit();
       setQuotes(data.quotes);
       setResearch(data);
       setPeriod('2H');
       setBook('all');
-      setBoard((current) =>
-        current ? { ...current, context: data.context } : current,
+      setBoard(current =>
+        current ? { ...current, context: data.context } : current
       );
       const secondHalf = data.quotes.filter(
-        (quote) => quote.period === '2H',
+        quote => quote.period === '2H'
       ).length;
       setProviderMessage(
         'Provider: ' +
@@ -261,16 +268,15 @@ export default function LiveResearchPage() {
           '.' +
           (secondHalf === 0
             ? ' No verified 2H offers returned; full-game lines were not substituted.'
-            : ''),
+            : '')
       );
-      setAudit(null);
       void loadOutlook(target);
     } catch (error) {
       if (selectedGame.current === target)
         setMessage(
           error instanceof Error
             ? error.message
-            : 'Provider request failed. No prices substituted.',
+            : 'Provider request failed. No prices substituted.'
         );
     } finally {
       paidRequest.current = false;
@@ -287,17 +293,18 @@ export default function LiveResearchPage() {
       setSignedIn(auth.isSignedIn());
       if (selectedGame.current !== target) return;
       const response = await api.get(
-        '/api/live-board?eventId=' + encodeURIComponent(target),
+        '/api/live-board?eventId=' + encodeURIComponent(target)
       );
       if (selectedGame.current !== target) return;
       const current = response.data as Board;
+      invalidateAudit();
       setBoard(current);
       const phase = current.context?.game.phase;
       if (phase === 'first_half') {
         armed.current = target;
         setArmedGame(target);
         setMessage(
-          'Prepare 2H is armed for this game: one player-props request, up to 3 credits, when halftime is confirmed. Keep this page open and visible.',
+          'Prepare 2H is armed for this game: one player-props request, up to 3 credits, when halftime is confirmed. Keep this page open and visible.'
         );
       } else if (phase === 'halftime') {
         armed.current = '';
@@ -305,14 +312,14 @@ export default function LiveResearchPage() {
         await providerPrices('props', target, true);
       } else {
         setMessage(
-          'Prepare 2H is available during the first half or confirmed halftime. The app will not reuse halftime estimates after second-half play starts.',
+          'Prepare 2H is available during the first half or confirmed halftime. The app will not reuse halftime estimates after second-half play starts.'
         );
       }
     } catch (error) {
       setMessage(
         error instanceof Error
           ? error.message
-          : 'Could not prepare second-half research. No automatic retry is armed.',
+          : 'Could not prepare second-half research. No automatic retry is armed.'
       );
     } finally {
       setPreparing(false);
@@ -326,28 +333,28 @@ export default function LiveResearchPage() {
         'Connection: ' +
           String(response.data.authentication) +
           ' · ' +
-          String(response.data.action),
+          String(response.data.action)
       );
     } catch (error) {
       setProviderMessage(
-        error instanceof Error ? error.message : 'Connection check failed.',
+        error instanceof Error ? error.message : 'Connection check failed.'
       );
     }
   }
   function toggle(id: string) {
-    setAudit(null);
-    setSelected((values) =>
+    invalidateAudit();
+    setSelected(values =>
       values.includes(id)
-        ? values.filter((value) => value !== id)
+        ? values.filter(value => value !== id)
         : values.length < 4
           ? [...values, id]
-          : values,
+          : values
     );
   }
   function draft() {
     const used = new Set<string>();
     const candidates = visible.filter(
-      (quote) =>
+      quote =>
         quote.period === '2H' &&
         quote.estimate !== null &&
         quote.researchLowEv !== null &&
@@ -355,7 +362,7 @@ export default function LiveResearchPage() {
         quoteAge(quote) !== null &&
         quoteAge(quote)! >= 0 &&
         quoteAge(quote)! <= 90 &&
-        quote.referenceBookCount >= 2,
+        quote.referenceBookCount >= 2
     );
     const draftIds: string[] = [];
     for (const quote of candidates) {
@@ -367,17 +374,19 @@ export default function LiveResearchPage() {
     }
     if (draftIds.length < 2) {
       setMessage(
-        'HOLD: fewer than two modeled 2H candidates meet the +3% stress screen, fresh-price and two-reference requirements.',
+        'HOLD: fewer than two modeled 2H candidates meet the +3% stress screen, fresh-price and two-reference requirements.'
       );
       return;
     }
     setSelected(draftIds);
-    setAudit(null);
+    invalidateAudit();
     setMessage(
-      'Research draft selected. Joint probability and account payout are not verified; no wager is recommended.',
+      'Research draft selected. Joint probability and account payout are not verified; no wager is recommended.'
     );
   }
   async function analyze() {
+    const request = ++auditGeneration.current;
+    setAudit(null);
     setAuditBusy(true);
     setMessage('');
     try {
@@ -398,32 +407,32 @@ export default function LiveResearchPage() {
           minimumAmericanOdds: minimumOdds === '' ? null : Number(minimumOdds),
           expiresAt:
             expiry && Number.isFinite(expiry.getTime())
-              ? expiry.toISOString()
-              : null,
+              ? expiry.toISOString()              : null,
           rulesConfirmed,
-          book: book === 'all' ? '' : book,
-        },
+          book: book === 'all' ? '' : book,        },
       });
+      if (request !== auditGeneration.current) return;
       setAudit(response.data as Audit);
     } catch (error) {
+      if (request !== auditGeneration.current) return;
       setMessage(
-        error instanceof Error ? error.message : 'Slip could not be verified.',
+        error instanceof Error ? error.message : 'Slip could not be verified.'
       );
     } finally {
-      setAuditBusy(false);
+      if (request === auditGeneration.current) setAuditBusy(false);
     }
   }
   async function copy() {
     try {
-      await navigator.clipboard.writeText(
+await navigator.clipboard.writeText(
         JSON.stringify(
           { board, research, outlook, selectedQuotes, audit },
           null,
-          2,
-        ),
+          2
+        )
       );
       setMessage(
-        'Research copied with source times, model scope and HOLD reasons.',
+        'Research copied with source times, model scope and HOLD reasons.'
       );
     } catch {
       setMessage('Clipboard unavailable; research remains visible here.');
@@ -460,6 +469,7 @@ export default function LiveResearchPage() {
           paid polling or automatic wagers.
         </small>
       </section>
+      <SportsGameOddsTracker />
       {message && (
         <p className="simpleFeedback" role="status">
           {message}
@@ -473,9 +483,9 @@ export default function LiveResearchPage() {
               <select
                 aria-label="Live game"
                 value={gameId}
-                onChange={(event) => void load(event.target.value)}
+                onChange={event => void load(event.target.value)}
               >
-                {board.scoreboard.games.map((item) => (
+                {board.scoreboard.games.map(item => (
                   <option key={item.id} value={item.id}>
                     {item.event} · {item.status}
                   </option>
@@ -529,7 +539,7 @@ export default function LiveResearchPage() {
                     Current receiving usage & availability notes
                   </summary>
                   <div className="liveUsage">
-                    {board.context!.players.map((player) => (
+                    {board.context!.players.map(player => (
                       <p key={player.espnId}>
                         <strong>{player.name}</strong> ·{' '}
                         {player.receptions ?? 'unknown'} REC /{' '}
@@ -569,7 +579,7 @@ export default function LiveResearchPage() {
                     Second half includes overtime. Historical research model; $0
                     recommended stake.
                   </small>
-                  {outlook.players.map((player) => (
+                  {outlook.players.map(player => (
                     <details key={player.espnId}>
                       <summary>
                         {player.player} ·{' '}
@@ -582,7 +592,7 @@ export default function LiveResearchPage() {
                       <p>{player.reason}</p>
                       {player.thresholds.length > 0 && (
                         <div className="liveUsage">
-                          {player.thresholds.map((threshold) => (
+                          {player.thresholds.map(threshold => (
                             <p key={threshold.line}>
                               <strong>2H receptions {threshold.line}</strong> ·
                               Over {percent(threshold.over)} / Under{' '}
@@ -711,7 +721,10 @@ export default function LiveResearchPage() {
                 <select
                   aria-label="Market period"
                   value={period}
-                  onChange={(event) => setPeriod(event.target.value)}
+                  onChange={event => {
+                    invalidateAudit();
+                    setPeriod(event.target.value);
+                  }}
                 >
                   <option value="2H">Second half only</option>
                   <option value="FULL">Full game</option>
@@ -723,10 +736,13 @@ export default function LiveResearchPage() {
                 <select
                   aria-label="Sportsbook filter"
                   value={book}
-                  onChange={(event) => setBook(event.target.value)}
+                  onChange={event => {
+                    invalidateAudit();
+                    setBook(event.target.value);
+                  }}
                 >
                   <option value="all">All books · comparison only</option>
-                  {books.map((item) => (
+                  {books.map(item => (
                     <option key={item} value={item}>
                       {item}
                     </option>
@@ -735,11 +751,10 @@ export default function LiveResearchPage() {
               </label>
             </div>
             <p>
-              {quotes.filter((quote) => quote.period === '2H').length} observed
-              2H sides ·{' '}
-              {quotes.filter((quote) => quote.period === 'FULL').length}{' '}
+              {quotes.filter(quote => quote.period === '2H').length} observed 2H
+              sides · {quotes.filter(quote => quote.period === 'FULL').length}{' '}
               full-game sides ·{' '}
-              {quotes.filter((quote) => quote.period === 'UNKNOWN').length}{' '}
+              {quotes.filter(quote => quote.period === 'UNKNOWN').length}{' '}
               unknown-period sides.
             </p>
             {visible.length === 0 ? (
@@ -750,7 +765,7 @@ export default function LiveResearchPage() {
               </p>
             ) : (
               <div className="liveQuoteList">
-                {visible.slice(0, 70).map((quote) => {
+                {visible.slice(0, 70).map(quote => {
                   const age = quoteAge(quote),
                     fresh = age !== null && age >= 0 && age <= 90;
                   return (
@@ -824,13 +839,13 @@ export default function LiveResearchPage() {
               Find 2H research draft
             </button>
           </section>
-          <section className="simplePanel" onChange={() => setAudit(null)}>
+          <section className="simplePanel" onChange={invalidateAudit}>
             <h2>Slip & boost check</h2>
             <p>
               Selected: {selected.length}/4. Same-game leg probabilities are not
               multiplied into a joint win probability.
             </p>
-            {selectedQuotes.map((quote) => (
+            {selectedQuotes.map(quote => (
               <p key={quote.id}>
                 {label(quote)} · {quote.book} · {price(quote)}
               </p>
@@ -842,9 +857,8 @@ export default function LiveResearchPage() {
                   aria-label="Actual combined odds"
                   placeholder="+250"
                   value={combined}
-                  onChange={(event) => {
+                  onChange={event => {
                     setCombined(event.target.value);
-                    setAudit(null);
                   }}
                 />
               </label>
@@ -854,7 +868,7 @@ export default function LiveResearchPage() {
                   aria-label="Confirmed bankroll"
                   inputMode="decimal"
                   value={bankroll}
-                  onChange={(event) => setBankroll(event.target.value)}
+                  onChange={event => setBankroll(event.target.value)}
                   placeholder="No old balance assumed"
                 />
               </label>
@@ -863,7 +877,7 @@ export default function LiveResearchPage() {
                 <input
                   inputMode="decimal"
                   value={stake}
-                  onChange={(event) => setStake(event.target.value)}
+                  onChange={event => setStake(event.target.value)}
                 />
               </label>
               <label>
@@ -871,7 +885,7 @@ export default function LiveResearchPage() {
                 <input
                   inputMode="decimal"
                   value={daily}
-                  onChange={(event) => setDaily(event.target.value)}
+                  onChange={event => setDaily(event.target.value)}
                 />
               </label>
               <label>
@@ -879,7 +893,7 @@ export default function LiveResearchPage() {
                 <input
                   inputMode="decimal"
                   value={gameExposure}
-                  onChange={(event) => setGameExposure(event.target.value)}
+                  onChange={event => setGameExposure(event.target.value)}
                 />
               </label>
             </div>
@@ -899,14 +913,14 @@ export default function LiveResearchPage() {
                     aria-label="Boost percentage"
                     inputMode="decimal"
                     value={boost}
-                    onChange={(event) => setBoost(event.target.value)}
+                    onChange={event => setBoost(event.target.value)}
                   />
                 </label>
                 <label>
                   Boost applies to
                   <select
                     value={boostKind}
-                    onChange={(event) => setBoostKind(event.target.value)}
+                    onChange={event => setBoostKind(event.target.value)}
                   >
                     <option value="profit">Profit only</option>
                     <option value="return">Total return</option>
@@ -917,7 +931,7 @@ export default function LiveResearchPage() {
                   <input
                     inputMode="decimal"
                     value={maxStake}
-                    onChange={(event) => setMaxStake(event.target.value)}
+                    onChange={event => setMaxStake(event.target.value)}
                   />
                 </label>
                 <label>
@@ -925,14 +939,14 @@ export default function LiveResearchPage() {
                   <input
                     inputMode="numeric"
                     value={minLegs}
-                    onChange={(event) => setMinLegs(event.target.value)}
+                    onChange={event => setMinLegs(event.target.value)}
                   />
                 </label>
                 <label>
                   Minimum combined American odds, if any
                   <input
                     value={minimumOdds}
-                    onChange={(event) => setMinimumOdds(event.target.value)}
+                    onChange={event => setMinimumOdds(event.target.value)}
                   />
                 </label>
                 <label>
@@ -940,7 +954,7 @@ export default function LiveResearchPage() {
                   <input
                     type="datetime-local"
                     value={expires}
-                    onChange={(event) => setExpires(event.target.value)}
+                    onChange={event => setExpires(event.target.value)}
                   />
                 </label>
               </div>
@@ -948,7 +962,7 @@ export default function LiveResearchPage() {
                 <input
                   type="checkbox"
                   checked={rulesConfirmed}
-                  onChange={(event) => setRulesConfirmed(event.target.checked)}
+                  onChange={event => setRulesConfirmed(event.target.checked)}
                 />{' '}
                 I checked the offer's eligibility, cash payout and rules for the
                 selected sportsbook.
@@ -985,7 +999,7 @@ export default function LiveResearchPage() {
                   </p>
                 )}
                 <ul>
-                  {audit.blockers.map((reason) => (
+                  {audit.blockers.map(reason => (
                     <li key={reason}>{reason}</li>
                   ))}
                 </ul>

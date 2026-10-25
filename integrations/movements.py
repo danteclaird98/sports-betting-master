@@ -25,6 +25,7 @@ def significant_moves(rows):
         price=american(float(newest['decimal_price']))-american(float(previous['decimal_price']))
         if (line is not None and abs(line)>=.5) or abs(price)>=5:
             moves.append(dict(event=newest['event'],selection=newest['selection'],bookmaker=newest['bookmaker'],provider=newest['provider'],
+                event_id=newest.get('event_id'),source_market_id=newest.get('source_market_id'),market=newest.get('market'),period=newest.get('period'),rules=newest.get('rules'),
                 previous_line=previous.get('line'),current_line=newest.get('line'),american_price_change=round(price,2),line_change=line,
                 observed_at=newest['updated_at'],demo=newest['provider']=='demo'))
     return sorted(moves,key=lambda r:datetime.fromisoformat(r['observed_at'].replace('Z','+00:00')),reverse=True)[:100]

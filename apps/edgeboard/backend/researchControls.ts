@@ -96,7 +96,7 @@ export function decimalImpliedProbability(decimal: number) {
 
 export function americanToDecimal(american: number) {
   finite(american, 'american odds');
-  if (american === 0) throw new Error('invalid american odds');
+  if (Math.abs(american) < 100) throw new Error('invalid american odds');
   return american > 0 ? 1 + american / 100 : 1 + 100 / Math.abs(american);
 }
 
@@ -233,6 +233,10 @@ export function evaluateResearch(
   maxAgeSeconds = RESEARCH_POLICY.maxQuoteAgeSeconds,
   edgeBuffer = RESEARCH_POLICY.edgeBuffer
 ): ResearchResult {
+  if (!Number.isFinite(maxAgeSeconds) || maxAgeSeconds < 0 ||
+      !Number.isFinite(edgeBuffer) || edgeBuffer < 0) {
+    throw new Error('invalid research policy thresholds');
+  }
   const reasons: string[] = [];
   const decision = parseResearchTime(input.decisionAt);
   const oddsAt = parseResearchTime(input.oddsAt);
@@ -249,7 +253,7 @@ export function evaluateResearch(
     [input.rulesVerified, 'rules_verified missing'],
     [input.priceAvailable, 'price_available missing'],
   ];
-  for (const [ok, reason] of flags) if (!ok) reasons.push(reason);
+  for (const [ok, reason] of flags) if (ok !== true) reasons.push(reason);
 
   if (input.marketType !== 'binary_no_push') reasons.push('unsupported push/void/partial settlement');
   if (input.playerProp) {
@@ -257,8 +261,8 @@ export function evaluateResearch(
     if (input.roleImpactModeled !== true) reasons.push('lineup-dependent usage and role changes not modeled');
     if (input.conflictingProjectionsResolved !== true) reasons.push('independent projection conflicts not reconciled');
   }
-  if (!input.uncertaintyValidated) reasons.push('uncertainty not validated');
-  if (!input.independentProbabilityValidated) reasons.push('independent probability model not validated');
+  if (input.uncertaintyValidated !== true) reasons.push('uncertainty not validated');
+  if (input.independentProbabilityValidated !== true) reasons.push('independent probability model not validated');
   if (input.parlay) reasons.push('joint model required; marginal multiplication prohibited');
 
   const { probability, probabilityLow, probabilityHigh } = input;
@@ -312,7 +316,12 @@ export function settleResearchOutcome(
   accepted: boolean
 ) {
   decimalImpliedProbability(decimalOdds);
-  if (Math.min(stake, limit) < 0) throw new Error('negative stake/limit');
+  if (![stake, limit].every(Number.isFinite) || Math.min(stake, limit) < 0) {
+    throw new Error('invalid stake/limit');
+  }
+  if (!['win', 'loss', 'push', 'void'].includes(outcome) || typeof accepted !== 'boolean') {
+    throw new Error('invalid settlement outcome or acceptance');
+  }
   const filled = accepted ? Math.min(stake, limit) : 0;
   const profit = outcome === 'win'
     ? filled * (decimalOdds - 1)

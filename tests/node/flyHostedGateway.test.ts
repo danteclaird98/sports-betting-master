@@ -86,6 +86,8 @@ test('built gateway accepts Fly HTTPS requests and rejects host/origin/session v
     assert.equal(healthy,true,`Hosted gateway health failed: ${startupError}`);
     assert.equal((await send('/health',{headers:{Host:'untrusted.example'}})).status,403);
     assert.equal((await send('/session')).status,401);
+    assert.equal((await send('/api/provider-imports')).status,401);
+    assert.equal((await send('/edgeboard-api/sgo/history')).status,401);
     const anonymous=await send('/');
     assert.equal(anonymous.status,303);
     assert.equal(anonymous.headers.location,'/login');
@@ -113,6 +115,40 @@ test('built gateway accepts Fly HTTPS requests and rejects host/origin/session v
     const protocol=await send('/edgeboard-api/receiving-forward-protocol',{headers:{Cookie:cookie}});
     assert.equal(protocol.status,200);
     assert.equal(JSON.parse(protocol.body).bettingDecision,'HOLD');
+    const privateHeaders={Cookie:cookie,Origin:'https://'+hostname,'Content-Type':'application/json'};
+    const importBody={request_id:'hosted-import-001',format:'normalized',payload:[{
+      provider:'synthetic',event_id:'synthetic:123',event:'Away @ Home',league:'NFL',bookmaker:'fixture',
+      selection:'Home',period:'full_game',rules:'unknown',market:'moneyline',decimal_price:2,
+      starts_at:'2030-11-01T20:00:00Z',source_market_id:'native-id',status:'open',
+    }]};
+    assert.equal((await send('/api/provider-imports',{
+      method:'POST',headers:{...privateHeaders,Origin:'https://untrusted.example'},body:JSON.stringify(importBody),
+    })).status,403);
+    const savedImport=await send('/api/provider-imports',{method:'POST',headers:privateHeaders,body:JSON.stringify(importBody)});
+    assert.equal(savedImport.status,200);
+    assert.equal(JSON.parse(savedImport.body).verification,'UNVERIFIED');
+    assert.equal(JSON.parse(savedImport.body).execution_enabled,false);
+    const replay=await send('/api/provider-imports',{method:'POST',headers:privateHeaders,body:JSON.stringify(importBody)});
+    assert.deepEqual(JSON.parse(replay.body),JSON.parse(savedImport.body));
+    const imports=JSON.parse((await send('/api/provider-imports',{headers:{Cookie:cookie}})).body);
+    assert.equal(imports.observation_count,1);
+    assert.equal(imports.observations[0].updated_at,null);
+    const rootState=JSON.parse((await send('/api/state',{headers:{Cookie:cookie}})).body);
+    assert.equal(rootState.summary.snapshots,0);
+    assert.deepEqual(rootState.wagers,[]);
+    importBody.payload[0].decimal_price=3;
+    assert.equal((await send('/api/provider-imports',{method:'POST',headers:privateHeaders,body:JSON.stringify(importBody)})).status,400);
+    assert.equal((await send('/api/provider-imports',{method:'POST',headers:privateHeaders,body:'['.repeat(1500)+'0'+']'.repeat(1500)})).status,400);
+    const sgoStatus=await send('/edgeboard-api/sgo/status',{headers:{Cookie:cookie}});
+    assert.equal(sgoStatus.status,200);
+    assert.equal(JSON.parse(sgoStatus.body).configured,false);
+    assert.equal((await send('/edgeboard-api/sgo/history?owner=someone-else',{headers:{Cookie:cookie}})).status,403);
+    assert.equal((await send('/edgeboard-api/sgo/history?owner=owner',{headers:{Cookie:cookie}})).status,400);
+    const localHistory=await send('/edgeboard-api/sgo/history?owner=owner&league=NFL&mode=upcoming',{headers:{Cookie:cookie}});
+    assert.equal(localHistory.status,200);
+    assert.deepEqual(JSON.parse(localHistory.body).items,[]);
+    assert.equal((await send('/edgeboard-api/odds-backend/events/1/markets',{headers:{Cookie:cookie}})).status,503);
+    assert.equal((await send('/edgeboard-api/odds-backend/events?limit=1&limit=2',{headers:{Cookie:cookie}})).status,400);
     const logout=await send('/logout',{method:'POST',headers:{Cookie:cookie,Origin:'https://'+hostname}});
     assert.equal(logout.status,200);
     assert.match(logout.headers['set-cookie']?.[0] ?? '',/Max-Age=0/);

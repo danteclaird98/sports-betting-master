@@ -1,5 +1,6 @@
 import { db } from '../../../runtime/sdk.ts';
 import { scoreProbabilities } from './researchControls';
+import { ledgerNumber } from '../shared/ledgerInput';
 
 export type PredictionSnapshot = {
   sourceDecisionId: string;
@@ -48,13 +49,13 @@ function cleanTime(value: unknown, fallback?: string) {
 }
 
 function probability(value: unknown, label: string) {
-  const parsed = Number(value);
+  const parsed = ledgerNumber(value, label);
   if (!Number.isFinite(parsed) || parsed < 0 || parsed > 1) throw new Error(`invalid ${label}`);
   return parsed;
 }
 
 function finite(value: unknown, label: string) {
-  const parsed = Number(value);
+  const parsed = ledgerNumber(value, label);
   if (!Number.isFinite(parsed)) throw new Error(`invalid ${label}`);
   return parsed;
 }

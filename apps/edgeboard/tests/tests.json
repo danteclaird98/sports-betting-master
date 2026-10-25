@@ -226,12 +226,16 @@
       "SportsGameOdds captured owner validation before provider usage",
       "private tracker state cleared across sign-out and account switches",
       "delayed history/price responses cannot cross accounts",
-      "account-bound provider usage authorization"
+      "account-bound provider usage authorization",
+      "GET /api/odds-backend/status optional stored-odds diagnostics",
+      "stored-event reads disabled without configured backend",
+      "SportsGameOdds controls disabled without server credentials"
     ],
     "description": "Existing feed checks, signed-in sportsbook comparisons and parlay diagnostics remain available without automatic paid requests.",
     "steps": [
       "Click Advanced Research and select Bookmakers & diagnostics.",
       "Confirm IntegrationDiagnostics, Model & sportsbook references, Caesars evidence and ParlayAudit are visible.",
+      "In Stored odds backend, click Check backend connection. Without the separately configured owned HTTPS backend, require Backend not connected and disabled Load stored events; no upstream provider request may run. If a legitimate stored-data service is configured, allow only read-only observations with explicit freshness and settlement limitations; never classify them as executable quotes.",
       "In Model & sportsbook references, find Caesars price access. Confirm the unavailable Load selected Caesars prices action is absent. Click Check Caesars access · 0 credits; verify OPT_IN_REQUIRED and its explanatory note. Follow Open Live & 2H price workspace; verify the Live & 2H workspace opens and provider price retrieval remains sign-in/budget gated. Do not request provider prices. Return to Advanced Research → Bookmakers & diagnostics.",
       "Inspect provider statuses without manually authorizing a paid quote refresh.",
       "Confirm signed-in provider-credit requests retain their opt-in controls and that missing accepted account prices do not create EV claims.",
@@ -249,7 +253,8 @@
       "For the SportsGameOdds controls, configuration and saved-history reads are real and make no provider request. Only the refresh failure is injected. Keep the POST /api/sgo/refresh fault active so the following recovery steps cannot consume provider quota. A configured key is not proof of live entitlement.",
       "Using the signed-in QA account, check SportsGameOdds configuration, confirm one request and click Load bookmaker observations. The injected failure must show an unconfirmed request ID, no probability/quote and stopped tracking. Click Reconcile same request and verify the displayed request ID stays unchanged. Reload saved history, choose Use a new request after history review, and verify usage confirmation resets before any new request is enabled.",
       "Under that same injected refresh failure, confirm one request again, acknowledge the higher-limit-plan control for this QA fixture and start a 3-request capped session. The first injected failure must stop the session immediately with no queued retries or fabricated observations.",
-      "Using two legitimate authenticated QA accounts, load saved tracker history in Account A, switch or sign out before a delayed response returns, and verify the old private snapshot, history, download and usage confirmation disappear. On returning as Account B, reload history and confirm usage again. The injected refresh fault remains active: no provider quota is consumed. If two real sessions are unavailable, report that scope unverified; do not fabricate identities."
+      "Using two legitimate authenticated QA accounts, load saved tracker history in Account A, switch or sign out before a delayed response returns, and verify the old private snapshot, history, download and usage confirmation disappear. On returning as Account B, reload history and confirm usage again. The injected refresh fault remains active: no provider quota is consumed. If two real sessions are unavailable, report that scope unverified; do not fabricate identities.",
+      "When SPORTSGAMEODDS_KEY is absent from the real server environment, configuration must say not configured, the Load bookmaker observations and capped-session start actions must stay disabled, and no provider request is made. A configured credential alone is not live entitlement or verification; keep existing injected refresh-failure controls for configured QA."
     ],
     "expected": "The expert sportsbook/diagnostic toolset is preserved, credentials are not exposed and ordinary navigation spends no provider credits. SportsGameOdds is optional, private history is available after sign-in, provider quota requires explicit confirmation and no synthetic odds or model approval appears.",
     "qa_faults": [

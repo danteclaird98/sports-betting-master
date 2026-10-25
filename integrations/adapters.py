@@ -20,7 +20,7 @@ def clock(value):
         return datetime.strptime(text,'%Y-%m-%d %H:%M:%S UTC').replace(tzinfo=timezone.utc).isoformat()
     dt=datetime.fromisoformat(text.replace('Z','+00:00'))
     if dt.utcoffset() is None:raise ValueError('Provider timestamps require explicit timezone')
-    return dt.isoformat()
+    return dt.astimezone(timezone.utc).isoformat()
 
 
 def base(provider,event_id,event,league,starts,received,options):

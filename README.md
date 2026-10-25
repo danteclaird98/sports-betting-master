@@ -4,13 +4,19 @@ The combined home for all eight sports-research repositories: the latest EdgeBoa
 
 Public master: https://github.com/danteclaird98/sports-betting-master
 
+Use this repository for new development and integration releases. The original
+repositories and `sources/` snapshots are reference material; changes imported
+from them must be reviewed here before release. A live hostname is not proof
+that it runs this repository's current commit.
+
 For the private interactive Computer preview, see [preview startup and security](docs/PREVIEW.md). That path runs the combined app without exposing provider keys and keeps visitor records separate; it is not permanent application hosting.
 
 All eight filtered source snapshots are preserved under `sources/`, with exact commits and file hashes in [the consolidation manifest](docs/consolidation-manifest.json). Original repositories remain unchanged. See [the consolidation guide](docs/CONSOLIDATION.md) for the source map, excluded sensitive files, licensing and integration boundaries.
 
 ## Run locally
 
-Requires Node.js 24+ and Python 3.10+.
+Requires Node.js 24+ and Python 3.11+. Local Python selection is pinned to the
+3.12 series in `.python-version`; CI also uses Python 3.12.
 
 ```sh
 npm ci

@@ -82,6 +82,10 @@ const server=http.createServer(async(req,res)=>{
     }
     if(url.pathname.startsWith('/edgeboard-api/')){
       if(!['GET','POST'].includes(req.method||''))return json(res,405,{error:'Method not allowed'});
+      if(url.pathname.startsWith('/edgeboard-api/odds-backend/')){
+        const keys=[...url.searchParams.keys()];
+        if(new Set(keys).size!==keys.length)return json(res,400,{error:'Duplicate filters are not supported'});
+      }
       let body:unknown;
       if(req.method==='POST'){
         if(req.headers['content-type']!=='application/json')return json(res,415,{error:'JSON required'});

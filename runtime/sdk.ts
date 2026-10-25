@@ -48,7 +48,7 @@ export const db = {
     catch(error){database.exec('ROLLBACK');throw error;}
   }
 };
-const allowedSecrets=['PARLAY_API_KEY','CLEARSPORTS_API_KEY','PUCKAPI_API_KEY','SHARPAPI_KEY','THE_ODDS_API_KEY','SPORTSGAMEODDS_KEY','ODDS_API_KEY'];
+const allowedSecrets=['PARLAY_API_KEY','CLEARSPORTS_API_KEY','PUCKAPI_API_KEY','SHARPAPI_KEY','THE_ODDS_API_KEY','SPORTSGAMEODDS_KEY','ODDS_API_KEY','ODDS_BACKEND_URL','ODDS_BACKEND_READ_TOKEN'];
 export const secrets={
   async listSecretNames(){return allowedSecrets.filter(name=>Boolean(process.env[name]));},
   async readSecret(name:string){if(!allowedSecrets.includes(name)||!process.env[name])throw Error('Provider credential not configured');return process.env[name]!;}
@@ -59,9 +59,28 @@ export function error(message:string,status=500){return {status,data:{error:mess
 export function requireAuth(){return (ctx:any)=>ctx.user?undefined:error('Authentication required',401);}
 export function router(routes:Record<string,Array<(ctx:any)=>any>>){
   return async (request:{method:string;path:string;query:Record<string,string>;body?:unknown;user?:unknown})=>{
-    const handlers=routes[request.method+' '+request.path];
+    let handlers=routes[request.method+' '+request.path];
+    const params:Record<string,string>={};
+    if(!handlers){
+      const actual=request.path.split('/');
+      for(const [pattern,candidate] of Object.entries(routes)){
+        const [method,path]=pattern.split(' ');
+        if(method!==request.method || !path.includes('/:'))continue;
+        const parts=path.split('/');
+        if(parts.length!==actual.length || parts.some((part,i)=>!part.startsWith(':')&&part!==actual[i]))continue;
+        for(let i=0;i<parts.length;i++){
+          if(!parts[i].startsWith(':'))continue;
+          let value:string;
+          try{value=decodeURIComponent(actual[i]);}catch{return error('Invalid path parameter',400);}
+          if(!value || value.includes('/') || value.includes('\0'))return error('Invalid path parameter',400);
+          params[parts[i].slice(1)]=value;
+        }
+        handlers=candidate;
+        break;
+      }
+    }
     if(!handlers)return error('Not found',404);
-    const ctx={...request,event:{user:request.user}};
+    const ctx={...request,params,event:{user:request.user}};
     for(const handler of handlers){const response=await handler(ctx);if(response!==undefined)return response;}
     return json(null,204);
   };

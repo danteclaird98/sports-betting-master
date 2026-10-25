@@ -1,3 +1,4 @@
+import OddsBackend from './OddsBackend';
 import { useEffect, useState } from 'react';
 import AccountSlipWorkspace from './AccountSlipWorkspace';
 import DailyDashboard from './DailyDashboard';
@@ -135,7 +136,7 @@ function App() {
       </header>
       <main>
         <aside className="releaseWorkspaceNotice" aria-label="Workspace setup">
-          New research workspace. Provider connections and private records require your own setup.
+          Research tools share this Sports Betting Master host. Provider connections require setup; the two tracking views retain separate records.
         </aside>
         {workspace === 'today' && (
           <DailyDashboard
@@ -227,6 +228,8 @@ function App() {
               <div className="advancedModules">
                 <HistoricalCalibration />
                 <NflPropLab />
+                <ReceivingForecast />
+                <ReceivingValidation />
                 <CorrectedReceivingLab />
                 <PlayerBacktest />
                 <LineAwarePropLab />
@@ -240,6 +243,7 @@ function App() {
             )}
             {advanced === 'integrations' && (
               <div className="advancedModules">
+                <OddsBackend />
                 <IntegrationDiagnostics />
                 <ResearchSetup />
                 <CaesarsEvidence />

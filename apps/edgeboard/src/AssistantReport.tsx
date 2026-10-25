@@ -49,7 +49,15 @@ type Report = {
       limitation: string;
     };
   };
-  propPriceSamples?: Array<{ event: string; player: string; market: string; side: string; line: number; publicUnderdogDecimalPrice: number | null; decision: string }>;
+  propPriceSamples?: Array<{
+    event: string;
+    player: string;
+    market: string;
+    side: string;
+    line: number;
+    publicUnderdogDecimalPrice: number | null;
+    decision: string;
+  }>;
   gamePrices: Array<{
     event: string;
     market: string;
@@ -74,7 +82,7 @@ function today() {
       day: '2-digit',
     })
       .formatToParts()
-      .map((p) => [p.type, p.value]),
+      .map(p => [p.type, p.value])
   );
   return `${p.year}-${p.month}-${p.day}`;
 }
@@ -122,7 +130,7 @@ export default function AssistantReport() {
         setMessage(
           e instanceof Error
             ? e.message
-            : 'Report unavailable. Check the date/timezone and retry.',
+            : 'Report unavailable. Check the date/timezone and retry.'
         );
     } finally {
       if (request === generation.current) setBusy(false);
@@ -135,14 +143,14 @@ export default function AssistantReport() {
       setMessage('Assistant report copied.');
     } catch {
       setMessage(
-        'Clipboard unavailable. Use Download assistant report instead.',
+        'Clipboard unavailable. Use Download assistant report instead.'
       );
     }
   }
   function download() {
     if (!report) return;
     const blobUrl = URL.createObjectURL(
-      new Blob([JSON.stringify(report, null, 2)], { type: 'application/json' }),
+      new Blob([JSON.stringify(report, null, 2)], { type: 'application/json' })
     );
     const a = document.createElement('a');
     a.href = blobUrl;
@@ -154,6 +162,7 @@ export default function AssistantReport() {
   return (
     <section className="researchSetup" aria-label="Assistant research report">
       <h2>Ask EdgeBoard</h2>
+      <p><a href={`/research-api/api/assistant-report?${query}`} target="_blank" rel="noreferrer">Open assistant JSON report</a></p>
       <p>
         One report for the assistant: requested-day markets, observed prices,
         full-board counts, model readiness, coverage and reasons to pass. Public
@@ -166,7 +175,7 @@ export default function AssistantReport() {
             aria-label="Assistant report sport"
             disabled={busy}
             value={sport}
-            onChange={(e) => {
+            onChange={e => {
               setSport(e.target.value);
               setReport(null);
             }}
@@ -185,7 +194,7 @@ export default function AssistantReport() {
             type="date"
             disabled={busy}
             value={date}
-            onChange={(e) => {
+            onChange={e => {
               setDate(e.target.value);
               setReport(null);
             }}
@@ -197,7 +206,7 @@ export default function AssistantReport() {
             aria-label="Assistant report timezone"
             disabled={busy}
             value={zone}
-            onChange={(e) => {
+            onChange={e => {
               setZone(e.target.value);
               setReport(null);
             }}
@@ -214,7 +223,7 @@ export default function AssistantReport() {
               type="checkbox"
               disabled={busy}
               checked={paid}
-              onChange={(e) => {
+              onChange={e => {
                 setPaid(e.target.checked);
                 setReport(null);
               }}
@@ -239,12 +248,12 @@ export default function AssistantReport() {
               ticket.
             </p>
             <ul>
-              {report.recommendationReadiness.blockers.map((r) => (
+              {report.recommendationReadiness.blockers.map(r => (
                 <li key={r}>{r}</li>
               ))}
             </ul>
             <h4>Evaluated model registry</h4>
-            {report.recommendationReadiness.modelRegistry.map((m) => (
+            {report.recommendationReadiness.modelRegistry.map(m => (
               <div key={m.version}>
                 <p>
                   <strong>{m.version}</strong> · live approved:{' '}
@@ -252,7 +261,7 @@ export default function AssistantReport() {
                 </p>
                 <p>{m.scope}</p>
                 <ul>
-                  {m.promotionBlockers.map((reason) => (
+                  {m.promotionBlockers.map(reason => (
                     <li key={reason}>{reason}</li>
                   ))}
                 </ul>
@@ -260,11 +269,11 @@ export default function AssistantReport() {
             ))}
             <p>Implemented calculation support:</p>
             <ul>
-              {report.recommendationReadiness.implemented.map((r) => (
+              {report.recommendationReadiness.implemented.map(r => (
                 <li key={r}>{r}</li>
               ))}
             </ul>
-            {report.recommendationReadiness.settlementReferences.map((r) => (
+            {report.recommendationReadiness.settlementReferences.map(r => (
               <div key={r.id}>
                 <p>
                   <a href={r.source} target="_blank" rel="noreferrer">
@@ -274,7 +283,7 @@ export default function AssistantReport() {
                 </p>
                 <p>{r.status}</p>
                 <ul>
-                  {r.missing.map((m) => (
+                  {r.missing.map(m => (
                     <li key={m}>{m}</li>
                   ))}
                 </ul>
@@ -294,7 +303,20 @@ export default function AssistantReport() {
             {report.scope.propCandidatesScreened.toLocaleString()} prop
             market-side prices screened (not independently modeled).
           </p>
-          {!!report.propPriceSamples?.length && <details><summary>Sample public prop prices · not Caesars or verified EV</summary>{report.propPriceSamples.map((p, i) => <p key={i}>{p.player} {p.side} {p.line} {p.market} ({p.event}); Underdog decimal {p.publicUnderdogDecimalPrice ?? 'unavailable'}, status {p.decision}. No approved independent probability.</p>)}</details>}
+          {!!report.propPriceSamples?.length && (
+            <details>
+              <summary>
+                Sample public prop prices · not Caesars or verified EV
+              </summary>
+              {report.propPriceSamples.map((p, i) => (
+                <p key={i}>
+                  {p.player} {p.side} {p.line} {p.market} ({p.event}); Underdog
+                  decimal {p.publicUnderdogDecimalPrice ?? 'unavailable'},
+                  status {p.decision}. No approved independent probability.
+                </p>
+              ))}
+            </details>
+          )}
           {report.scope.pastOrBeyondFeedWindow && (
             <p>
               Requested date is outside the feed window. Missing coverage is not
@@ -314,7 +336,7 @@ export default function AssistantReport() {
               {report.model.marketBenchmark.market.logLoss.toFixed(4)} (lower is
               better). 95% week-block interval for candidate minus market: [
               {report.model.marketBenchmark.pairedLogLossDifference95
-                .map((v) => v.toFixed(4))
+                .map(v => v.toFixed(4))
                 .join(', ')}
               ]. {report.model.marketBenchmark.limitation}
             </p>
@@ -350,7 +372,7 @@ export default function AssistantReport() {
                       <td>
                         {q.validation.status}
                         <ul>
-                          {q.validation.exclusions.map((r) => (
+                          {q.validation.exclusions.map(r => (
                             <li key={r}>{r}</li>
                           ))}
                         </ul>
@@ -368,7 +390,7 @@ export default function AssistantReport() {
             )}
           </details>
           <ul>
-            {report.decisionReasons.map((r) => (
+            {report.decisionReasons.map(r => (
               <li key={r}>{r}</li>
             ))}
           </ul>
@@ -382,7 +404,7 @@ export default function AssistantReport() {
                 </tr>
               </thead>
               <tbody>
-                {report.sourceHealth.map((s) => (
+                {report.sourceHealth.map(s => (
                   <tr key={s.source}>
                     <td>{s.source}</td>
                     <td>{s.status}</td>
@@ -404,7 +426,7 @@ export default function AssistantReport() {
                   </tr>
                 </thead>
                 <tbody>
-                  {report.scope.propMarketCounts.map((m) => (
+                  {report.scope.propMarketCounts.map(m => (
                     <tr key={m.market}>
                       <td>{m.market}</td>
                       <td>{m.candidatesScreened}</td>

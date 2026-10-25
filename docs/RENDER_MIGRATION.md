@@ -1,6 +1,6 @@
 # Migration from AppDeploy to Render
 
-**Current host recommendation:** Render, because the combined repository already has a Docker Blueprint and persistent SQLite disk configuration. The Blueprint is paid and uses a public HTTPS endpoint protected by the app's password/session login. It is not network-private. No Render service or production URL has been provisioned.
+**Historical reference — not the current deployment path.** The user ruled out Render and Railway. Use the [Fly deployment guide](FLY_DEPLOYMENT.md) for the current target; inspect the existing Fly app before applying configuration. The instructions below are preserved for provenance and portability.
 
 ## Ready in this repository
 

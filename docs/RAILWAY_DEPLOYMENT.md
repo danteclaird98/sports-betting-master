@@ -1,6 +1,6 @@
 # Legacy deployment option: Railway
 
-This guide is retained as an alternative. The repository's current recommended deployment path is Render; see [the Render migration guide](RENDER_MIGRATION.md). Railway has not been provisioned or verified for this app. One container runs the Node gateway and internal Python service; a persistent volume holds both SQLite databases.
+**Historical reference — not the current deployment path.** The user ruled out Render and Railway. Use the [Fly deployment guide](FLY_DEPLOYMENT.md) for the current target; inspect the existing Fly app before applying configuration. The instructions below are preserved for provenance and portability.
 
 Status: configuration prepared; no Railway project, service, volume or production URL has been provisioned or verified by this change. Railway usage and storage may incur charges; review your account's pricing before provisioning.
 

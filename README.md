@@ -22,13 +22,13 @@ Open **http://127.0.0.1:3000**. The **Full EdgeBoard workspace** link opens the 
 
 Local loopback mode can run without a password. Hosted mode refuses to start unless `WORKSPACE_PASSWORD` has at least 16 characters. Copy `.env.example` to `.env` for local configuration; `npm start` loads it if present. Keep all provider keys server-side.
 
-## Deploy on Render
+## Deploy on Fly
 
-Render is the recommended managed host for the combined Node/Python Docker app. The repository includes a Render Blueprint with a single web service, a persistent disk at `/var/data` for both SQLite databases, a `/health` check, and automatic deployments turned off. The current Blueprint uses Render's paid Starter plan; review current compute and disk pricing before creating the service. Its 512 MB of RAM may be tight for Node and Python running together, so monitor memory and choose a larger plan if validation or runtime metrics require it.
+Fly is the current deployment target for the supplied `edgeodds-danteclaird.fly.dev` hostname. The reviewed [Fly configuration](fly.toml) uses the combined Node/Python Docker image, port 3000, a single SQLite volume at `/var/data`, an explicit HTTPS/hostname configuration and a `/health` check.
 
-Follow the [Render deployment guide](docs/RENDER_MIGRATION.md) to connect this GitHub repository, set the workspace password, generate the HTTPS hostname, and verify the service. The app is internet-reachable over HTTPS and protected by its own password/session login; it is not a private-network-only service. Keep one instance while using the SQLite disk.
+Follow the [Fly deployment guide](docs/FLY_DEPLOYMENT.md). Inspect the existing Fly app, machine and volume configuration before applying this repository. Keep exactly one writer machine and retain existing data. The 1 GB shared-machine allocation is a starting point to verify under load.
 
-No Render service or production URL has been provisioned. Complete the combined image, health, authentication, and persistence checks before calling launch complete. The older [Railway guide](docs/RAILWAY_DEPLOYMENT.md) is retained as an alternative, not the recommended path.
+The existing Fly service's ownership, image, health and stored records are unverified. This configuration does not provision infrastructure or establish launch success. [Render](docs/RENDER_MIGRATION.md) and [Railway](docs/RAILWAY_DEPLOYMENT.md) documentation is retained as historical reference.
 
 ## What's integrated
 
@@ -72,7 +72,7 @@ For normalized imports, [web/example.json](web/example.json) shows the schema. M
 
 ## Persistence and migration
 
-The runtime uses two SQLite databases: EdgeBoard records and EdgeFusion snapshots/journal. For Railway hosting, both live on the persistent volume at `/var/data`. Existing local files are not uploaded automatically. AppDeploy's private database and secrets were not included in the source exports and have **not** been migrated. Existing deployments were not modified.
+The runtime uses two SQLite databases: EdgeBoard records and EdgeFusion snapshots/journal. For the Fly configuration, both live on the persistent volume at `/var/data`. Existing local files are not uploaded automatically. AppDeploy's private database and secrets were not included in the source exports and have **not** been migrated. Existing deployments were not modified.
 
 See [current consolidation guide](docs/CONSOLIDATION.md), [current source/file manifest](docs/consolidation-manifest.json) and [master validation](docs/MASTER_VALIDATION.md). The older [EdgeFusion review](docs/REPOSITORY_REVIEW.md), [source revisions](docs/sources.json), [migration hashes](docs/edgeboard-migration.json) and [validation](docs/VALIDATION.md) describe the inherited baseline, not this consolidation.
 

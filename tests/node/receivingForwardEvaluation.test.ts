@@ -146,3 +146,15 @@ test('overall evaluation deadlines reject invalid configurations',()=>{
   for(const deadlineMs of [0,-1,26_001,NaN,Infinity,1.5])
     assert.throws(()=>createReceivingForwardEvaluation({deadlineMs}),/EVALUATION_DEADLINE_INVALID/);
 });
+
+test('pending response rows require a verified future kickoff and unresolved status',async()=>{
+  const evaluate=createReceivingForwardEvaluation({readPage:async owner=>page(owner),loadOutcomes:noOutcomes});
+  const empty=await evaluate('alice');
+  const row={receiptId:'synthetic',playerId:'player',gameId:'game',status:'UNRESOLVED',
+    reason:'GAME_NOT_STARTED',kickoffAt:'2026-11-01T18:00:00.000Z'};
+  const pending={...empty,recordsIncluded:1,unresolvedCount:1,rows:[row]};
+  assert.doesNotThrow(()=>parseReceivingEvaluation(pending,'alice'));
+  for(const kickoffAt of [undefined,'invalid','2026-11-01','2026-10-25T21:00:00Z',empty.source.retrievedAt])
+    assert.throws(()=>parseReceivingEvaluation({...pending,rows:[{...row,kickoffAt}]},'alice'),/could not be verified/);
+  assert.throws(()=>parseReceivingEvaluation({...pending,rows:[{...row,status:'SCORED'}]},'alice'),/could not be verified/);
+});

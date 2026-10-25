@@ -140,3 +140,30 @@ test('conflicting scope rows for the same player and game remain ambiguous',asyn
     assert.equal(report.scores.selected,null);
   }
 });
+
+test('valid future forecasts remain pending even if an adapter supplies final outcomes',async()=>{
+  const receipt=await saved();
+  const early={...source,retrievedAt:new Date(kickoff-1000).toISOString(),
+    files:[{...source.files[0],observedAt:new Date(kickoff-1000).toISOString()}]};
+  const report=await run([receipt],[final('player','game',80)],{source:early});
+  assert.equal(report.scoredCount,0);
+  assert.equal(report.rows[0].reason,'GAME_NOT_STARTED');
+  assert.equal(report.rows[0].status==='UNRESOLVED'?report.rows[0].kickoffAt:null,receipt.forecast.kickoffAt);
+  assert.equal(report.scores.selected,null);
+});
+test('mixed due and future receipts preserve scored coverage and pending kickoff',async()=>{
+  const due=await saved('due','due'),future=await saved('future','future');
+  const {receiptSha256:ignored,...payload}=future;
+  payload.forecast={...future.forecast,kickoffAt:new Date(observed+3600000).toISOString()};
+  const futureReceipt={...payload,receiptSha256:await forwardHash(canonicalJson(payload))};
+  const report=await run([due,futureReceipt],[final('due','due',60),final('future','future',60)]);
+  assert.equal(report.scoredCount,1);assert.equal(report.unresolvedCount,1);
+  assert.equal(report.rows[1].reason,'GAME_NOT_STARTED');
+  assert.equal(report.scores.selected!.n,1);
+});
+test('invalid receipt clocks are never exposed as verified pending kickoff',async()=>{
+  const receipt=await saved();
+  const report=await run([{...receipt,forecast:{...receipt.forecast,kickoffAt:'invalid'}}],[]);
+  assert.notEqual(report.rows[0].reason,'GAME_NOT_STARTED');
+  assert.equal('kickoffAt' in report.rows[0],false);
+});

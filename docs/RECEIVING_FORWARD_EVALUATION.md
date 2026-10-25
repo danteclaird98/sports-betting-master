@@ -6,7 +6,7 @@ The Independent model workspace can evaluate the signed-in owner's archived preg
 
 1. Sign in and select a genuine future player/game in the existing receiving forecast workflow.
 2. Save its server-calculated forecast at least 120 seconds before kickoff. The first saved receipt remains authoritative; no fake or retrospective receipt is created by evaluation.
-3. After outcomes are published, click **Evaluate saved forecasts**. An empty or future-only archive makes no public-source requests. No production forecasts were seeded by the implementation or its tests.
+3. If a saved game's kickoff is still in the future, evaluation shows the waiting forecast count and next scheduled kickoff in UTC, as of the evaluation timestamp. These rows use `GAME_NOT_STARTED` and remain unresolved with no performance score. For a future-only archive no public outcome sources are requested. After outcomes are published, click **Evaluate saved forecasts**. An empty or future-only archive makes no public-source requests. No production forecasts were seeded by the implementation or its tests.
 4. Inspect included, scored, unresolved and unique-game counts. The selected model, raw model and frozen training base rate are scored on the same resolved rows using Brier and clipped log loss (clip `1e-15`). No score is shown when no rows can be scored.
 5. Download the evaluation evidence. For larger logs, explicitly continue to the next archive batch or next set of final-game checks. Reports are separate snapshots; the application does not silently pool overlapping windows or different owners/models.
 

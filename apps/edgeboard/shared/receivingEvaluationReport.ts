@@ -10,7 +10,7 @@ export type ReceivingEvaluationReport = {
   unresolvedCount: number;
   uniqueScoredGames: number;
   scores: Record<'selected' | 'raw' | 'trainBaseRate', Metric | null>;
-  rows: Array<{receiptId: string; playerId: string | null; gameId: string | null; status:'SCORED' | 'UNRESOLVED'; reason:string; receivingYards?:number; outcome?:0 | 1}>;
+  rows: Array<{receiptId: string; playerId: string | null; gameId: string | null; status:'SCORED' | 'UNRESOLVED'; reason:string; kickoffAt?:string; receivingYards?:number; outcome?:0 | 1}>;
   source: {status:string;retrievedAt:string;reason?:string;files:Array<{url:string;sha256:string;observedAt:string}>;
     finalGameWindow?:{offset:number;maximum:8;totalDueGames:number;checked:number;nextOffset:number|null}};
   limitations: string[];
@@ -21,6 +21,7 @@ const count = (v: unknown): v is number => typeof v === 'number' && Number.isSaf
 const finite = (v: unknown): v is number => typeof v === 'number' && Number.isFinite(v);
 const hash = (v: unknown) => typeof v === 'string' && /^[a-f0-9]{64}$/.test(v);
 const time = (v: unknown) => typeof v === 'string' && Number.isFinite(Date.parse(v));
+const kickoffTime = (v: unknown) => time(v) && /(?:Z|[+-]\d{2}:\d{2})$/i.test(v as string);
 const textOrNull = (v: unknown) => v === null || typeof v === 'string';
 
 /** Owner and shape checks precede rendering or generating a private download. */
@@ -53,6 +54,9 @@ export function parseReceivingEvaluation(value: unknown, owner: string): Receivi
     || !Array.isArray(source.files) || !source.files.every(file => object(file) && typeof file.url === 'string'
       && file.url.startsWith('https://') && hash(file.sha256) && time(file.observedAt))) return invalid();
   if (n > 0 && source.status !== 'AVAILABLE') return invalid();
+  if (!value.rows.every(row => (row.kickoffAt === undefined || kickoffTime(row.kickoffAt))
+    && (row.reason !== 'GAME_NOT_STARTED' || row.status === 'UNRESOLVED'
+      && kickoffTime(row.kickoffAt) && Date.parse(row.kickoffAt as string) > Date.parse(source.retrievedAt as string)))) return invalid();
   const range = value.historyRange;
   if (!(range.startToken === null || typeof range.startToken === 'string' && range.startToken.length > 0 && range.startToken.length <= 3000)) return invalid();
   if (typeof range.startsAtBeginning !== 'boolean' || !count(range.pagesRead) || range.pagesRead > 20

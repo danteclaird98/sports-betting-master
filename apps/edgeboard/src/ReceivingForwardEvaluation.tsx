@@ -38,6 +38,9 @@ export default function ReceivingForwardEvaluation({ owner, session }: {
     } finally { if (current === generation.current) setBusy(false); }
   }
 
+  const pending = report?.rows.filter(row => row.status === 'UNRESOLVED' && row.reason === 'GAME_NOT_STARTED') ?? [];
+  const nextKickoff = pending.length ? Math.min(...pending.map(row => Date.parse(row.kickoffAt!))) : null;
+
   return <section className="correctedScoreReceipt" aria-busy={busy}>
     <h3>Evaluate saved forecasts · read only</h3>
     <p>Compare saved pregame probabilities with exact published player outcomes. A final game must be confirmed separately. Missing or ambiguous outcomes remain unresolved, never losses.</p>
@@ -48,7 +51,8 @@ export default function ReceivingForwardEvaluation({ owner, session }: {
     {!owner && <p>Sign in above to evaluate your private log.</p>}
     {message && <p role="alert">{message}</p>}
     {report && <div>
-      <p role="status">{report.scoredCount > 0 ? 'Descriptive probability scores available.' : 'No scorable outcomes yet.'} Betting decision: HOLD.</p>
+      <p role="status">{report.scoredCount > 0 ? 'Descriptive probability scores available.' : pending.length > 0 ? 'Saved forecasts are awaiting their games.' : report.recordsIncluded === 0 ? 'No saved forecasts in this batch.' : 'No scorable outcomes yet.'} Betting decision: HOLD.</p>
+      {pending.length > 0 && nextKickoff !== null && <p>{pending.length} saved {pending.length === 1 ? 'forecast was' : 'forecasts were'} awaiting kickoff at this evaluation. Next scheduled kickoff: <time dateTime={new Date(nextKickoff).toISOString()}>{new Date(nextKickoff).toUTCString()}</time>. Evaluate again after the game finishes and player results are published. Waiting forecasts stay unresolved and do not count as losses.</p>}
       <p>Included: {report.recordsIncluded} · Scored: {report.scoredCount} · Unresolved: {report.unresolvedCount} · Unique scored games: {report.uniqueScoredGames}.</p>
       <p>{report.cohortComplete ? 'All archive pages returned by this evaluation were included.' : 'Partial archive batch: these scores do not describe the entire saved log.'}</p>
       <p>Final-game checks are capped at eight; unchecked games remain unresolved even if other games were scored. This manually selected sample is not an exhaustive player cohort.</p>
@@ -60,7 +64,7 @@ export default function ReceivingForwardEvaluation({ owner, session }: {
           })}</tbody></table>
       </div>
       <p>These are proper probability scores, not betting returns or proof of profitability. No confidence interval or model promotion is inferred.</p>
-      <p>Outcome source: {report.source.status.replaceAll('_',' ')} · observed {new Date(report.source.retrievedAt).toLocaleString()}{report.source.reason ? ' · '+report.source.reason.replaceAll('_',' ') : ''}.</p>
+      <p>{report.source.status === 'NOT_REQUESTED' ? 'Public outcome sources were not requested' : 'Outcome source: '+report.source.status.replaceAll('_',' ')} · evaluation checked {new Date(report.source.retrievedAt).toLocaleString()}{report.source.reason ? ' · '+report.source.reason.replaceAll('_',' ') : ''}.</p>
       {download?.report === report && <a href={download.url} download="receiving-forward-evaluation.json">Download evaluation evidence</a>}
       {report.source.finalGameWindow?.nextOffset !== null && report.source.finalGameWindow?.nextOffset !== undefined &&
         <button type="button" disabled={busy} onClick={() => evaluate(report.historyRange.startToken ?? undefined,report.source.finalGameWindow!.nextOffset!)}>Check next set of final games</button>}

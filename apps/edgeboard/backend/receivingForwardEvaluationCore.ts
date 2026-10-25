@@ -35,7 +35,7 @@ type ScoredRow = {
 };
 type UnresolvedRow = {
   receiptId: string; playerId: string | null; gameId: string | null;
-  status: 'UNRESOLVED'; reason: string;
+  status: 'UNRESOLVED'; reason: string; kickoffAt?: string;
 };
 const finite = (value: unknown): value is number => typeof value === 'number' && Number.isFinite(value);
 const probability = (value: unknown): value is number => finite(value) && value >= 0 && value <= 1;
@@ -118,11 +118,17 @@ export async function evaluateReceivingForward(input: {
   }
   for (const receipt of input.receipts) {
     const f = receipt.forecast;
+    let verifiedKickoff: string | undefined;
     const unresolved = (reason: string) => rows.push({receiptId:receipt.id, playerId:f?.playerId ?? null,
-      gameId:f?.gameId ?? null, status:'UNRESOLVED', reason});
+      gameId:f?.gameId ?? null, status:'UNRESOLVED', reason,
+      ...(verifiedKickoff ? {kickoffAt:verifiedKickoff} : {})});
     const problem = await receiptProblem(receipt);
     if (problem) { unresolved(problem); continue; }
+    verifiedKickoff = f.kickoffAt;
     if ((receiptCounts.get(key(f.playerId, f.gameId)) ?? 0) !== 1) { unresolved('DUPLICATE_ARCHIVED_SELECTION'); continue; }
+    if (validTime(source?.retrievedAt) && Date.parse(source.retrievedAt) < Date.parse(f.kickoffAt)) {
+      unresolved('GAME_NOT_STARTED'); continue;
+    }
     if (!sourceAvailable) {
       unresolved(!windowValid ? 'FINAL_GAME_WINDOW_INVALID'
         : source?.status === 'AVAILABLE' ? 'OUTCOME_SOURCE_EVIDENCE_INVALID'

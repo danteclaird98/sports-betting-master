@@ -1,6 +1,6 @@
 [
   {
-    "name": "Independent model inspection, durable navigation and guarded scoring",
+    "name": "Source-backed forecasts, separate validation and durable model inspection",
     "viewport": "desktop",
     "covers": [
       "Advanced Research navigation",
@@ -34,23 +34,46 @@
       "audit JSON export",
       "source provenance link",
       "browser back and refresh navigation",
-      "source-backed next-fixture receiving forecast",
-      "frozen 2026 validation evidence",
-      "private first-receipt forward log",
-      "plain-language model blockers and next steps",
-      "raw blocker codes retained in export",
-      "authenticated read-only forward evaluation",
-      "proper scores only for exact published final outcomes",
-      "bounded cohort and game-window continuation",
-      "private evaluation export and failed-source handling"
+      "GET /api/wager-ledger authenticated reload",
+      "authenticated owner-bound ledger responses",
+      "POST /api/wager-ledger owner mismatch denial",
+      "POST /api/wager-ledger confirmed manual paper save",
+      "wager placement timestamp validation",
+      "GET /api/receiving-forecast-options public source selectors",
+      "POST /api/receiving-forecast next-fixture conditional calculation",
+      "GET /api/receiving-validation frozen 2026 retrospective evidence",
+      "selector changes invalidate forecast receipts",
+      "download forecast source receipt",
+      "calculation status separated from betting HOLD",
+      "scanner scope changes clear prior results and selection",
+      "late scan responses ignored after sport/mode/timing changes",
+      "sport-scoped coverage health refresh",
+      "authenticated append-only odds-free receiving forecast log",
+      "captured-owner forecast response validation",
+      "same-selection replay without overwrite",
+      "forecast pagination and protocol export",
+      "audit includes separate 2026 evidence and forward protocol",
+      "plain-language forecast blocker explanations",
+      "reason-specific next actions",
+      "unchanged raw codes and HOLD flags in forecast receipts",
+      "POST /api/receiving-forward-evaluation authenticated read-only request",
+      "bounded archive batches and final-game check windows",
+      "exact published final outcomes and unresolved cases",
+      "same-cohort proper scores",
+      "private evaluation export and account switch invalidation",
+      "future saved forecasts show pending count and next scheduled kickoff"
     ],
     "description": "The existing market research and historical model workflows remain available with their research-only safeguards.",
     "steps": [
+      "Open Independent model. Click Load source-backed players & games. Wait for actual nflverse players and future fixtures or an explicit source-unavailable error. Never substitute invented players or times.",
+      "If sources are available, select a real player and their displayed next fixture. Calculate the forecast. Require Forecast calculated, a finite conditional receiving 60+ probability and Betting decision: HOLD with roster, forward-validation and executable-price blockers. Download the complete forecast receipt and inspect source timestamps and hashes; download is not pregame publication proof.",
+      "Inspect the forecast blockers. Forward validation, player participation, executable market evidence and historical data timing must each have a readable explanation and Next step, while the raw evidence code remains visible. Forward validation must direct the user to the forward log and frozen protocol; it cannot be resolved by repeatedly reloading sources. Download the original forecast receipt and confirm its blocker codes and HOLD/false approval flags remain unchanged. For a DATA_UNAVAILABLE response, follow the actual reason-specific guidance rather than a blanket reload instruction; do not fabricate data to exercise other states.",
+      "Inspect Forward forecast log. Without sign-in, saving and private history controls must be disabled. No paid provider or odds input is required. Using a legitimate signed-in QA account and an actual future fixture at least two minutes away, save the selected forecast, verify the saved raw/calibrated probabilities and server submission timestamp, reload the log, then save the same player/game again: the original ID, probabilities and timestamp must remain unchanged. Reload the page and history; download the page and frozen protocol. If real authentication or a future fixture is unavailable, report this verification scope unavailable rather than fabricating a session or record.",
+      "Using legitimate QA accounts, sign out or switch accounts while forecast history is loading. The private page, saved receipt and download must clear, and a delayed response for the old account must not appear. Follow the next-page control when a real continuation token exists; the export must describe only the current page, not a complete cohort. No invented outcomes or metrics may appear.",
+      "Change the selected player. Verify the old probability and download disappear and the game must be selected again. Only that player team next fixture may be offered. If the source request failed, verify retry remains available and no stale probability appears.",
+      "Click Inspect 2026 validation. Require 1,707 scored player-games with selected Brier about 0.094315 versus baseline about 0.117441, partial-season and retrospective limitations, unchanged selected calibration, and no betting approval.",
       "Open Independent model from the main navigation. Click Inspect frozen receiving model; inspect the actual installed artifact readiness and frozen report.",
-      "Open Independent model and load source-backed players & games. Accept actual current-season players and their next team fixture or a clear source error; do not invent selections. Calculate a conditional forecast when data is available and require HOLD with readable explanations for forward validation, participation, executable price/EV and historical timing. Each explanation must show a next action and the original evidence code.",
-      "Change the player or game and verify the old probability/download disappear. Inspect 2026 validation as retrospective evidence without granting approval. Export the original receipt and confirm unchanged blocker codes and false approval/execution flags.",
-      "Inspect Forward forecast log. Anonymous access must require sign-in. With an authorized QA session and only a genuine eligible future selection, save one server-calculated research forecast, reload it and confirm the first receipt remains unchanged on repeat save. Never submit a fabricated live record. Verify owner-mismatched requests are denied; any unconfirmed save must require history reload rather than blind retries. Local automated fixtures cover private record persistence and duplicates without writing production data.",
-      "Confirm artifact verification passes while status remains Research only / HOLD. Verify train 13,344, selection 2,419, calibration 2,490, reused 2025 diagnostic 5,064, retained negatives 299 and corrected warmup 2,780.",
+      "Confirm artifact verification passes while research calculation and betting decision HOLD are distinguished. Verify train 13,344, selection 2,419, calibration 2,490, reused 2025 diagnostic 5,064, retained negatives 299 and corrected warmup 2,780.",
       "Confirm raw, calibrated and baseline Brier/log-loss metrics render and calibration deterioration is disclosed. Expand the artifact audit, inspect the source provenance link and use Download audit JSON to download the already loaded report.",
       "Refresh and verify the Independent model workspace remains selected. Open Today’s Board then use browser Back and confirm the model workspace returns.",
       "After returning to Independent model, click Inspect frozen receiving model again and wait for Artifact integrity: verified by backend. Confirm Calculate research probability becomes available after entering history JSON before testing scoring.",
@@ -58,6 +81,8 @@
       "Click Advanced Research from the main navigation.",
       "Confirm Markets & props is selected and AllSportsReport, ResearchPipeline and AssistantReport are present.",
       "Scroll to the existing EdgeScanner; check NFL game-line/player-prop controls remain available.",
+      "In the existing EdgeScanner, choose MLB and Demo data mode, then scan. After results or an explicit source error, change Market timing to Pregame: prior scan rows and selected legs must disappear. Scan again, then change sport or Data mode; old results and selection must clear. If a prior request finishes later, its rows or errors must not reappear under the changed controls.",
+      "In Coverage & data health, change sports and refresh. A health result from the previous sport must not remain labeled as the selected sport; late health responses must not replace the current sport's result. A source failure may show an explicit error without old sport-specific line counts.",
       "In receiver-versus-cornerback research review the ESPN injury observations; absence of a listing must not imply healthy status or a confirmed shadow assignment.",
       "Expand Archived targeted game research to confirm the old TNF deep-dive tool was not deleted.",
       "Click Advanced Research and then Models & history.",
@@ -68,11 +93,15 @@
       "Run the raw historical v4 snapshot pairing selftest; verify missing provider authentication, NFLverse identity joins, and historical ROI stay blocked.",
       "Verify historical diagnostic results remain research-only and no player-prop wager is automatically approved.",
       "Navigate back to Markets & props to confirm tab switching works.",
-      "Open Evaluate saved forecasts under Independent model. Anonymous requests must require sign-in. With an authorized QA session, evaluate the real saved log. Empty/future-only records require null metrics and no fabricated outcome. Do not seed fake production forecasts.",
-      "If genuine completed archived records exist, inspect scored/unresolved/unique-game counts, selected/raw/frozen base-rate metrics on the same n, explicit partial archive and eight-game window controls, original source hashes and timestamps, and the downloadable report. Missing/ambiguous/nonfinal rows must remain unresolved; model approval remains HOLD.",
-      "Switch authenticated accounts while a request is pending and confirm private reports/downloads do not cross owners. Fail a source request in an injected QA scenario or inspect a real unavailable state; no stale score may be fabricated and archived forecasts must remain unchanged."
+      "Using the signed-in QA account, enter a manual paper wager with a valid date, event, market and selection. Save it, verify the confirmed draft clears, then reload saved ledger and verify the paper record persists. Never create a fake actual wager.",
+      "With two legitimately authenticated QA accounts, start a paper save in Account A, switch to Account B and reload before the delayed response returns. Verify A's rows and draft are not displayed in B; owner-mismatched requests must be denied. Return to A and reload before further edits. This requires real authenticated sessions; do not substitute fabricated accounts.",
+      "Inspect the frozen model again and download audit JSON. Verify evidence2026 and forwardProtocol are included when loaded; optional source failures must be represented as NOT_LOADED. A null supplied-history scoreReceipt must not be described as an inference failure. Calibration is not reselected or refitted from 2025/2026 results.",
+      "In Independent model, inspect Evaluate saved forecasts · read only. Anonymous access must require sign-in above. Using an authorized QA session, click Evaluate saved forecasts. An empty archive must show included/scored/unresolved counts of zero and unavailable metrics, not a probability score of zero or a performance claim. Do not create fabricated live records to exercise scoring.",
+      "If genuine archived records exist, inspect the included/scored/unresolved counts and matched player/game details. Missing, ambiguous or nonfinal outcomes remain unresolved. Check selected, raw and frozen base-rate metrics use the same scored n; HOLD and false approval flags remain unchanged. Inspect hashes/observation times, partial batch/final-game window disclosure and download the evaluation. Next batch/window controls are explicit user actions, not automatic polling.",
+      "Switch between genuinely authenticated QA accounts while evaluation is pending, then return. Verify the prior account's evaluation and download are cleared and late responses cannot populate another account. Do not fabricate accounts or receipt outcomes.",
+      "When the legitimate saved archive contains a future fixture, evaluate it and verify the waiting count and next scheduled kickoff in UTC are displayed as of this evaluation. A future-only archive has unavailable scores and no public outcome requests. The UI explains evaluating again after the game finishes and results are published. Do not fabricate a live receipt."
     ],
-    "expected": "Verified frozen research metrics and export are usable directly; navigation survives refresh/back; unsupported histories yield HOLD without probability. Existing advanced research tools remain available.",
+    "expected": "Verified frozen research metrics and export are usable directly; navigation survives refresh/back; unsupported histories yield HOLD without probability. Existing advanced research tools remain available. Real source-backed next-game conditional forecasts can calculate independently of betting approval; later-season evidence is available without granting live EV approval.",
     "sanity": true
   },
   {
@@ -137,27 +166,31 @@
       "independent ESPN event and current-season roster",
       "CFB TD model unsupported does not use NFL receptions",
       "full rushing and receiving touchdown label",
-      "source availability separated from model approval",
-      "source outages reflected in per-filter counts",
-      "direct receiving-model navigation from daily status",
-      "60-second snapshot expiry and started-game removal",
-      "separate report and source retrieval times",
-      "unknown source diagnostics"
+      "data availability separated from betting approval",
+      "source status and model blocker diagnostics",
+      "receiving model action from daily status",
+      "pending slip audit invalidation after game/stake/sportsbook/selection changes",
+      "late audit errors cannot overwrite newer request state",
+      "60-second research snapshot expiry",
+      "started-game observations removed",
+      "per-source retrieval timestamps",
+      "unknown diagnostics not treated as no prices"
     ],
     "description": "Default mobile screen is simple, does not call paid providers, and never presents a price observation as an approved bet.",
     "steps": [
       "Open the app and verify Today's Board is initially selected with Scan today's games visible and Advanced Research accessible.",
       "Click Scan today's games and wait for market coverage or a plainly displayed upstream error.",
-      "When the scan returns, confirm the decision identifies HOLD or requires additional verification; a $0 stake is shown.",
-      "Inspect the decision for the selected sport: returned prices, unavailable sources, unsupported coverage and successful empty results must have distinct explanations. Expand View scan blockers and source status and inspect per-feed status and betting approval. Filtering an empty sport must not inherit prices from other sports. Open Inspect receiving probability model; verify the frozen receiving model workspace opens, then return to Today's Board. HOLD and zero stake must remain.",
-      "Inspect report generation and per-source retrieval times; do not confuse them with sportsbook update times. Keep the returned report open until its displayed refresh time (at most 60 seconds). Require HOLD — scan needs refresh, no price cards, zero candidates and disabled Copy research. No automatic provider refresh may occur. Rescan and verify a new report or a visible retryable source error.",
+      "When the scan returns, confirm HOLD and recommended stake $0. The explanation must reflect actual returned prices, no upcoming prices, unsupported sources or source failures; it must not always claim that prices are available.",
       "Inspect a WATCH card and confirm exact book/source and price are labeled observations with EV unavailable; filter to NFL and back to All sports.",
+      "Inspect source status and the report footer: Report generated must be separate from each feed's Retrieved timestamp; neither proves a sportsbook update time. Stay on Today's Board until the scan's displayed refresh time passes (at most 60 seconds). Require HOLD — scan needs refresh, no upcoming price cards, zero displayed candidates and disabled Copy research. The app must not automatically request new prices or consume provider credits. Click Scan today's games to obtain a new report and verify retry remains usable. If the initial scan itself failed, verify an explicit retryable error instead.",
+      "Expand View scan blockers and source status. Inspect per-sport feed status, model approval and decision reasons. Source failures must be counted even when the scan request itself completed successfully. Click Inspect receiving probability model and confirm the Independent model workspace opens; return to Today's Board.",
       "For a visible public player prop, wait for the automatic verification summary, expand View verification evidence and missing requirements, and inspect the twelve separate checks. Current public selection and independent event/roster may be confirmed; account offer, bookmaker timestamp, game-day availability, equivalent rules, two reference books, approved model and EV must remain missing unless supported. Confirm HOLD and stake $0.",
       "If a Rushing + Receiving Touchdowns card is shown, confirm the full market label and that a college-football prop cannot inherit the NFL reception model. Use Refresh evidence and verify a newly checked report or a visible source failure. No paid provider request may be made.",
       "Click Copy research when available; ensure no wager was submitted.",
       "Open Live & 2H and wait for the real scoreboard or an explicit source error. Verify returned games have score, phase and clock, and first-half or second-half progress is not labeled halftime.",
       "Inspect the second-half-only filter and source counts; missing 2H offers must not be relabeled full-game offers. Confirm the independent full-game and halftime model scores are visible and both remain research-only.",
-      "Inspect Independent halftime outlook. Before halftime, show automatic waiting; after second-half play starts, show the closed forecast window. At confirmed halftime, show independent threshold probabilities or a specific player-data reason even when quotes are empty. Thresholds must be labeled research questions, not offered lines."
+      "Inspect Independent halftime outlook. Before halftime, show automatic waiting; after second-half play starts, show the closed forecast window. At confirmed halftime, show independent threshold probabilities or a specific player-data reason even when quotes are empty. Thresholds must be labeled research questions, not offered lines.",
+      "When at least two fresh 2H public quotes are available, add them to a research draft and evaluate the slip without loading paid providers. Change Requested stake or Sportsbook while the audit is pending, and confirm the old audit cannot return. Evaluate again and then change a slip input after completion: the old audit must disappear. Changing games or refreshing evidence must also invalidate the previous audit. If quotes are unavailable, retain the explicit empty state rather than inventing selections."
     ],
     "expected": "The everyday dashboard remains usable on mobile. Zero provider credits are used and no fake live price, model EV, account availability, or placed wager is claimed."
   },
@@ -183,7 +216,17 @@
       "all-books visibility after provider retrieval",
       "Caesars access status and backend explanation",
       "GET /api/caesars-feed zero-credit access check",
-      "reachable hash link to Live & 2H price workflow"
+      "reachable hash link to Live & 2H price workflow",
+      "GET /api/sgo/status no provider request",
+      "POST /api/sgo/refresh signed-in confirmed single-page quota",
+      "GET /api/sgo/history private durable snapshots and pagination",
+      "SportsGameOdds exact native market and timestamp display",
+      "SportsGameOdds capped 60-second tracking stop controls",
+      "SportsGameOdds request reconciliation and movement receipts",
+      "SportsGameOdds captured owner validation before provider usage",
+      "private tracker state cleared across sign-out and account switches",
+      "delayed history/price responses cannot cross accounts",
+      "account-bound provider usage authorization"
     ],
     "description": "Existing feed checks, signed-in sportsbook comparisons and parlay diagnostics remain available without automatic paid requests.",
     "steps": [
@@ -197,9 +240,28 @@
       "Verify provider price buttons cannot be used before sign-in and unavailable provider setup is stated clearly. Do not spend credits during this test.",
       "Inspect the slip and boost form: actual combined payout, latest bankroll, exposure, profit-versus-return boost, stake limit and expiry inputs must be present. The Evaluate selected 2H slip button stays disabled with fewer than two selections.",
       "Use Find 2H research draft. If the live data does not support a draft, require an explicit HOLD explanation. No selection can be promoted to a BET from an unvalidated joint probability.",
-      "Inspect Prepare 2H: the one-shot maximum 3-credit cost and open-visible-page requirement must be visible. It must be unavailable outside the first half or halftime. Do not trigger sign-in or spend credits in QA."
+      "Inspect Prepare 2H: the one-shot maximum 3-credit cost and open-visible-page requirement must be visible. It must be unavailable outside the first half or halftime. Do not trigger sign-in or spend credits in QA.",
+      "Open Live & 2H and find SportsGameOdds tracker. Check configuration; require configured or clear missing-key status and zero provider requests. Existing ParlayAPI controls must remain available.",
+      "Without sign-in or authorization, verify Load bookmaker observations and Start capped tracking stay disabled. Optional tracking must be stopped by default; manual refresh is recommended for free plans. Do not consume provider quota in QA.",
+      "Using the signed-in QA account, Reload saved history without calling the provider. Expect saved per-user receipts or an explicit empty page. Follow Next saved history page when offered. Do not infer history absence from a failed database read.",
+      "Inspect any real saved snapshot: native market/player/period/book identities, original source timestamp, stale/missing-time labels, partial-board notices and HOLD must remain visible. Download its observation receipt. If no snapshot exists, preserve the empty state rather than creating fake prices.",
+      "Inspect the capped-session controls: explicit higher-limit-plan consent, 3-or-5 request maximum, 60-second interval and stop control. Do not start a quota-consuming session in QA. League/mode edits invalidate displayed observations and authorization.",
+      "For the SportsGameOdds controls, configuration and saved-history reads are real and make no provider request. Only the refresh failure is injected. Keep the POST /api/sgo/refresh fault active so the following recovery steps cannot consume provider quota. A configured key is not proof of live entitlement.",
+      "Using the signed-in QA account, check SportsGameOdds configuration, confirm one request and click Load bookmaker observations. The injected failure must show an unconfirmed request ID, no probability/quote and stopped tracking. Click Reconcile same request and verify the displayed request ID stays unchanged. Reload saved history, choose Use a new request after history review, and verify usage confirmation resets before any new request is enabled.",
+      "Under that same injected refresh failure, confirm one request again, acknowledge the higher-limit-plan control for this QA fixture and start a 3-request capped session. The first injected failure must stop the session immediately with no queued retries or fabricated observations.",
+      "Using two legitimate authenticated QA accounts, load saved tracker history in Account A, switch or sign out before a delayed response returns, and verify the old private snapshot, history, download and usage confirmation disappear. On returning as Account B, reload history and confirm usage again. The injected refresh fault remains active: no provider quota is consumed. If two real sessions are unavailable, report that scope unverified; do not fabricate identities."
     ],
-    "expected": "The expert sportsbook/diagnostic toolset is preserved, credentials are not exposed and ordinary navigation spends no provider credits."
+    "expected": "The expert sportsbook/diagnostic toolset is preserved, credentials are not exposed and ordinary navigation spends no provider credits. SportsGameOdds is optional, private history is available after sign-in, provider quota requires explicit confirmation and no synthetic odds or model approval appears.",
+    "qa_faults": [
+      {
+        "method": "POST",
+        "path": "/api/sgo/refresh",
+        "status": 502,
+        "body_json": {
+          "error": "QA-injected unconfirmed response; no provider call occurred."
+        }
+      }
+    ]
   },
   {
     "name": "Public source failures retain drafts and allow retry",
@@ -213,7 +275,17 @@
       "account draft preservation",
       "POST /api/verify-prop error and retry without fabricated evidence",
       "model readiness failure and retry",
-      "model report fail-closed UI"
+      "model report fail-closed UI",
+      "POST /api/wager-ledger unconfirmed-save recovery",
+      "manual wager draft preservation",
+      "ledger edits disabled until reload",
+      "forecast source error and retry",
+      "2026 evidence error and retry",
+      "SportsGameOdds configuration/history failure retry",
+      "SportsGameOdds unconfirmed refresh reconciliation without automatic retry",
+      "GET /api/all-sports-report failed request with visible retry",
+      "no fabricated prices after failed scan",
+      "evaluation failure clears stale metrics and download while preserving saved forecasts"
     ],
     "description": "Public board and scoreboard failures are visible, retryable and never replaced with invented evidence.",
     "qa_faults": [
@@ -248,9 +320,66 @@
         "body_json": {
           "error": "Model readiness temporarily unavailable for QA"
         }
+      },
+      {
+        "method": "POST",
+        "path": "/api/wager-ledger",
+        "status": 502,
+        "body_json": {
+          "error": "Ledger save response unavailable for QA"
+        }
+      },
+      {
+        "method": "GET",
+        "path": "/api/receiving-forecast-options",
+        "status": 502,
+        "body_json": {
+          "error": "Forecast sources temporarily unavailable for QA"
+        }
+      },
+      {
+        "method": "GET",
+        "path": "/api/receiving-validation",
+        "status": 502,
+        "body_json": {
+          "error": "2026 validation evidence temporarily unavailable for QA"
+        }
+      },
+      {
+        "method": "GET",
+        "path": "/api/sgo/status",
+        "status": 502,
+        "body_json": {
+          "error": "Configuration unavailable for QA"
+        }
+      },
+      {
+        "method": "GET",
+        "path": "/api/sgo/history",
+        "status": 502,
+        "body_json": {
+          "error": "History unavailable for QA"
+        }
+      },
+      {
+        "method": "GET",
+        "path": "/api/all-sports-report",
+        "status": 502,
+        "body_json": {
+          "error": "Daily research sources temporarily unavailable for QA"
+        }
+      },
+      {
+        "method": "POST",
+        "path": "/api/receiving-forward-evaluation",
+        "status": 502,
+        "body_json": {
+          "error": "Evaluation temporarily unavailable for QA. Saved forecasts unchanged."
+        }
       }
     ],
     "steps": [
+      "Open Today's Board and click Scan today's games under the injected all-sports report failure. Require the visible Daily research sources temporarily unavailable for QA error and an enabled Scan today's games retry button. No report, market cards or model-based bet may be fabricated.",
       "Open Check my slip and enter Draft Player in Selection 1 Player and 5.5 in its account threshold.",
       "Click Search public props. Confirm a source error and retry instructions appear.",
       "Verify Draft Player and 5.5 remain in the account entry and Refresh public source remains available; no quote or probability is invented.",
@@ -258,7 +387,11 @@
       "Verify the injected source failure is displayed as an error and the Refresh live game control remains available.",
       "Confirm no synthetic matchup, score, probability or bet is displayed as live data.",
       "Return to Today's Board, scan today's games and inspect a visible player-prop card. When a prop is available, its injected verification failure must be shown with Verify evidence retry available, while WATCH and HOLD remain. If no props are returned, retain the explicit empty/source-unavailable state; do not fabricate a test prop.",
-      "Open Independent model and click Inspect frozen receiving model. Confirm a visible error and no verified report, no probability and no live approval. The Inspect frozen receiving model button remains available for retry."
+      "Open Independent model and click Inspect frozen receiving model. Confirm a visible error and no verified report, no probability and no live approval. The Inspect frozen receiving model button remains available for retry.",
+      "In Independent model click Load source-backed players & games and Inspect 2026 validation under the injected failures. Both errors must remain visible with retry available, no fabricated options, no probability or approval, and no stale evidence table.",
+      "Using the signed-in QA account, open My Wagers and enter a manual paper draft. Save it under the injected ledger failure. Verify the draft stays visible, the message says the save could not be confirmed, and further ledger saves are disabled. Click Reload saved ledger; verify edits become available after the successful reload while the draft is retained. Do not infer from the failed response whether a database write committed.",
+      "In Live & 2H check SportsGameOdds configuration under the injected failure. Require a visible unavailable message and retry; no configured claim or invented prices. With the signed-in QA account, reload history and require a visible error with retry. Do not request provider prices in this scenario; refresh reconciliation is covered by the separate configured mock workflow.",
+      "Using an authorized QA session in Independent model, request Evaluate saved forecasts under the injected error. Require a visible Evaluation temporarily unavailable error, enabled retry, no stale metrics/download and no deletion or mutation of archived forecasts."
     ],
     "expected": "The live source error is visible, retry remains available and no wager or fake live evidence is generated."
   }

@@ -42,7 +42,7 @@ Do not enable shell tracing, print these variables, commit a secrets file or rep
 
 ## Build and deploy a reviewed commit
 
-Run the repository's normal build and test checks, then validate the config with `fly config validate --config fly.toml`. Build the combined Docker image and confirm its startup before deployment. This change has not provisioned or deployed infrastructure.
+Run the repository's normal build and test checks, then validate the config with `fly config validate --strict --config fly.toml`. Build the combined Docker image and confirm its startup before deployment. Fly's config validation requires an authenticated Fly session; parsing TOML locally does not replace platform validation. This change has not provisioned or deployed infrastructure.
 
 Keep exactly one writer machine for the SQLite volume. Inspect existing machines before using `fly scale count 1 -a edgeodds-danteclaird`; do not remove an unrelated machine or its volume. The deployment command disables Fly's automatic spare-machine creation:
 
@@ -51,6 +51,10 @@ fly deploy --config fly.toml --ha=false
 ```
 
 The immediate deployment strategy permits brief downtime to avoid rolling old/new application writers. Automatic stopping is off and the minimum is one machine. These settings do not remove pre-existing extra machines; verify machine count separately. Do not enable horizontal scaling or place independent writable copies of the same logical databases in multiple regions.
+
+## Automated hosted-runtime check
+
+After `npm run build`, `npm run test:node` runs `flyHostedGateway.test.ts` against the built Node/Python server. This test requires Python 3.11+ for its standard-library TOML parser; CI uses Python 3.12. It reads the committed Fly environment and health-check Host, substitutes temporary local ports/databases and random test credentials, and checks login, origin/host rejection, secure cookie attributes, private routes and logout. It does not contact Fly or verify public TLS, volume persistence or production credentials. Without the build artifact the test reports an explicit skip.
 
 ## Verify launch
 

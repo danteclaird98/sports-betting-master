@@ -78,6 +78,8 @@ See [current consolidation guide](docs/CONSOLIDATION.md), [current source/file m
 
 ## Tests
 
+Use Python 3.11+ for the complete test suite (the Fly smoke test uses the standard-library TOML parser); CI uses Python 3.12. Build first to exercise both gateway smoke tests rather than skip them.
+
 ```sh
 npm test
 npm run build

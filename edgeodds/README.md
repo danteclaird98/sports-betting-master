@@ -2,6 +2,10 @@
 
 EdgeOdds is the normalized sportsbook market-data layer for EdgeBoard / MarketEdge OS.
 
+## Integration roadmap
+
+See [Decisions API integration roadmap](../docs/EDGEODDS_DECISIONS_INTEGRATION_ROADMAP.md) for the proposed isolated evidence-triage component, boundaries, and validation gates.
+
 ## v0.1 foundation
 
 This branch establishes the data contract before adding live providers.

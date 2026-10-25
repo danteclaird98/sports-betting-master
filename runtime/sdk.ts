@@ -5,12 +5,38 @@ import { mkdirSync } from 'node:fs';
 import { dirname } from 'node:path';
 
 let connection: DatabaseSync;
+// Only literal SQL column qualifiers supplied below are interpolated here.
+const snapshotEvidence = (row:string) => `(
+  substr(${row}.collection,1,length('live_quote_snapshots_'))='live_quote_snapshots_'
+  OR ${row}.collection='odds_snapshots'
+  OR substr(${row}.collection,1,length('odds_snapshots:'))='odds_snapshots:'
+  OR (substr(${row}.collection,1,length('live_quotes_'))='live_quotes_'
+    AND (${row}.id GLOB '*_periods_part_[0-9]*' OR ${row}.id GLOB '*_props_part_[0-9]*'))
+)`;
 function storage() {
   if (!connection) {
     const path = process.env.EDGEBOARD_DB || 'data/edgeboard.sqlite3';
     mkdirSync(dirname(path), {recursive:true});
     connection = new DatabaseSync(path);
     connection.exec('PRAGMA journal_mode=WAL; PRAGMA busy_timeout=10000; CREATE TABLE IF NOT EXISTS records (seq INTEGER PRIMARY KEY AUTOINCREMENT, collection TEXT NOT NULL, id TEXT NOT NULL, body TEXT NOT NULL, UNIQUE(collection,id))');
+    // Immutable evidence has its own namespace; mutable latest pointers stay outside it.
+    // substr uses literal underscores, unlike SQL LIKE patterns.
+    connection.exec(`
+      CREATE TRIGGER IF NOT EXISTS live_quote_snapshots_no_replace BEFORE INSERT ON records
+      WHEN EXISTS (
+        SELECT 1 FROM records WHERE
+          ${snapshotEvidence('records')}
+          AND ((collection=NEW.collection AND id=NEW.id) OR seq=NEW.seq)
+      )
+      BEGIN SELECT RAISE(ABORT,'Live quote snapshots are append-only'); END;
+      CREATE TRIGGER IF NOT EXISTS live_quote_snapshots_no_update BEFORE UPDATE ON records
+      WHEN ${snapshotEvidence('OLD')} OR ${snapshotEvidence('NEW')}
+        OR EXISTS (SELECT 1 FROM records WHERE ${snapshotEvidence('records')} AND seq=NEW.seq)
+      BEGIN SELECT RAISE(ABORT,'Live quote snapshots are append-only'); END;
+      CREATE TRIGGER IF NOT EXISTS live_quote_snapshots_no_delete BEFORE DELETE ON records
+      WHEN ${snapshotEvidence('OLD')}
+      BEGIN SELECT RAISE(ABORT,'Live quote snapshots are append-only'); END;
+    `);
   }
   return connection;
 }
@@ -19,8 +45,12 @@ function records(table:string, ids:string[]) {
   return ids.map(id=>{const r=query.get(table,id) as {id:string;body:string}|undefined;return r?{...JSON.parse(r.body),id:r.id}:null;});
 }
 function update(table:string, items:Array<{id:string;record:unknown}>) {
-  // Upsert is required by the immutable-ID snapshot contract used by EdgeBoard.
+  // Upsert is for mutable application records and latest pointers, never evidence.
   const query=storage().prepare('INSERT INTO records(collection,id,body) VALUES (?,?,?) ON CONFLICT(collection,id) DO UPDATE SET body=excluded.body');
+  return items.map(item=>{query.run(table,item.id,JSON.stringify(item.record));return true;});
+}
+function insert(table:string, items:Array<{id:string;record:unknown}>) {
+  const query=storage().prepare('INSERT INTO records(collection,id,body) VALUES (?,?,?)');
   return items.map(item=>{query.run(table,item.id,JSON.stringify(item.record));return true;});
 }
 export const db = {
@@ -41,10 +71,13 @@ export const db = {
     const rows=storage().prepare('SELECT seq,id,body FROM records WHERE collection=? AND seq>? ORDER BY seq LIMIT ?').all(table,after,limit+1) as Array<{seq:number;id:string;body:string}>;
     return {items:rows.slice(0,limit).map(r=>({...JSON.parse(r.body),id:r.id})) as Array<T & {id:string}>,nextToken:rows.length>limit?String(rows[limit-1].seq):null};
   },
-  tx: {update:(table:string,items:Array<{id:string;record:unknown}>)=>({table,items})},
-  async transact(operations:Array<{table:string;items:Array<{id:string;record:unknown}>}>) {
+  tx: {
+    update:(table:string,items:Array<{id:string;record:unknown}>)=>({table,items}),
+    insert:(table:string,items:Array<{id:string;record:unknown}>)=>({table,items,mode:'insert' as const})
+  },
+  async transact(operations:Array<{table:string;items:Array<{id:string;record:unknown}>;mode?:'insert'}>) {
     const database=storage();database.exec('BEGIN IMMEDIATE');
-    try {const result=operations.map(op=>update(op.table,op.items));database.exec('COMMIT');return result;}
+    try {const result=operations.map(op=>op.mode==='insert'?insert(op.table,op.items):update(op.table,op.items));database.exec('COMMIT');return result;}
     catch(error){database.exec('ROLLBACK');throw error;}
   }
 };

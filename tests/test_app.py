@@ -1,4 +1,5 @@
 import copy
+from itertools import permutations
 import json
 import tempfile
 import threading
@@ -47,6 +48,71 @@ class AppTests(unittest.TestCase):
         for r in rows:r.update(updated_at=None,rules='unknown')
         self.ws.ingest(rows)
         self.assertIsNone(self.ws.state()['markets'][0]['best_book'])
+    def test_latest_conflicts_fail_closed_in_every_import_order(self):
+        base = self.fresh()[0]
+        older = dict(base, updated_at=(datetime.fromisoformat(base['updated_at'])-timedelta(seconds=1)).isoformat())
+        for changed in (dict(base, decimal_price=base['decimal_price']+.5),
+                        dict(base, status='suspended'),
+                        dict(base, starts_at=(datetime.fromisoformat(base['starts_at'])+timedelta(hours=1)).isoformat())):
+            for order in permutations([older, base, changed]):
+                with self.subTest(changed=changed, order=order), tempfile.TemporaryDirectory() as tmp:
+                    ws = Workspace(Path(tmp)/'quotes.db')
+                    ws.ingest(list(order))
+                    with ws.connect() as db:
+                        before = db.execute('SELECT hash,body FROM quotes ORDER BY id').fetchall()
+                    state = ws.state()
+                    self.assertEqual(state['movements'], [])
+                    market = state['markets'][0]
+                    self.assertIsNone(market['best_book'])
+                    self.assertEqual(len(market['quotes']), 2)
+                    self.assertTrue(all(not q['eligible'] and q['movement'] is None and
+                                        q['freshness']=='CONFLICTING_LATEST_QUOTES' for q in market['quotes']))
+                    with ws.connect() as db:
+                        self.assertEqual(db.execute('SELECT hash,body FROM quotes ORDER BY id').fetchall(), before)
+
+    def test_conflict_isolated_to_book_and_later_clean_quote_restores(self):
+        base = self.fresh()[0]
+        self.ws.ingest([base, dict(base, decimal_price=3),
+                        dict(base, bookmaker='Healthy', decimal_price=2)])
+        self.assertEqual(self.ws.state()['markets'][0]['best_book'], 'Healthy')
+        later = dict(base, decimal_price=2.5, updated_at=datetime.now(timezone.utc).isoformat())
+        self.ws.ingest([later])
+        market = self.ws.state()['markets'][0]
+        self.assertEqual(market['best_book'], base['bookmaker'])
+        self.assertEqual(market['best_price'], 2.5)
+        self.assertEqual(len(market['quotes']), 2)
+        self.assertEqual(self.ws.state()['summary']['snapshots'], 4)
+
+    def test_identical_semantic_repolls_remain_eligible(self):
+        base = self.fresh()[0]
+        later_receipt = dict(base, retrieved_at=(datetime.fromisoformat(base['retrieved_at'])+timedelta(seconds=1)).isoformat())
+        self.ws.ingest([base, later_receipt])
+        self.assertEqual(self.ws.state()['markets'][0]['best_book'], base['bookmaker'])
+        self.assertEqual(len(self.ws.state()['markets'][0]['quotes']), 1)
+        self.assertEqual(self.ws.state()['summary']['snapshots'], 2)
+
+    def test_new_capture_clocks_are_utc_without_rewriting_input_or_history(self):
+        row = self.fresh()[0]
+        for field in ('starts_at', 'retrieved_at', 'updated_at'):
+            row[field] = datetime.fromisoformat(row[field]).astimezone(timezone(timedelta(hours=-7))).isoformat()
+        original = copy.deepcopy(row)
+        # Simulate an existing capture with original non-UTC bytes.
+        legacy = json.dumps(row)
+        with self.ws.connect() as db:
+            db.execute('INSERT INTO quotes(hash,body) VALUES (?,?)', ('legacy', legacy))
+        self.ws.ingest([row])
+        self.assertEqual(row, original)
+        with self.ws.connect() as db:
+            saved = db.execute('SELECT hash,body FROM quotes ORDER BY id').fetchall()
+        self.assertEqual(saved[0], ('legacy', legacy))
+        captured = json.loads(saved[1][1])
+        for field in ('starts_at', 'retrieved_at', 'updated_at'):
+            self.assertTrue(captured[field].endswith('+00:00'))
+            self.assertEqual(datetime.fromisoformat(captured[field]), datetime.fromisoformat(row[field]))
+        self.ws.state()
+        with self.ws.connect() as db:
+            self.assertEqual(db.execute('SELECT hash,body FROM quotes ORDER BY id').fetchall(), saved)
+
     def test_ledger_persistence_and_settlement(self):
         row=dict(event='A @ B',selection='A',bookmaker='Book',stake=10,decimal_price=2.5)
         a=self.ws.wager(row)['id'];b=self.ws.wager(row)['id']

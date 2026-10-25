@@ -19,7 +19,7 @@ def timestamp(value):
     dt = datetime.fromisoformat(value.replace('Z', '+00:00'))
     if dt.utcoffset() is None:
         raise ValueError('Timestamp requires timezone')
-    return dt
+    return dt.astimezone(timezone.utc)
 
 def normalize(row):
     for field in ('event_id', 'event', 'league', 'selection', 'bookmaker', 'provider', 'period', 'rules'):
@@ -43,7 +43,14 @@ class Workspace:
         if not isinstance(rows, list) or not 1 <= len(rows) <= 5000:
             raise ValueError('Import requires 1–5000 normalized quotes')
         # Validate complete batch before committing any row.
-        parsed = [(normalize(r), r) for r in rows]
+        parsed = []
+        for original in rows:
+            # Normalize new capture clocks on a copy; existing evidence stays untouched.
+            row = dict(original)
+            for field in ('starts_at', 'retrieved_at', 'updated_at'):
+                if row.get(field) is not None:
+                    row[field] = timestamp(row[field]).isoformat()
+            parsed.append((normalize(row), row))
         with self.connect() as db:
             before = db.total_changes
             for q, row in parsed:
@@ -54,28 +61,43 @@ class Workspace:
         with self.connect() as db:
             archived = [json.loads(r[0]) for r in db.execute('SELECT body FROM quotes ORDER BY id')]
             wagers = [dict(id=r[0], **json.loads(r[1]), result=r[2]) for r in db.execute('SELECT id,body,result FROM wagers ORDER BY id DESC')]
-        latest, histories = {}, {}
+        latest, histories, archived_keys = {}, {}, []
         for row in archived:
             q = normalize(row)
             sig = (exact_selection_signature(q), q.provider, q.bookmaker)
             histories.setdefault(sig, []).append(q)
+            archived_keys.append((row, sig))
             # Provider update order, rather than import order, selects the latest quote.
             order = q.source_updated_at or datetime.min.replace(tzinfo=timezone.utc)
-            if sig not in latest or order >= latest[sig][0]:
-                latest[sig] = (order, q, row)
-        groups = {}
-        for sig, (_, q, row) in latest.items():
-            fresh = evaluate_freshness(q, now=now, max_age_seconds=120)
-            demo = q.provider == 'demo'
-            eligible = fresh.eligible and timestamp(row['starts_at']) > now and row['rules'] != 'unknown' and row['period'] != 'unknown' and not demo
-            change = None
-            try:
-                change = price_movement(histories[sig]).decimal_ratio_minus_one
-            except ValueError:
-                pass
-            detail = dict(row, eligible=eligible, freshness=fresh.reason, demo=demo, movement=change)
-            group = groups.setdefault(exact_selection_signature(q), [])
-            group.append((q, detail))
+            if sig not in latest or order > latest[sig][0]:
+                latest[sig] = (order, [(q, row)])
+            elif order == latest[sig][0]:
+                latest[sig][1].append((q, row))
+        groups, conflicts = {}, set()
+        for sig, (_, observations) in latest.items():
+            signatures = {(q.decimal_price, q.status, timestamp(row['starts_at']))
+                          for q, row in observations}
+            conflict = len(signatures) > 1
+            if conflict:
+                conflicts.add(sig)
+            # Keep contradictory observations visible, never choose one or fall back.
+            observations = sorted(observations, key=lambda item: item[0].source_payload_hash)
+            if not conflict:
+                observations = observations[:1]
+            for q, row in observations:
+                fresh = evaluate_freshness(q, now=now, max_age_seconds=120)
+                demo = q.provider == 'demo'
+                eligible = not conflict and fresh.eligible and timestamp(row['starts_at']) > now and row['rules'] != 'unknown' and row['period'] != 'unknown' and not demo
+                change = None
+                if not conflict:
+                    try:
+                        change = price_movement(histories[sig]).decimal_ratio_minus_one
+                    except ValueError:
+                        pass
+                detail = dict(row, eligible=eligible, freshness='CONFLICTING_LATEST_QUOTES' if conflict else fresh.reason,
+                              demo=demo, movement=change)
+                group = groups.setdefault(exact_selection_signature(q), [])
+                group.append((q, detail))
         markets = []
         for entries in groups.values():
             candidates = [q for q, r in entries if r['eligible']]
@@ -84,7 +106,7 @@ class Workspace:
                             'best_price': winner.decimal_price if winner else None})
         profit = sum(w['stake'] * (w['decimal_price'] - 1) if w['result'] == 'win' else -w['stake'] if w['result'] == 'loss' else 0 for w in wagers)
         turnover = sum(w['stake'] for w in wagers if w['result'] in ('win', 'loss'))
-        return dict(markets=markets, movements=significant_moves(archived), wagers=wagers, summary=dict(snapshots=len(archived), markets=len(markets), profit=round(profit,2), roi=profit/turnover if turnover else None), provider_status='Imported quote snapshots; live verification not established')
+        return dict(markets=markets, movements=significant_moves([row for row, sig in archived_keys if sig not in conflicts]), wagers=wagers, summary=dict(snapshots=len(archived), markets=len(markets), profit=round(profit,2), roi=profit/turnover if turnover else None), provider_status='Imported quote snapshots; live verification not established')
     def import_provider(self, body):
         from integrations.adapters import convert
         converted=convert(body['format'],body['payload'],body.get('options'))

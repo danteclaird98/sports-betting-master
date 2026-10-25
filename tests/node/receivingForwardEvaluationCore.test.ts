@@ -167,3 +167,11 @@ test('invalid receipt clocks are never exposed as verified pending kickoff',asyn
   assert.notEqual(report.rows[0].reason,'GAME_NOT_STARTED');
   assert.equal('kickoffAt' in report.rows[0],false);
 });
+
+
+test('unsafe integer outcome yards remain unresolved',async()=>{
+  const receipt=await saved('unsafe','unsafe');
+  const result=await run([receipt],[final('unsafe','unsafe',Number.MAX_SAFE_INTEGER+1)]);
+  assert.equal(result.scoredCount,0);
+  assert.equal(result.rows[0].reason,'RECEIVING_YARDS_INVALID');
+});

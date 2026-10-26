@@ -37,18 +37,20 @@ test('pending protocol state is immutable owner scoped and never silently overwr
  client.forgetPendingLedgerWrite(write,store);
  assert.equal(client.pendingLedgerWrites('owner',store).length,0);
 });
-test('actual SQLite legacy backend strengthens validation without pretending revision protocol exists',async()=>{
+test('SQLite ledger returns owner-scoped revisions and rejects malformed writes without changing saved state',async()=>{
  const dir=mkdtempSync(join(tmpdir(),'edgeboard-ledger-parity-'));
  process.env.EDGEBOARD_DB=join(dir,'research.sqlite3');
  try{
   const ledger=await bundled('../../apps/edgeboard/backend/wagerLedger.ts');
-  const saved=await ledger.saveWagerLedger('owner',[wager()]);
-  assert.equal(saved.count,1);
+  const saved=await ledger.saveWagerLedger('owner',{action:'save',owner:'owner',requestId:'parity-1',expectedRevision:0,wagers:[wager()]});
+  assert.equal(saved.status,'saved');
   const result=await ledger.getWagerLedger('owner');
   assert.equal(result.wagers[0].event,'Synthetic fixture');
-  assert.equal(result.protocol,undefined,'No revision protocol can be claimed from list/update storage');
+  assert.equal(result.protocol,'revision-receipt-v1');
+  assert.equal(result.revision,1);
   assert.deepEqual((await ledger.getWagerLedger('other')).wagers,[]);
-  await assert.rejects(ledger.saveWagerLedger('owner',[{...wager(),settlementConfirmed:'yes'}]));
+  await assert.rejects(ledger.saveWagerLedger('owner',{action:'save',owner:'owner',requestId:'bad-input',expectedRevision:1,wagers:[{...wager(),settlementConfirmed:'yes'}]}));
+  assert.equal((await ledger.getWagerLedger('owner')).revision,1);
   assert.equal((await ledger.getWagerLedger('owner')).wagers.length,1);
  }finally{rmSync(dir,{recursive:true,force:true});}
 });

@@ -3,3 +3,118 @@
 .workspace-link{padding:14px;color:#96edc8;font-size:13px;text-decoration:none}
 
 .observation-draft{grid-column:1/-1}#observation-payload{width:100%;max-width:100%;box-sizing:border-box;resize:vertical;font:inherit}#observation-receipt,#observation-summary{white-space:pre-wrap;overflow-wrap:anywhere}
+
+/* Shared macOS-inspired Sports Betting Master visual system */
+:root {
+  color-scheme: dark;
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", sans-serif;
+  color: #f5f5f7;
+  background: #111113;
+}
+html { scroll-behavior: smooth; }
+body {
+  color: #f5f5f7;
+  background:
+    radial-gradient(ellipse at 50% -20%, rgba(56, 74, 112, .24), transparent 58%),
+    #111113;
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", sans-serif;
+  letter-spacing: -0.01em;
+}
+aside {
+  border-right: 1px solid rgba(255,255,255,.1);
+  background: rgba(28,28,30,.86);
+  box-shadow: 10px 0 38px rgba(0,0,0,.16);
+  -webkit-backdrop-filter: blur(24px) saturate(150%);
+  backdrop-filter: blur(24px) saturate(150%);
+}
+.brand { color: #f5f5f7; letter-spacing: -.045em; }
+.brand:first-letter { color: #0a84ff; }
+aside > .muted { color: #8e8e93; }
+.workspace-link { color: #64aaff; border-radius: 12px; }
+nav button {
+  border: 1px solid transparent;
+  border-radius: 12px;
+  color: #c7c7cc;
+  transition: background-color 140ms ease, color 140ms ease, transform 140ms ease;
+}
+nav button:hover { background: rgba(255,255,255,.07); color: #fff; }
+nav button.active {
+  color: #fff;
+  background: rgba(10,132,255,.22);
+  border-color: rgba(10,132,255,.32);
+}
+main { color: #f5f5f7; }
+header { align-items: center; }
+h1, h2, h3 { color: #f5f5f7; letter-spacing: -.045em; }
+.eyebrow { color: #64aaff; }
+.muted, small { color: #a1a1a6; }
+.notice {
+  color: #c7c7cc;
+  border-color: rgba(255,255,255,.12);
+  border-radius: 14px;
+  background: rgba(44,44,46,.78);
+}
+.badge { color: #64aaff; background: rgba(10,132,255,.15); border-radius: 999px; }
+.dot { background: #30d158; }
+.metrics article,
+.panel {
+  color: #f5f5f7;
+  border: 1px solid rgba(255,255,255,.09);
+  border-radius: 18px;
+  background: rgba(36,36,39,.82);
+  box-shadow: 0 14px 36px rgba(0,0,0,.16), inset 0 1px rgba(255,255,255,.035);
+}
+.metrics article { transition: transform 160ms ease, border-color 160ms ease, box-shadow 160ms ease; }
+.metrics article:hover { transform: translateY(-2px); border-color: rgba(255,255,255,.16); box-shadow: 0 18px 42px rgba(0,0,0,.2); }
+.metrics p { color: #a1a1a6; }
+.metrics strong { letter-spacing: -.05em; }
+button, .upload {
+  border: 1px solid rgba(255,255,255,.13);
+  border-radius: 12px;
+  color: #f5f5f7;
+  background: #3a3a3c;
+  transition: filter 140ms ease, transform 140ms ease;
+}
+button:hover:not(:disabled) { filter: brightness(1.09); }
+button:active:not(:disabled) { transform: scale(.985); }
+button.primary, .primary {
+  border-color: #3b9cff;
+  color: #fff;
+  background: linear-gradient(180deg, #168cff, #0875e1);
+  box-shadow: 0 5px 16px rgba(10,132,255,.22), inset 0 1px rgba(255,255,255,.22);
+}
+input, select, textarea {
+  border: 1px solid rgba(255,255,255,.14);
+  border-radius: 12px;
+  color: #f5f5f7;
+  background: rgba(18,18,20,.88);
+}
+label { color: #c7c7cc; }
+input:focus, select:focus, textarea:focus {
+  border-color: #0a84ff;
+  box-shadow: 0 0 0 3px rgba(10,132,255,.2);
+}
+table { color: #f5f5f7; }
+th { color: #a1a1a6; border-color: rgba(255,255,255,.12); }
+td { border-color: rgba(255,255,255,.08); }
+.best { color: #30d158; background: rgba(48,209,88,.1); }
+footer { color: #8e8e93; border-color: rgba(255,255,255,.1); }
+a { color: #64aaff; }
+button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible {
+  outline: 3px solid rgba(10,132,255,.8);
+  outline-offset: 2px;
+}
+@media (max-width: 700px) {
+  aside {
+    border-right: 0;
+    border-bottom: 1px solid rgba(255,255,255,.1);
+    background: rgba(28,28,30,.9);
+  }
+  nav { overflow-x: auto; scrollbar-width: none; }
+  nav::-webkit-scrollbar { display: none; }
+  nav button, nav .workspace-link { flex: 0 0 auto; white-space: nowrap; }
+}
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  *, *::before, *::after { transition-duration: .01ms !important; animation-duration: .01ms !important; }
+}

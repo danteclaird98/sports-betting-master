@@ -13,8 +13,8 @@ def main():
     parser.add_argument('--base', default='http://127.0.0.1:18080')
     parser.add_argument('--commit', required=True)
     args = parser.parse_args()
-    if args.base != 'http://127.0.0.1:18080':
-        parser.error('This verifier only targets the isolated local Compose port')
+    if args.base not in ('http://127.0.0.1:18080', 'http://127.0.0.1:3000'):
+        parser.error('This verifier only targets loopback on the host or inside the mock container')
     if not re.fullmatch('[a-f0-9]{40}', args.commit):
         parser.error('Expected a full candidate Git SHA')
     opener = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(http.cookiejar.CookieJar()))

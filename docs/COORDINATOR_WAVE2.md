@@ -44,7 +44,9 @@ One integrator cherry-picked #10/#11/#12 and the separate latest/UTC, quota and 
 
 Combined local build passes. Node suite131 passed; model suite8 passed/1 existing external-dataset skip. Python unittest:146 EdgeOdds +45 application +2 Receiving60 passed. Pytest on the same active Python suites:193 passed plus84 subtests. Preserved sources:8 repositories/995 SHA-256 hashes unchanged. Whitespace check passes. The model skip is missing external data, not evidence of model quality.
 
-Local mock Compose and source-SHA verification are recorded below after execution. These checks do not establish hosted feature parity, external feed licensing/access, real provider freshness, trained-model validity, or visual browser rendering.
+Local mock Compose started clean and healthy. The built container measured Python3.12.15 and Node24.22.1, with its Docker network confirmed internal=true. Runtime startup logged scheduled monthly credits0 and paid calls disabled. The authenticated local smoke passed one canonical event, four distinct immutable quote records, six observations after three polls (including an exact repeat), correct best book, and served dashboard HTML/JavaScript. Source marker matched the clean build's full candidate SHA. The entire npm test command also passed INSIDE that container:131 Node +8 model +146 EdgeOdds +45 application +2 Receiving60, with the same one model external-data skip (332 passed total).
+
+The execution workspace could not reach the container's published host port (connection refused). The smoke therefore ran through Compose exec at container loopback:3000, not a public or browser probe. No host networking or policy bypass was used. The verifier accepts only those two fixed loopback addresses. These checks do not establish hosted feature parity, external feed licensing/access, real provider freshness, trained-model validity, or visual browser rendering. sourceCommit is declared build metadata, meaningful alongside the clean build/source check; it is not an independent source attestation.
 
 ## Local reproduction
 
@@ -59,6 +61,9 @@ export EDGEBOARD_SOURCE_COMMIT="$(git rev-parse HEAD)"
 # Working tree must be clean so this marker describes the copied source.
 docker compose -p edgeboard-mock-audit -f compose.mock.yml up --build -d --wait
 python3 scripts/verify-mock-compose.py --commit "$EDGEBOARD_SOURCE_COMMIT"
+# If this executor cannot reach published Docker ports, run the same check inside:
+docker compose -p edgeboard-mock-audit -f compose.mock.yml exec -T edgeboard \
+  python3 scripts/verify-mock-compose.py --base http://127.0.0.1:3000 --commit "$EDGEBOARD_SOURCE_COMMIT"
 # Only this dedicated mock project's disposable volume is removed.
 docker compose -p edgeboard-mock-audit -f compose.mock.yml down -v
 ```

@@ -5,6 +5,8 @@ import json
 import math
 import os
 import sqlite3
+import uuid
+from dataclasses import replace
 from datetime import datetime, timezone
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -12,6 +14,7 @@ from urllib.parse import urlsplit
 from edgeodds.models import MarketKey, MarketType, MarketStatus, NormalizedQuote, evaluate_freshness
 from edgeodds.price_intelligence import exact_selection_signature, best_price, price_movement
 from integrations.movements import significant_moves
+from integrations import canonical_events
 
 ROOT = Path(__file__).parent
 
@@ -37,8 +40,12 @@ class Workspace:
         with self.connect() as db:
             db.executescript('''CREATE TABLE IF NOT EXISTS quotes(id INTEGER PRIMARY KEY, hash TEXT UNIQUE, body TEXT NOT NULL);
             CREATE TABLE IF NOT EXISTS wagers(id INTEGER PRIMARY KEY, body TEXT NOT NULL, result TEXT DEFAULT 'pending');''')
+            canonical_events.initialize(db)
     def connect(self):
-        return sqlite3.connect(self.path, timeout=10)
+        db = sqlite3.connect(self.path, timeout=10)
+        db.execute('PRAGMA foreign_keys=ON')
+        db.execute('PRAGMA recursive_triggers=ON')
+        return db
     def ingest(self, rows):
         if not isinstance(rows, list) or not 1 <= len(rows) <= 5000:
             raise ValueError('Import requires 1–5000 normalized quotes')
@@ -52,18 +59,40 @@ class Workspace:
                     row[field] = timestamp(row[field]).isoformat()
             parsed.append((normalize(row), row))
         with self.connect() as db:
-            before = db.total_changes
+            db.execute('BEGIN IMMEDIATE')
+            imported = 0
+            capture_id = uuid.uuid4().hex
+            captured_at = datetime.now(timezone.utc).isoformat()
             for q, row in parsed:
-                db.execute('INSERT OR IGNORE INTO quotes(hash,body) VALUES (?,?)', (q.source_payload_hash, json.dumps(row, allow_nan=False)))
-            return {'imported': db.total_changes - before}
+                canonical_id, identity_status = canonical_events.bind(db, row)
+                existing = db.execute('SELECT id FROM quotes WHERE hash=?', (q.source_payload_hash,)).fetchone()
+                if existing:
+                    quote_id = existing[0]
+                else:
+                    quote_id = db.execute('INSERT INTO quotes(hash,body) VALUES (?,?)',
+                        (q.source_payload_hash, json.dumps(row, allow_nan=False))).lastrowid
+                    imported += 1
+                canonical_events.observe(db, capture_id, quote_id, canonical_id, identity_status, captured_at)
+            return {'imported': imported, 'observations':len(parsed), 'capture_id':capture_id}
     def state(self):
         now = datetime.now(timezone.utc)
         with self.connect() as db:
-            archived = [json.loads(r[0]) for r in db.execute('SELECT body FROM quotes ORDER BY id')]
+            db.execute('BEGIN')
+            identity_counts = {table:db.execute('SELECT COUNT(*) FROM '+table).fetchone()[0]
+                               for table in ('canonical_events','quote_capture_observations')}
+            evidence = db.execute('''SELECT q.id,q.hash,q.body,
+                (SELECT o.canonical_event_id FROM quote_capture_observations o
+                 WHERE o.quote_id=q.id ORDER BY o.id DESC LIMIT 1)
+                FROM quotes q ORDER BY q.id''').fetchall()
+            archived = [canonical_events.projection(json.loads(body), canonical_id, quote_id, source_hash)
+                        for quote_id, source_hash, body, canonical_id in evidence]
             wagers = [dict(id=r[0], **json.loads(r[1]), result=r[2]) for r in db.execute('SELECT id,body,result FROM wagers ORDER BY id DESC')]
         latest, histories, archived_keys = {}, {}, []
         for row in archived:
-            q = normalize(row)
+            original = dict(row, event_id=row['original_event_id'], selection=row['original_selection'])
+            q = normalize(original)
+            q = replace(q, key=replace(q.key, event_id=row['event_id'], selection=row['selection']),
+                        source_event_id=row['original_event_id'], source_payload_hash=row['quote_receipt']['hash'])
             sig = (exact_selection_signature(q), q.provider, q.bookmaker)
             histories.setdefault(sig, []).append(q)
             archived_keys.append((row, sig))
@@ -87,14 +116,15 @@ class Workspace:
             for q, row in observations:
                 fresh = evaluate_freshness(q, now=now, max_age_seconds=120)
                 demo = q.provider == 'demo'
-                eligible = not conflict and fresh.eligible and timestamp(row['starts_at']) > now and row['rules'] != 'unknown' and row['period'] != 'unknown' and not demo
+                eligible = row['canonical_event_id'] is not None and not conflict and fresh.eligible and timestamp(row['starts_at']) > now and row['rules'] != 'unknown' and row['period'] != 'unknown' and not demo
                 change = None
                 if not conflict:
                     try:
                         change = price_movement(histories[sig]).decimal_ratio_minus_one
                     except ValueError:
                         pass
-                detail = dict(row, eligible=eligible, freshness='CONFLICTING_LATEST_QUOTES' if conflict else fresh.reason,
+                detail = dict(row, eligible=eligible, freshness=('CONFLICTING_LATEST_QUOTES' if conflict else
+                                         'UNMAPPED_EVENT_IDENTITY' if row['canonical_event_id'] is None else fresh.reason),
                               demo=demo, movement=change)
                 group = groups.setdefault(exact_selection_signature(q), [])
                 group.append((q, detail))
@@ -106,7 +136,9 @@ class Workspace:
                             'best_price': winner.decimal_price if winner else None})
         profit = sum(w['stake'] * (w['decimal_price'] - 1) if w['result'] == 'win' else -w['stake'] if w['result'] == 'loss' else 0 for w in wagers)
         turnover = sum(w['stake'] for w in wagers if w['result'] in ('win', 'loss'))
-        return dict(markets=markets, movements=significant_moves([row for row, sig in archived_keys if sig not in conflicts]), wagers=wagers, summary=dict(snapshots=len(archived), markets=len(markets), profit=round(profit,2), roi=profit/turnover if turnover else None), provider_status='Imported quote snapshots; live verification not established')
+        return dict(markets=markets, movements=significant_moves([row for row, sig in archived_keys if sig not in conflicts]), wagers=wagers, summary=dict(snapshots=len(archived), canonical_events=identity_counts['canonical_events'],
+            capture_observations=identity_counts['quote_capture_observations'],
+            unmapped_quotes=sum(row['canonical_event_id'] is None for row in archived), markets=len(markets), profit=round(profit,2), roi=profit/turnover if turnover else None), provider_status='Imported quote snapshots; live verification not established')
     def import_provider(self, body):
         from integrations.adapters import convert
         converted=convert(body['format'],body['payload'],body.get('options'))

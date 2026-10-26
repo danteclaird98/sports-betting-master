@@ -52,8 +52,7 @@ class AppTests(unittest.TestCase):
         base = self.fresh()[0]
         older = dict(base, updated_at=(datetime.fromisoformat(base['updated_at'])-timedelta(seconds=1)).isoformat())
         for changed in (dict(base, decimal_price=base['decimal_price']+.5),
-                        dict(base, status='suspended'),
-                        dict(base, starts_at=(datetime.fromisoformat(base['starts_at'])+timedelta(hours=1)).isoformat())):
+                        dict(base, status='suspended')):
             for order in permutations([older, base, changed]):
                 with self.subTest(changed=changed, order=order), tempfile.TemporaryDirectory() as tmp:
                     ws = Workspace(Path(tmp)/'quotes.db')

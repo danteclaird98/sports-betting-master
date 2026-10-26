@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { api } from '../../../runtime/client.ts';
 import { Activity, RefreshCw, ShieldCheck } from 'lucide-react';
 
@@ -49,41 +49,70 @@ type FreeHealth = {
 function DataHealthPanel({ sport }: { sport: string }) {
   const [coverage, setCoverage] = useState<CoveragePayload | null>(null);
   const [policy, setPolicy] = useState<ResearchPolicy | null>(null);
-  const [freeHealth, setFreeHealth] = useState<FreeHealth | null>(null);
+  const [healthResult, setHealthResult] = useState<{
+    sport: string;
+    health: FreeHealth;
+  } | null>(null);
+  const freeHealth = healthResult?.sport === sport ? healthResult.health : null;
+  const requestGeneration = useRef(0);
   const [loading, setLoading] = useState(false);
   const [errorText, setErrorText] = useState('');
 
   const load = useCallback(async () => {
+    const generation = ++requestGeneration.current;
     setLoading(true);
     setErrorText('');
+    setHealthResult(null);
     try {
-      const [coverageResponse, policyResponse, healthResponse] = await Promise.all([
-        api.get('/api/coverage'),
-        api.get('/api/research-policy'),
-        api.get(`/api/free-source-health?sport=${encodeURIComponent(sport)}`),
-      ]);
-      setCoverage((coverageResponse.data as { coverage: CoveragePayload }).coverage);
+      const [coverageResponse, policyResponse, healthResponse] =
+        await Promise.all([
+          api.get('/api/coverage'),
+          api.get('/api/research-policy'),
+          api.get(`/api/free-source-health?sport=${encodeURIComponent(sport)}`),
+        ]);
+      if (generation !== requestGeneration.current) return;
+      setCoverage(
+        (coverageResponse.data as { coverage: CoveragePayload }).coverage
+      );
       setPolicy((policyResponse.data as { policy: ResearchPolicy }).policy);
-      setFreeHealth(healthResponse.data as FreeHealth);
+      setHealthResult({ sport, health: healthResponse.data as FreeHealth });
     } catch (loadError) {
-      setErrorText(loadError instanceof Error ? loadError.message : 'Data health could not be refreshed.');
+      if (generation !== requestGeneration.current) return;
+      setErrorText(
+        loadError instanceof Error
+          ? loadError.message
+          : 'Data health could not be refreshed.'
+      );
     } finally {
-      setLoading(false);
+      if (generation === requestGeneration.current) setLoading(false);
     }
   }, [sport]);
 
   useEffect(() => {
     void load();
+    return () => {
+      requestGeneration.current++;
+    };
   }, [load]);
 
   return (
     <section className="panel lab">
       <div className="sectionHead">
         <div>
-          <h2><Activity size={20} /> Coverage & data health</h2>
-          <p>Operational claims are separated from partial, source-dependent and unavailable coverage.</p>
+          <h2>
+            <Activity size={20} /> Coverage & data health
+          </h2>
+          <p>
+            Operational claims are separated from partial, source-dependent and
+            unavailable coverage.
+          </p>
         </div>
-        <button className="miniButton" type="button" onClick={() => void load()} disabled={loading}>
+        <button
+          className="miniButton"
+          type="button"
+          onClick={() => void load()}
+          disabled={loading}
+        >
           <RefreshCw size={15} className={loading ? 'spin' : ''} /> Refresh
         </button>
       </div>
@@ -93,12 +122,16 @@ function DataHealthPanel({ sport }: { sport: string }) {
       {freeHealth && (
         <div className="signalNotice">
           <div>
-            <strong>{freeHealth.source} · {freeHealth.cost}</strong>
+            <strong>
+              {freeHealth.source} · {freeHealth.cost}
+            </strong>
             <span>{freeHealth.coverage}</span>
           </div>
           <div className="signalGrid">
             <span>{freeHealth.lines} current lines for selected sport</span>
-            <span>observed {new Date(freeHealth.observedAt).toLocaleTimeString()}</span>
+            <span>
+              observed {new Date(freeHealth.observedAt).toLocaleTimeString()}
+            </span>
           </div>
           <small>{freeHealth.historicalLedger}</small>
         </div>
@@ -111,13 +144,21 @@ function DataHealthPanel({ sport }: { sport: string }) {
               <div className="providerCard" key={provider.provider}>
                 <div className="providerTop">
                   <strong>{provider.provider}</strong>
-                  <span className={provider.configured ? 'sourceStatus active' : 'sourceStatus unconfigured'}>
+                  <span
+                    className={
+                      provider.configured
+                        ? 'sourceStatus active'
+                        : 'sourceStatus unconfigured'
+                    }
+                  >
                     {provider.configured ? 'configured' : 'optional'}
                   </span>
                 </div>
                 <small>{provider.role}</small>
                 <div className="providerMeta">
-                  {provider.cost} · pregame {provider.pregame ? 'yes' : 'no'} · live {provider.live ? 'yes' : 'no'} · historical {provider.historical ? 'yes' : 'no'}
+                  {provider.cost} · pregame {provider.pregame ? 'yes' : 'no'} ·
+                  live {provider.live ? 'yes' : 'no'} · historical{' '}
+                  {provider.historical ? 'yes' : 'no'}
                 </div>
               </div>
             ))}
@@ -125,10 +166,15 @@ function DataHealthPanel({ sport }: { sport: string }) {
 
           <div className="kalshiRefs">
             <h3>Market coverage</h3>
-            <p>Markets are only marked implemented when an adapter preserves exact selection, line, period and settlement identity.</p>
+            <p>
+              Markets are only marked implemented when an adapter preserves
+              exact selection, line, period and settlement identity.
+            </p>
             {coverage.marketFamilies.map(item => (
               <div className="kalshiRow" key={item.family}>
-                <span><strong>{item.family}</strong> · {item.note}</span>
+                <span>
+                  <strong>{item.family}</strong> · {item.note}
+                </span>
                 <strong>{item.status}</strong>
               </div>
             ))}
@@ -136,7 +182,10 @@ function DataHealthPanel({ sport }: { sport: string }) {
 
           <div className="kalshiRefs">
             <h3>Current blockers</h3>
-            <p>These prevent EdgeBoard from claiming profitability or full-market coverage.</p>
+            <p>
+              These prevent EdgeBoard from claiming profitability or full-market
+              coverage.
+            </p>
             {coverage.blockers.map(blocker => (
               <div className="kalshiRow" key={blocker}>
                 <span>{blocker}</span>
@@ -149,15 +198,35 @@ function DataHealthPanel({ sport }: { sport: string }) {
 
       {policy && (
         <div className="kalshiRefs">
-          <h3><ShieldCheck size={17} /> Research validation</h3>
+          <h3>
+            <ShieldCheck size={17} /> Research validation
+          </h3>
           <p>{policy.purpose}</p>
           <div className="coverageGrid">
-            <div><span>Freshness gate</span><strong>{policy.maxQuoteAgeSeconds}s</strong></div>
-            <div><span>Lower-bound EV buffer</span><strong>{(policy.edgeBuffer * 100).toFixed(1)}%</strong></div>
-            <div><span>Calibration</span><strong>{policy.historicalValidation.calibration}</strong></div>
-            <div><span>Brier</span><strong>{policy.historicalValidation.brier}</strong></div>
-            <div><span>CLV</span><strong>{policy.historicalValidation.clv}</strong></div>
-            <div><span>Returns</span><strong>{policy.historicalValidation.returns}</strong></div>
+            <div>
+              <span>Freshness gate</span>
+              <strong>{policy.maxQuoteAgeSeconds}s</strong>
+            </div>
+            <div>
+              <span>Lower-bound EV buffer</span>
+              <strong>{(policy.edgeBuffer * 100).toFixed(1)}%</strong>
+            </div>
+            <div>
+              <span>Calibration</span>
+              <strong>{policy.historicalValidation.calibration}</strong>
+            </div>
+            <div>
+              <span>Brier</span>
+              <strong>{policy.historicalValidation.brier}</strong>
+            </div>
+            <div>
+              <span>CLV</span>
+              <strong>{policy.historicalValidation.clv}</strong>
+            </div>
+            <div>
+              <span>Returns</span>
+              <strong>{policy.historicalValidation.returns}</strong>
+            </div>
           </div>
           <small className="mutedText">{policy.calibrationStatus}</small>
         </div>

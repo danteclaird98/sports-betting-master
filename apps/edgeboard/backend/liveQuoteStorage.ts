@@ -1,6 +1,7 @@
 import { db } from '../../../runtime/sdk.ts';
 import { randomUUID } from 'node:crypto';
 import type { LiveQuote } from './liveTypes';
+import { quoteSnapshotItems } from './quoteSnapshotPayload.ts';
 
 const tableFor = (userId:string) => {
   if(!userId||userId.length>48)throw Error('Authenticated quote owner is required.');
@@ -23,27 +24,27 @@ export async function saveLiveSnapshot(userId:string,eventId:string,kind:string,
   // Each invocation represents a new capture, even for identical observations.
   // Unknown write outcomes must be reconciled, never retried as a new capture.
   const version=new Date().toISOString(),captureId=randomUUID(),capturePrefix=prefix+'_'+captureId;
-  const groups:LiveQuote[][]=[];
-  let group:LiveQuote[]=[];
-  let bytes=0;
-  for(const quote of quotes) {
-    if(quote.eventId!==eventId)throw Error('Quote belongs to another event.');
-    const size=new TextEncoder().encode(JSON.stringify(quote)).length;
-    if(size>180_000)throw Error('Individual quote exceeds archive limit.');
-    if(bytes+size>180_000&&group.length){groups.push(group);group=[];bytes=0;}
-    group.push(quote);bytes+=size;
-  }
-  if(group.length)groups.push(group);
-  if(groups.length>12)throw Error('Quote snapshot exceeds the bounded archive limit.');
-  const chunks=groups.map((_,i)=>capturePrefix+'_part_'+i);
-  const items:Array<{id:string;record:Record<string,unknown>}>=groups.map((quotes,i)=>({id:chunks[i],record:{owner:userId,eventId,kind,version,captureId,quotes}}));
-  items.push({id:capturePrefix+'_index',record:{owner:userId,eventId,kind,version,captureId,chunks}});
+  // Reuse the bounded quote packing contract, then scope every evidence ID
+  // to this immutable capture. The latest pointer remains a separate record.
+  const boundedItems=quoteSnapshotItems(userId,eventId,kind,version,quotes);
+  const captureKey=(id:string)=>capturePrefix+id.slice(prefix.length);
+  const items=boundedItems.map(item=>({
+    id:captureKey(item.id),
+    record:{...item.record,kind,captureId,
+      ...(Array.isArray(item.record.chunks)?{chunks:item.record.chunks.map(captureKey)}:{})}
+  }));
   // Evidence inserts and the separate mutable latest pointer commit atomically.
   // Existing legacy chunks are never rewritten or removed.
-  const result=await db.transact([
+  const operations=[
     db.tx.insert(archive,items),
     db.tx.update(table,[{id:prefix+'_index',record:{owner:userId,eventId,kind,version,captureId}}])
-  ]);
+  ];
+  // Include capture metadata, collection names and the pointer in the budget,
+  // not only packed quote arrays. Oversized requests perform no writes.
+  if(new TextEncoder().encode(JSON.stringify(operations)).length>900_000) {
+    throw Error('Quote snapshot exceeds the database request byte limit. No snapshot was written.');
+  }
+  const result=await db.transact(operations);
   if(result.some(group=>group.some(value=>!value)))throw Error('Quote snapshot was not fully saved.');
   return {stored:true,version,captureId,quoteCount:quotes.length};
 }

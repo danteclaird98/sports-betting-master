@@ -56,13 +56,17 @@ export default function HistoricalPropPriceAudit() {
       const result = await api.post('/api/nfl-historical-quote-validate', json);
       setReport(result.data as QuoteResult);
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Historical archive unavailable');
+      setError(
+        e instanceof Error ? e.message : 'Historical archive unavailable'
+      );
     } finally {
       setBusy(false);
     }
   }
   function downloadSchema() {
-    const blob = new Blob([JSON.stringify(example, null, 2)], { type: 'application/json' });
+    const blob = new Blob([JSON.stringify(example, null, 2)], {
+      type: 'application/json',
+    });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
@@ -71,25 +75,82 @@ export default function HistoricalPropPriceAudit() {
     URL.revokeObjectURL(url);
   }
   return (
-    <section className='panel lab'>
+    <section className="panel lab">
       <h2>Historical NFL sportsbook-price validation</h2>
-      <p>Validate externally obtained 2025 full-game quotes for exact fixed thresholds, identity, source fields and pre-kickoff timing. Does not download paid odds or treat user-supplied source claims as independently verified.</p>
-      <div className='setupActions'>
-        <button type='button' disabled={busy} onClick={downloadSchema}>Download JSON example</button>
-        <button type='button' disabled={busy} onClick={() => run('fixture')}>Test quote safeguards (synthetic, free)</button>
-        <input aria-label='Historical NFL quotes JSON' type='file' accept='.json,application/json' onChange={e => { setFile(e.target.files?.[0] ?? null); setReport(null); }} />
-        <button type='button' disabled={busy || !file} onClick={() => run('audit')}>{busy ? 'Validating…' : 'Audit historical JSON without saving'}</button>
+      <p>
+        Validate externally obtained 2025 full-game quotes for exact fixed
+        thresholds, identity, source fields and pre-kickoff timing. Does not
+        download paid odds or treat user-supplied source claims as independently
+        verified.
+      </p>
+      <div className="setupActions">
+        <button type="button" disabled={busy} onClick={downloadSchema}>
+          Download JSON example
+        </button>
+        <button type="button" disabled={busy} onClick={() => run('fixture')}>
+          Test quote safeguards (synthetic, free)
+        </button>
+        <input
+          aria-label="Historical NFL quotes JSON"
+          type="file"
+          accept=".json,application/json"
+          onChange={e => {
+            setFile(e.target.files?.[0] ?? null);
+            setReport(null);
+          }}
+        />
+        <button
+          type="button"
+          disabled={busy || !file}
+          onClick={() => run('audit')}
+        >
+          {busy ? 'Validating…' : 'Audit historical JSON without saving'}
+        </button>
       </div>
-      {fixture && <p>Integrity fixture: <strong>{fixture}</strong>. This does not validate live price access.</p>}
-      {error && <div role='alert' className='errorBox'>{error}</div>}
+      {fixture && (
+        <p>
+          Integrity fixture: <strong>{fixture}</strong>. This does not validate
+          live price access.
+        </p>
+      )}
+      {error && (
+        <div role="alert" className="errorBox">
+          {error}
+        </div>
+      )}
       {report && (
         <>
-          <p><strong>{report.status} — HOLD.</strong> {report.structurallyValid}/{report.total} quotes passed structural checks, {report.distinctGames} games, {report.distinctBooks} books. Independent provenance verified: {String(report.independentlyAuthenticated)}.</p>
+          <p>
+            <strong>{report.status} — HOLD.</strong> {report.structurallyValid}/
+            {report.total} quotes passed structural checks,{' '}
+            {report.distinctGames} games, {report.distinctBooks} books.
+            Independent provenance verified:{' '}
+            {String(report.independentlyAuthenticated)}.
+          </p>
           <p>{report.note}</p>
-          {report.rejected.length > 0 && <div className='setupTable'><table><thead><tr><th>Row</th><th>Reason</th></tr></thead><tbody>
-            {report.rejected.map(r => <tr key={r.index}><td>{r.index + 1}</td><td>{r.reasons.join('; ')}</td></tr>)}
-          </tbody></table></div>}
-          <p><strong>Next checks:</strong> {report.nextActions.join(' ')}</p>
+          {report.rejected.length > 0 && (
+            <div className="setupTable">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Row</th>
+                    <th>Reason</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {report.rejected.map(r => (
+                    <tr key={r.index}>
+                      <td>{r.index + 1}</td>
+                      <td>{r.reasons.join('; ')}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+          <p>
+            <strong>Next checks:</strong> {report.nextActions.join(' ')}
+          </p>
         </>
       )}
     </section>

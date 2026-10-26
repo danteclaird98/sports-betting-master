@@ -47,7 +47,7 @@ function isResearchState(value: unknown): value is ResearchState & Record<string
     && value.verifiedPositiveEv === false && value.productionEnabled === false
     && value.executionEnabled === false && typeof value.reason === 'string'
     && typeof value.artifactSha256 === 'string' && /^[a-f0-9]{64}$/.test(value.artifactSha256)
-    && typeof value.artifactAvailableAt === 'string' && Number.isFinite(Date.parse(value.artifactAvailableAt));
+    && typeof value.artifactAvailableAt === 'string' && /(?:Z|[+-]\d{2}:\d{2})$/.test(value.artifactAvailableAt) && Number.isFinite(Date.parse(value.artifactAvailableAt));
 }
 
 function validMetric(value: unknown): value is Metric {
@@ -55,7 +55,7 @@ function validMetric(value: unknown): value is Metric {
     && value.brier <= 1 && finite(value.log_loss) && value.log_loss >= 0;
 }
 
-function validInspection(readiness: unknown, report: unknown): readiness is Readiness {
+export function validInspection(readiness: unknown, report: unknown): readiness is Readiness {
   if (!isResearchState(readiness) || !isResearchState(report) || !object(readiness)
     || readiness.artifactVerified !== true || readiness.independentOfOdds !== true
     || readiness.untouchedHoldout !== false || readiness.artifactSha256 !== report.artifactSha256
@@ -64,6 +64,7 @@ function validInspection(readiness: unknown, report: unknown): readiness is Read
   const details = report.report;
   const counts = details.counts;
   if (!object(counts) || !['train', 'selection', 'calibration', 'consumed_diagnostic'].every(key => count(counts[key]))
+    || !Number.isSafeInteger(['train', 'selection', 'calibration', 'consumed_diagnostic'].reduce((sum,key)=>sum+Number(counts[key]),0))
     || !object(details.exclusions) || !count(details.exclusions.insufficient_prior_rows)
     || !count(details.negative_yard_rows_retained) || !object(details.partition_metrics)
     || !object(details.partition_metrics.consumed_diagnostic)) return false;
@@ -72,6 +73,13 @@ function validInspection(readiness: unknown, report: unknown): readiness is Read
     const metric = diagnostic[key];
     return validMetric(metric) && metric.n === counts.consumed_diagnostic;
   });
+}
+
+export function validScoreReceipt(result: unknown, readiness: unknown): result is Receipt {
+  return isResearchState(readiness) && isResearchState(result)
+    && result.artifactSha256 === readiness.artifactSha256
+    && result.artifactAvailableAt === readiness.artifactAvailableAt
+    && (result.probability === null || (finite(result.probability) && result.probability >= 0 && result.probability <= 1));
 }
 
 export default function CorrectedReceivingLab() {
@@ -152,9 +160,7 @@ export default function CorrectedReceivingLab() {
         setInspectionFailed(true);
         throw new Error('Model integrity verification failed. No probability is available.');
       }
-      if (!isResearchState(result) || !object(result) || result.artifactSha256 !== readiness?.artifactSha256
-        || result.artifactAvailableAt !== readiness.artifactAvailableAt
-        || !(result.probability === null || (finite(result.probability) && result.probability >= 0 && result.probability <= 1))) {
+      if (!validScoreReceipt(result, readiness)) {
         throw new Error('Unverified model response. No probability is available.');
       }
       setReceipt(result as Receipt);

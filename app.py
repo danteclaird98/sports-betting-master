@@ -7,6 +7,7 @@ import os
 import sqlite3
 import uuid
 from dataclasses import replace
+from contextlib import contextmanager
 from datetime import datetime, timezone
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -15,6 +16,7 @@ from edgeodds.models import MarketKey, MarketType, MarketStatus, NormalizedQuote
 from edgeodds.price_intelligence import exact_selection_signature, best_price, price_movement
 from integrations.movements import significant_moves
 from integrations import canonical_events
+from integrations.provider_imports import ProviderImports
 
 ROOT = Path(__file__).parent
 
@@ -41,11 +43,17 @@ class Workspace:
             db.executescript('''CREATE TABLE IF NOT EXISTS quotes(id INTEGER PRIMARY KEY, hash TEXT UNIQUE, body TEXT NOT NULL);
             CREATE TABLE IF NOT EXISTS wagers(id INTEGER PRIMARY KEY, body TEXT NOT NULL, result TEXT DEFAULT 'pending');''')
             canonical_events.initialize(db)
+        self.provider_imports = ProviderImports(Path(self.path))
+    @contextmanager
     def connect(self):
         db = sqlite3.connect(self.path, timeout=10)
-        db.execute('PRAGMA foreign_keys=ON')
-        db.execute('PRAGMA recursive_triggers=ON')
-        return db
+        try:
+            db.execute('PRAGMA foreign_keys=ON')
+            db.execute('PRAGMA recursive_triggers=ON')
+            with db:
+                yield db
+        finally:
+            db.close()
     def ingest(self, rows):
         if not isinstance(rows, list) or not 1 <= len(rows) <= 5000:
             raise ValueError('Import requires 1–5000 normalized quotes')
@@ -198,6 +206,7 @@ def handler(workspace):
             if path == '/health': return self.send(200, {'status':'ok'})
             if path == '/api/providers': return self.send(200, workspace.providers())
             if path == '/api/state': return self.send(200, workspace.state())
+            if path == '/api/provider-imports': return self.send(200, workspace.provider_imports.summary())
             files = {'/':('index.html','text/html; charset=utf-8'), '/app.js':('app.js','text/javascript'), '/style.css':('style.css','text/css'), '/example.json':('example.json','application/json; charset=utf-8')}
             if path not in files: return self.send(404, {'error':'Not found'})
             name, mime = files[path]
@@ -212,10 +221,10 @@ def handler(workspace):
                 size = int(self.headers.get('Content-Length',0))
                 if not 0 < size <= 4000000: raise ValueError('Invalid request size')
                 body = json.loads(self.rfile.read(size), parse_constant=lambda _: (_ for _ in ()).throw(ValueError('Non-finite number')))
-                routes = {'/api/import':workspace.ingest, '/api/wagers':workspace.wager, '/api/settle':workspace.settle, '/api/import-provider':workspace.import_provider, '/api/sync-provider':workspace.sync_provider}
+                routes = {'/api/import':workspace.ingest, '/api/wagers':workspace.wager, '/api/settle':workspace.settle, '/api/import-provider':workspace.import_provider, '/api/sync-provider':workspace.sync_provider, '/api/provider-imports':workspace.provider_imports.import_payload}
                 if self.path not in routes: return self.send(404, {'error':'Not found'})
                 self.send(200,routes[self.path](body))
-            except (ValueError, KeyError, TypeError, AttributeError) as exc:
+            except (ValueError, KeyError, TypeError, AttributeError, OverflowError, RecursionError) as exc:
                 self.send(400, {'error':str(exc)[:200]})
     return Handler
 

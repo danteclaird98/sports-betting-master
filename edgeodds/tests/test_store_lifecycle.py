@@ -8,7 +8,7 @@ import unittest
 from unittest.mock import patch
 
 from edgeodds.models import MarketKey, MarketStatus, MarketType, NormalizedQuote
-from edgeodds.store import SnapshotStore
+from edgeodds.store import SCHEMA, SnapshotStore
 
 
 @contextmanager
@@ -65,6 +65,72 @@ class ConnectionLifecycleTests(unittest.TestCase):
             with store._connect() as db:
                 self.assertEqual(db.execute('SELECT COUNT(*) FROM lifecycle_fixture').fetchone()[0], 0)
             self.assert_closed(connections)
+
+
+class AppendOnlyTests(unittest.TestCase):
+    def test_mutations_fail_from_a_separate_connection(self):
+        with TemporaryDirectory() as tmp:
+            path = Path(tmp) / 'test.sqlite3'
+            store = SnapshotStore(path)
+            self.assertTrue(store.append(quote()))
+            before = store.latest()
+            with sqlite3.connect(path) as db:
+                self.assertEqual(db.execute('PRAGMA recursive_triggers').fetchone()[0], 0)
+                for sql in (
+                    'UPDATE odds_snapshots SET decimal_price = 9',
+                    'UPDATE odds_snapshots SET id = id + 1',
+                    'DELETE FROM odds_snapshots',
+                ):
+                    with self.assertRaisesRegex(sqlite3.IntegrityError, 'append-only'):
+                        db.execute(sql)
+            self.assertEqual(store.latest(), before)
+            self.assertFalse(store.append(quote()))
+
+    def test_replace_and_upsert_cannot_rewrite_existing_evidence(self):
+        with TemporaryDirectory() as tmp:
+            path = Path(tmp) / 'test.sqlite3'
+            store = SnapshotStore(path)
+            store.append(quote())
+            before = store.latest()
+            with sqlite3.connect(path) as db:
+                columns = [row[1] for row in db.execute('PRAGMA table_info(odds_snapshots)')]
+                original = list(db.execute('SELECT * FROM odds_snapshots').fetchone())
+                for collision in ('id', 'fingerprint'):
+                    replacement = original.copy()
+                    replacement[columns.index('decimal_price')] = 9
+                    if collision == 'id':
+                        replacement[columns.index('fingerprint')] = 'different-fingerprint'
+                    else:
+                        replacement[columns.index('id')] = original[0] + 100
+                    placeholders = ','.join('?' for _ in columns)
+                    db.execute(f'INSERT OR REPLACE INTO odds_snapshots VALUES ({placeholders})', replacement)
+                db.execute('''INSERT INTO odds_snapshots SELECT * FROM odds_snapshots WHERE true
+                           ON CONFLICT(fingerprint) DO UPDATE SET decimal_price = 9''')
+            self.assertEqual(store.latest(), before)
+
+    def test_existing_database_gains_guards_without_rewriting_rows(self):
+        with TemporaryDirectory() as tmp:
+            path = Path(tmp) / 'existing.sqlite3'
+            # Reproduce an installation created before append-only triggers.
+            legacy_schema = SCHEMA.split('CREATE TRIGGER', 1)[0]
+            with sqlite3.connect(path) as db:
+                db.executescript(legacy_schema)
+            store = SnapshotStore(path)
+            store.append(quote())
+            before = store.latest()
+            with sqlite3.connect(path) as db:
+                for name in ('odds_snapshots_no_update', 'odds_snapshots_no_delete',
+                             'odds_snapshots_preserve_conflicts'):
+                    db.execute(f'DROP TRIGGER {name}')
+            reopened = SnapshotStore(path)
+            self.assertEqual(reopened.latest(), before)
+            with sqlite3.connect(path) as db:
+                with self.assertRaisesRegex(sqlite3.IntegrityError, 'append-only'):
+                    db.execute('DELETE FROM odds_snapshots')
+            from dataclasses import replace
+            self.assertTrue(reopened.append(replace(quote(), decimal_price=2.1)))
+            self.assertEqual(len(reopened.latest()), 2)
+            self.assertFalse(reopened.append(quote()))
 
 
 if __name__ == '__main__':

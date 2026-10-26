@@ -1,0 +1,36 @@
+# Isolated local verification only. This network has no external provider egress.
+services:
+  edgeboard:
+    build:
+      context: .
+      args:
+        SOURCE_COMMIT: ${EDGEBOARD_SOURCE_COMMIT:?Set EDGEBOARD_SOURCE_COMMIT to the clean candidate commit}
+      secrets:
+        - proxy_ca
+    ports:
+      - "127.0.0.1:18080:3000"
+    environment:
+      HOST: 0.0.0.0
+      PORT: "3000"
+      ALLOWED_HOSTS: "127.0.0.1:18080,localhost:18080"
+      WORKSPACE_PASSWORD: "local-mock-verification-only"
+      EDGEBOARD_DB: /var/data/edgeboard.sqlite3
+      EDGEFUSION_DB: /var/data/edgefusion.sqlite3
+      ODDS_API_ENABLED: "false"
+    volumes:
+      - mock_data:/var/data
+    networks:
+      - mock_only
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 2s
+      timeout: 5s
+      retries: 30
+networks:
+  mock_only:
+    internal: true
+volumes:
+  mock_data:
+secrets:
+  proxy_ca:
+    file: ${EDGEBOARD_BUILD_CA:-/etc/ssl/certs/ca-certificates.crt}

@@ -35,6 +35,22 @@ CREATE INDEX IF NOT EXISTS idx_odds_event_time
 ON odds_snapshots(event_id, retrieved_at DESC);
 CREATE INDEX IF NOT EXISTS idx_odds_provider_book_time
 ON odds_snapshots(provider, bookmaker, retrieved_at DESC);
+CREATE TRIGGER IF NOT EXISTS odds_snapshots_no_update
+BEFORE UPDATE ON odds_snapshots
+BEGIN SELECT RAISE(ABORT, 'odds_snapshots is append-only'); END;
+CREATE TRIGGER IF NOT EXISTS odds_snapshots_no_delete
+BEFORE DELETE ON odds_snapshots
+BEGIN SELECT RAISE(ABORT, 'odds_snapshots is append-only'); END;
+-- REPLACE can delete without firing DELETE triggers on another connection.
+-- Ignore colliding inserts before conflict resolution, preserving the original
+-- evidence and the existing exact-repeat append() result of False.
+CREATE TRIGGER IF NOT EXISTS odds_snapshots_preserve_conflicts
+BEFORE INSERT ON odds_snapshots
+WHEN EXISTS (
+    SELECT 1 FROM odds_snapshots
+    WHERE id = NEW.id OR fingerprint = NEW.fingerprint
+)
+BEGIN SELECT RAISE(IGNORE); END;
 """
 
 

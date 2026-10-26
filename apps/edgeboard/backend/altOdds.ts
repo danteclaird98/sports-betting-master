@@ -1,4 +1,5 @@
 import { secrets } from '../../../runtime/sdk.ts';
+import { configuredOddsApiQuota } from './oddsApiQuota.ts';
 
 export type NormalizedOddsOutcome = {
   name?: string;
@@ -429,8 +430,8 @@ async function fetchEspnPublicOdds(from?: string, to?: string) {
         bookCount: books.size,
       },
     };
-  } catch (espnError) {
-    console.warn('espn_public_odds_failed', espnError instanceof Error ? espnError.message : 'unknown ESPN error');
+  } catch {
+    console.warn('espn_public_odds_failed');
     return {
       events: [] as NormalizedOddsEvent[],
       health: {
@@ -448,58 +449,63 @@ async function fetchEspnPublicOdds(from?: string, to?: string) {
 async function fetchTheOddsApi(key: string, from?: string, to?: string) {
   const query = new URLSearchParams({
     regions: 'us',
-    markets: 'spreads,totals',
+    markets: 'h2h',
     oddsFormat: 'american',
     dateFormat: 'iso',
     apiKey: key,
   });
-  const response = await fetch(`https://api.the-odds-api.com/v4/sports/americanfootball_nfl/odds?${query.toString()}`);
-  const text = await response.text();
-  if (!response.ok) {
-    return {
-      events: [] as NormalizedOddsEvent[],
-      health: {
-        id: 'theoddsapi',
-        name: 'The Odds API',
-        status: response.status === 401 || response.status === 403 ? 'exhausted' as const : 'error' as const,
-        detail: `HTTP ${response.status}. The source was excluded from consensus.`,
-        eventCount: 0,
-        bookCount: 0,
-      },
-    };
-  }
+  const quota = configuredOddsApiQuota();
   try {
-    const parsed = JSON.parse(text) as NormalizedOddsEvent[];
-    const events = (Array.isArray(parsed) ? parsed : []).filter(event => inWindow(event.commence_time ?? undefined, from, to)).map(event => ({
-      ...event,
-      bookmakers: (event.bookmakers ?? []).map(book => ({ ...book, provider: 'The Odds API' })),
-    }));
-    const books = new Set(events.flatMap(event => event.bookmakers?.map(book => book.key ?? '') ?? []).filter(Boolean));
-    const remaining = response.headers.get('x-requests-remaining');
-    return {
-      events,
-      health: {
-        id: 'theoddsapi',
-        name: 'The Odds API',
-        status: events.length ? 'active' as const : 'partial' as const,
-        detail: events.length ? `Current NFL odds active${remaining ? ` · ${remaining} requests remaining` : ''}.` : 'Connected, but no matching NFL events were returned.',
-        eventCount: events.length,
-        bookCount: books.size,
-      },
-    };
-  } catch {
-    return {
-      events: [] as NormalizedOddsEvent[],
-      health: {
-        id: 'theoddsapi',
-        name: 'The Odds API',
-        status: 'error' as const,
-        detail: 'The source returned an unreadable response. It was excluded from consensus.',
-        eventCount: 0,
-        bookCount: 0,
-      },
-    };
-  }
+    const receipt = quota.reserve();
+    const response = await fetch(`https://api.the-odds-api.com/v4/sports/americanfootball_nfl/odds?${query.toString()}`, {signal: AbortSignal.timeout(20_000), redirect: 'error'});
+    quota.reconcile(receipt, response.headers);
+    const text = await response.text();
+    if (!response.ok) {
+      return {
+        events: [] as NormalizedOddsEvent[],
+        health: {
+          id: 'theoddsapi',
+          name: 'The Odds API',
+          status: response.status === 401 || response.status === 403 ? 'exhausted' as const : 'error' as const,
+          detail: `HTTP ${response.status}. The source was excluded from consensus.`,
+          eventCount: 0,
+          bookCount: 0,
+        },
+      };
+    }
+    try {
+      const parsed = JSON.parse(text) as NormalizedOddsEvent[];
+      const events = (Array.isArray(parsed) ? parsed : []).filter(event => inWindow(event.commence_time ?? undefined, from, to)).map(event => ({
+        ...event,
+        bookmakers: (event.bookmakers ?? []).map(book => ({ ...book, provider: 'The Odds API' })),
+      }));
+      const books = new Set(events.flatMap(event => event.bookmakers?.map(book => book.key ?? '') ?? []).filter(Boolean));
+      const remaining = response.headers.get('x-requests-remaining');
+      return {
+        events,
+        health: {
+          id: 'theoddsapi',
+          name: 'The Odds API',
+          status: events.length ? 'active' as const : 'partial' as const,
+          detail: events.length ? `Current NFL odds active${remaining ? ` · ${remaining} requests remaining` : ''}.` : 'Connected, but no matching NFL events were returned.',
+          eventCount: events.length,
+          bookCount: books.size,
+        },
+      };
+    } catch {
+      return {
+        events: [] as NormalizedOddsEvent[],
+        health: {
+          id: 'theoddsapi',
+          name: 'The Odds API',
+          status: 'error' as const,
+          detail: 'The source returned an unreadable response. It was excluded from consensus.',
+          eventCount: 0,
+          bookCount: 0,
+        },
+      };
+    }
+  } finally { quota.close(); }
 }
 
 function dollar(value?: string) {
@@ -594,11 +600,13 @@ async function fetchKalshiContext(from?: string, to?: string) {
 
 export async function fetchAlternativeNflOdds(from?: string, to?: string, allowProviderRequests = false) {
   // ESPN and Kalshi remain public; keyed feeds are never an automatic fallback.
-  const names = allowProviderRequests ? await secrets.listSecretNames() : [];
+  let names: string[] = [];
+  try { names = allowProviderRequests ? await secrets.listSecretNames() : []; } catch { /* keyed sources fail closed */ }
   const hasSharp = names.includes('SHARPAPI_KEY');
-  const hasOddsApi = names.includes('THE_ODDS_API_KEY');
+  const hasOddsApi = process.env.ODDS_API_ENABLED === 'true' && names.includes('THE_ODDS_API_KEY');
+  const failed = (id: string, name: string) => ({events: [] as NormalizedOddsEvent[], health: {id, name, status: 'error' as const, detail: 'Provider unavailable or budget denied; no automatic retry.', eventCount: 0, bookCount: 0}});
   const sharpPromise = hasSharp
-    ? secrets.readSecret('SHARPAPI_KEY').then(key => fetchSharpApi(key.trim(), from, to))
+    ? secrets.readSecret('SHARPAPI_KEY').then(key => fetchSharpApi(key.trim(), from, to)).catch(() => failed('sharpapi', 'SharpAPI'))
     : Promise.resolve({
         events: [] as NormalizedOddsEvent[],
         health: {
@@ -611,7 +619,7 @@ export async function fetchAlternativeNflOdds(from?: string, to?: string, allowP
         },
       });
   const oddsPromise = hasOddsApi
-    ? secrets.readSecret('THE_ODDS_API_KEY').then(key => fetchTheOddsApi(key.trim(), from, to))
+    ? secrets.readSecret('THE_ODDS_API_KEY').then(key => fetchTheOddsApi(key.trim(), from, to)).catch(() => failed('theoddsapi', 'The Odds API'))
     : Promise.resolve({
         events: [] as NormalizedOddsEvent[],
         health: {

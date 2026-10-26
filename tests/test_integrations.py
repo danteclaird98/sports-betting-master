@@ -32,6 +32,30 @@ class IntegrationTests(unittest.TestCase):
         contract=edgeboard_contract(dict(event_id='e1',event=dict(league='NBA',starts_at='2027-01-01T00:00:00Z'),quotes=[dict(provider='manual',sportsbook='book',market='moneyline',selection='Away',line=None,period='full_game',rules='unknown',decimal_odds=2,retrieved_at='2026-10-24T00:00:01Z',source_updated_at='2026-10-24T00:00:00Z',status='open')]))
         q=convert('edgeboard',contract)['quotes'][0]
         self.assertEqual(q['selection'],'Away');self.assertEqual(q['rules'],'unknown')
+    def test_provider_clocks_normalize_utc_without_mutating_payload(self):
+        payload = self.sgo()
+        payload['data'][0]['status']['startsAt'] = '2027-01-01T02:00:00+02:00'
+        payload['data'][0]['odds']['points-away-game-sp-away']['byBookmaker']['book']['lastUpdatedAt'] = '2026-10-24T02:00:00+02:00'
+        original = copy.deepcopy(payload)
+        quote = convert('sportsgameodds', payload, {'retrieved_at':'2026-10-24T02:00:01+02:00'})['quotes'][0]
+        self.assertEqual(payload, original)
+        self.assertEqual(quote['starts_at'], '2027-01-01T00:00:00+00:00')
+        self.assertEqual(quote['retrieved_at'], '2026-10-24T00:00:01+00:00')
+        self.assertEqual(quote['updated_at'], '2026-10-24T00:00:00+00:00')
+
+    def test_edgeboard_updated_clock_uses_same_timezone_validation(self):
+        from edgeodds.integrations.edgeboard import edgeboard_contract
+        contract = edgeboard_contract(dict(event_id='e1', event=dict(league='NBA', starts_at='2027-01-01T00:00:00Z'), quotes=[dict(provider='manual', sportsbook='book', market='moneyline', selection='Away', line=None, period='full_game', rules='unknown', decimal_odds=2, retrieved_at='2026-10-24T00:00:01Z', source_updated_at='2026-10-24T00:00:00Z', status='open')]))
+        contract['quotes'][0]['timestamps']['quote_updated_at'] = '2026-10-24T02:00:00+02:00'
+        original = copy.deepcopy(contract)
+        self.assertEqual(convert('edgeboard', contract)['quotes'][0]['updated_at'], '2026-10-24T00:00:00+00:00')
+        self.assertEqual(contract, original)
+        contract['quotes'][0]['timestamps']['quote_updated_at'] = None
+        self.assertIsNone(convert('edgeboard', contract)['quotes'][0]['updated_at'])
+        contract['quotes'][0]['timestamps']['quote_updated_at'] = '2026-10-24T00:00:00'
+        with self.assertRaisesRegex(ValueError, 'explicit timezone'):
+            convert('edgeboard', contract)
+
     def test_movements_zero_line_and_conflict_handling(self):
         q=convert('sportsgameodds',self.sgo())['quotes'][0]
         nextq=dict(q,line=.5,updated_at='2026-10-24T00:01:00Z')

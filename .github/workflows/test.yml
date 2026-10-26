@@ -13,13 +13,12 @@ jobs:
           node-version: '24'
           cache: npm
       - run: npm ci --no-audit --no-fund
+      - run: python3 -m pip install -r requirements-test.txt
       - run: npm run verify:sources
       - run: npm run build
       - run: npm run test:node
       - run: npm run test:models
-      - run: python3 -m unittest discover -s edgeodds/tests -v
-      - run: python3 -m unittest discover -s tests -v
-      - run: python3 -m unittest discover -s apps/edgeboard/research/receiving60 -v
+      - run: python3 -m pytest -q
       - run: node --check web/app.js
   secrets:
     runs-on: ubuntu-latest

@@ -34,6 +34,11 @@ export class OddsApiQuota {
     const month = utcMonth(now), id = randomUUID();
     this.db.exec('BEGIN IMMEDIATE');
     try {
+      // A request reserved before reset may be charged after reset. An unknown
+      // prior-month outcome blocks admission, even with a fresh configured baseline.
+      const unresolved = this.db.prepare(`SELECT 1 FROM odds_api_reservations
+        WHERE account=? AND month<? AND reconciled=0 LIMIT 1`).get(this.account,month);
+      if (unresolved) throw Error('ODDS_API_PRIOR_MONTH_OUTCOME_UNRESOLVED');
       const result = this.db.prepare(`UPDATE odds_api_budget SET spent=spent+1
         WHERE account=? AND month=? AND spent<500`).run(this.account, month);
       if (Number(result.changes) !== 1) throw Error('ODDS_API_BUDGET_EXHAUSTED_OR_MONTH_UNCONFIGURED');
@@ -42,7 +47,11 @@ export class OddsApiQuota {
       return {id,month};
     } catch (error) { this.db.exec('ROLLBACK'); throw error; }
   }
-  reconcile(receipt: Reservation, headers: Headers): void {
+  reconcile(receipt: Reservation, headers: Headers, now = new Date()): void {
+    // Late headers do not establish which month's allowance paid for this request.
+    // Keep the reservation unresolved; do not unlock the new month or refund it.
+    // Recovery requires independently verified account usage, outside this API.
+    if (receipt.month !== utcMonth(now)) return;
     const read = (name: string) => {
       const value = headers.get(name);
       if (value === null) return null;
@@ -82,5 +91,5 @@ export function configuredOddsApiQuota(): OddsApiQuota {
 export function logOddsApiProjection(log: (message: string) => void = console.info) {
   log(JSON.stringify({provider:'The Odds API',monthlyBudget:500,projectedScheduledMonthlyCredits:0,
     creditsPerExplicitCall:1,markets:['h2h'],regions:['us'],enabled:process.env.ODDS_API_ENABLED==='true',
-    scope:'shared SQLite/account; external usage requires baseline and header reconciliation; no poller'}));
+    scope:'shared SQLite/account; external usage requires baseline; unresolved prior-month calls block rollover; no poller'}));
 }

@@ -47,3 +47,29 @@ test('UTC rollover requires configured baseline and durable file is mandatory',(
   const messages:string[]=[];logOddsApiProjection(m=>messages.push(m));
   assert.equal(JSON.parse(messages[0]).projectedScheduledMonthlyCredits,0);
 });
+test('delayed prior-month response cannot unlock a newly configured month',()=>{
+  const file=path(), oldMonth=new OddsApiQuota(file,'shared','2030-01',0);
+  const receipt=oldMonth.reserve(new Date('2030-01-31T23:59:59Z'));
+  const nextMonth=new OddsApiQuota(file,'shared','2030-02',0);
+  const now=new Date('2030-02-01T00:00:00Z');
+  assert.throws(()=>nextMonth.reserve(now),/PRIOR_MONTH_OUTCOME_UNRESOLVED/);
+  // The upstream may have charged February despite the January reservation.
+  oldMonth.reconcile(receipt,new Headers({'x-requests-used':'1','x-requests-remaining':'499','x-requests-last':'1'}),now);
+  assert.throws(()=>nextMonth.reserve(now),/PRIOR_MONTH_OUTCOME_UNRESOLVED/);
+  assert.equal(nextMonth.spent('2030-02'),0);oldMonth.close();nextMonth.close();
+});
+test('uncertain old-month failures remain blocked across restart and later resets',()=>{
+  const file=path(), q=new OddsApiQuota(file,'shared','2030-01',0);
+  q.reserve(new Date('2030-01-31T23:59:59Z'));q.close(); // network timeout: no reconciliation
+  for(const month of ['2030-02','2030-03']) {
+    const restarted=new OddsApiQuota(file,'shared',month,0);
+    assert.throws(()=>restarted.reserve(new Date(month+'-01T00:00:00Z')),/PRIOR_MONTH_OUTCOME_UNRESOLVED/);
+    restarted.close();
+  }
+});
+test('resolved prior-month calls permit rollover with confirmed new-month baseline',()=>{
+  const file=path(), q=new OddsApiQuota(file,'shared','2030-01',0),before=new Date('2030-01-31T23:59:00Z');
+  const receipt=q.reserve(before);q.reconcile(receipt,new Headers({'x-requests-used':'1'}),before);q.close();
+  const next=new OddsApiQuota(file,'shared','2030-02',499);
+  next.reserve(new Date('2030-02-01T00:00:00Z'));assert.equal(next.spent('2030-02'),500);next.close();
+});

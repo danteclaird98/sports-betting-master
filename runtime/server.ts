@@ -5,6 +5,9 @@ import { resolve, extname } from 'node:path';
 import { createHmac, randomBytes, timingSafeEqual } from 'node:crypto';
 import { spawn } from 'node:child_process';
 import { handler as edgeboard } from '../apps/edgeboard/backend/index.ts';
+import { logOddsApiProjection } from '../apps/edgeboard/backend/oddsApiQuota.ts';
+
+logOddsApiProjection();
 
 const root=resolve(process.cwd());
 const port=Number(process.env.PORT||3000);
@@ -12,6 +15,7 @@ const host=process.env.HOST||'127.0.0.1';
 const hosted=!['localhost','127.0.0.1','::1'].includes(host);
 const password=process.env.WORKSPACE_PASSWORD||'';
 const username=process.env.WORKSPACE_USER||'owner';
+const sourceCommit=/^[a-f0-9]{40}$/.test(process.env.SOURCE_COMMIT||'')?process.env.SOURCE_COMMIT:null;
 const secret=process.env.WORKSPACE_SESSION_SECRET||randomBytes(32).toString('hex');
 const secure=Boolean(process.env.RENDER_EXTERNAL_HOSTNAME)||process.env.COOKIE_SECURE==='true';
 if(hosted&&password.length<16)throw Error('Set WORKSPACE_PASSWORD to at least 16 characters before hosting.');
@@ -49,7 +53,7 @@ const server=http.createServer(async(req,res)=>{
     if(!allowedHosts.has(req.headers.host||''))return json(res,403,{error:'Invalid host'});
     const url=new URL(req.url||'/',`http://${req.headers.host}`);
     if(url.pathname==='/health'){
-      try{const r=await fetch(`http://127.0.0.1:${internalPort}/health`,{signal:AbortSignal.timeout(3000)});if(!r.ok)throw Error();return json(res,200,{status:'ok',runtime:'self-hosted'});}catch{return json(res,503,{status:'starting'});}
+      try{const r=await fetch(`http://127.0.0.1:${internalPort}/health`,{signal:AbortSignal.timeout(3000)});if(!r.ok)throw Error();return json(res,200,{status:'ok',runtime:'self-hosted',sourceCommit});}catch{return json(res,503,{status:'starting',sourceCommit});}
     }
     if(req.method!=='GET'&&req.method!=='HEAD'){
       const origin=req.headers.origin;

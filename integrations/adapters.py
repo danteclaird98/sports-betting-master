@@ -89,7 +89,7 @@ def convert(kind,payload,options=None):
             market=quote['market'];source=quote['source'];price=quote['price'];times=quote['timestamps']
             common=base(source.get('provider') or 'edgeboard',event['event_id'],options.get('event') or event['event_id'],event.get('league') or 'UNKNOWN',event['starts_at'],times['retrieved_at'],options)
             result.append(dict(common,market=market['family'],selection=market['selection'],line=market.get('line'),period=market.get('period') or 'unknown',
-                rules=market.get('settlement_rules',{}).get('id') or 'unknown',bookmaker=quote['book'],decimal_price=price['decimal'],updated_at=times.get('quote_updated_at'),status=price.get('status') or 'unknown'))
+                rules=market.get('settlement_rules',{}).get('id') or 'unknown',bookmaker=quote['book'],decimal_price=price['decimal'],updated_at=clock(times.get('quote_updated_at')),status=price.get('status') or 'unknown'))
     else:raise ValueError('Unknown import format')
     if not result:raise ValueError('No supported quotes found; unsupported markets remain in the upstream research tools')
     return dict(quotes=result,skipped=len(skipped),warnings=sorted(set(skipped)))

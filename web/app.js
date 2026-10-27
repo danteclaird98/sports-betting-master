@@ -4,7 +4,46 @@ const money=x=>new Intl.NumberFormat('en-US',{style:'currency',currency:'USD'}).
 function el(tag,text,cls){const n=document.createElement(tag);if(text!==undefined)n.textContent=text;if(cls)n.className=cls;return n;}
 function message(text,error=false){$('#message').textContent=text;$('#message').className=error?'error':'success';}
 async function api(path,body){const r=await fetch(path,body===undefined?{}:{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});const data=await r.json();if(!r.ok)throw Error(data.error||'Request failed');return data;}
-async function load(){try{state=await api('/api/state');$('#status').textContent=state.provider_status;for(const k of ['markets','snapshots'])$('#'+k).textContent=state.summary[k];$('#profit').textContent=money(state.summary.profit);$('#roi').textContent=state.summary.roi===null?'—':(state.summary.roi*100).toFixed(1)+'%';const current=$('#league').value;$('#league').replaceChildren(new Option('All leagues',''));[...new Set(state.markets.flatMap(m=>m.quotes.map(q=>q.league)))].sort().forEach(l=>$('#league').add(new Option(l,l)));$('#league').value=current;renderBoard();renderWagers();renderMovements();}catch(e){message(e.message,true);}}
+// Refresh is read-only. Keep its status separate from the result of a write, so a
+// failed refresh can never make a confirmed write look like it should be repeated.
+function displayState(next){
+  state=next;
+  $('#status').textContent=state.provider_status;
+  for(const k of ['markets','snapshots'])$('#'+k).textContent=state.summary[k];
+  $('#profit').textContent=money(state.summary.profit);
+  $('#roi').textContent=state.summary.roi===null?'—':(state.summary.roi*100).toFixed(1)+'%';
+  const current=$('#league').value;
+  $('#league').replaceChildren(new Option('All leagues',''));
+  [...new Set(state.markets.flatMap(m=>m.quotes.map(q=>q.league)))].sort().forEach(l=>$('#league').add(new Option(l,l)));
+  $('#league').value=current;
+  renderBoard();renderWagers();renderMovements();
+}
+let loadGeneration=0;
+async function load(){
+  const generation=++loadGeneration, previous=state;
+  try{
+    const next=await api('/api/state');
+    if(generation!==loadGeneration)return false;
+    if(!next || !next.summary || !Array.isArray(next.markets) || !Array.isArray(next.wagers)) throw Error('Invalid workspace response');
+    displayState(next);
+    $('#workspace-health').textContent='';
+    return true;
+  }catch(e){
+    if(generation!==loadGeneration)return false;
+    state=previous;
+    if(previous){
+      // A malformed response can fail partway through rendering; restore the last
+      // successfully rendered state as well as the underlying state reference.
+      try{displayState(previous);}catch{}
+    }else{
+      for(const k of ['markets','snapshots','profit','roi'])$('#'+k).textContent='—';
+      for(const k of ['quote-list','wagers','movements'])$('#'+k).replaceChildren();
+    }
+    $('#status').textContent=previous?'Workspace data may be stale':'Workspace unavailable';
+    $('#workspace-health').textContent=previous?'Refresh failed. Displayed workspace data may be stale. Use Refresh to retry (read-only).':'Workspace unavailable. Refresh failed. Use Refresh to retry (read-only).';
+    return false;
+  }
+}
 // Recheck cached evidence locally; this clock never requests provider data.
 function boardQuoteEligible(row, now) {
   const timestamp = value => typeof value === 'string' && /(?:Z|[+-]\d{2}:\d{2})$/i.test(value)
@@ -70,8 +109,9 @@ function convert(){const n=Number($('#american').value);$('#conversion').textCon
 $('#american').oninput=convert;convert();load();
 
 function renderMovements(){const target=$('#movements');target.replaceChildren();if(!state.movements?.length)target.append(el('p','No significant source movements recorded.','muted'));for(const m of (state.movements||[]).slice(0,10))target.append(el('p',`${m.event} · ${m.selection} · ${m.bookmaker} · line ${m.previous_line??'—'} → ${m.current_line??'—'} · American price Δ ${m.american_price_change} · ${m.observed_at}`,'muted'));}
-async function providerStatus(){try{const status=await api('/api/providers');const provider=status.providers.find(p=>p.name==='SportsGameOdds');$('#provider-status').textContent=provider.credential_configured?'Server credential configured; live access has not been verified.':'Set SPORTSGAMEODDS_KEY in the hosting environment to connect. Your key stays on the server.';$('#sync-provider').disabled=!provider.credential_configured;}catch(e){$('#provider-status').textContent=e.message;}}
-$('#sync-provider').onclick=async()=>{const b=$('#sync-provider');b.disabled=true;try{const result=await api('/api/sync-provider',{league:$('#sync-league').value});await load();message(`${result.imported} snapshots imported; ${result.skipped} unsupported entries skipped.`);}catch(e){message(e.message,true);}finally{b.disabled=false;}};
+let providerConfigured=false;
+async function providerStatus(){providerConfigured=false;$('#sync-provider').disabled=true;try{const status=await api('/api/providers');const provider=status.providers.find(p=>p.name==='SportsGameOdds');providerConfigured=provider?.credential_configured===true;$('#provider-status').textContent=providerConfigured?'Server credential configured; live access has not been verified.':'Set SPORTSGAMEODDS_KEY in the hosting environment to connect. Your key stays on the server.';$('#sync-provider').disabled=!providerConfigured;}catch(e){$('#provider-status').textContent=`Provider configuration unavailable: ${e.message}`;}}
+$('#sync-provider').onclick=async()=>{const b=$('#sync-provider');b.disabled=true;try{const result=await api('/api/sync-provider',{league:$('#sync-league').value});await load();message(`${result.imported} snapshots imported; ${result.skipped} unsupported entries skipped.`);}catch(e){message(e.message,true);}finally{b.disabled=!providerConfigured;}};
 const localConvert=convert;
 let conversionTimer;
 $('#american').oninput=()=>{localConvert();clearTimeout(conversionTimer);conversionTimer=setTimeout(async()=>{const n=Number($('#american').value);if(!Number.isFinite(n)||Math.abs(n)<100)return;try{const r=await fetch('/tools/odds?american='+encodeURIComponent(n));if(!r.ok)return;const v=await r.json();if(Number($('#american').value)!==n)return;$('#conversion').textContent=`Decimal ${v.decimal.toFixed(3)} · Raw implied ${(100*v.implied).toFixed(2)}% · AlexBET`;}catch{}},200);};

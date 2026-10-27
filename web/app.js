@@ -27,6 +27,7 @@ async function load(){
     if(!next || !next.summary || !Array.isArray(next.markets) || !Array.isArray(next.wagers)) throw Error('Invalid workspace response');
     displayState(next);
     $('#workspace-health').textContent='';
+    $('#workspace-health').className='';
     return true;
   }catch(e){
     if(generation!==loadGeneration)return false;
@@ -40,6 +41,7 @@ async function load(){
       for(const k of ['quote-list','wagers','movements'])$('#'+k).replaceChildren();
     }
     $('#status').textContent=previous?'Workspace data may be stale':'Workspace unavailable';
+    $('#workspace-health').className='error';
     $('#workspace-health').textContent=previous?'Refresh failed. Displayed workspace data may be stale. Use Refresh to retry (read-only).':'Workspace unavailable. Refresh failed. Use Refresh to retry (read-only).';
     return false;
   }
